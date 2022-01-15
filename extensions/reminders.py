@@ -66,7 +66,7 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
 
             reminder_data = {
                 "message": ctx.options.message,
-                "jump_url": f"https://discord.com/channels/{ctx.guild_id}/{ctx.channel_id}/{(await proxy.message()).id}",
+                "jump_url": (await proxy.message()).make_link(ctx.guild_id),
                 "additional_recipients": [],
             }
 
@@ -120,8 +120,9 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
                         pings.append(member.mention)
 
             try:
-                channel = plugin.app.cache.get_guild_channel(event.timer.channel_id)
-                await channel.send(content=" ".join(pings), embed=embed, user_mentions=True)
+                await plugin.app.rest.create_message(
+                    event.timer.channel_id, content=" ".join(pings), embed=embed, user_mentions=True
+                )
 
             except (hikari.ForbiddenError, hikari.NotFoundError, hikari.InternalServerError):
                 try:

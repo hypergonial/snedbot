@@ -3,7 +3,6 @@ import datetime
 import logging
 import re
 
-import attr
 import dateutil
 import hikari
 import Levenshtein as lev
@@ -42,7 +41,8 @@ class Scheduler:
             try:
                 time = dateutil.parser.parse(timestr)
             except:
-                pass
+                if force_mode == "absolute":  # Only raise exception if this is the only conversion attempted
+                    raise
             else:
                 if not time.tzinfo:
                     time.tzinfo = datetime.timezone.utc

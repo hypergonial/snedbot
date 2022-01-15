@@ -35,6 +35,8 @@ class SnedBot(lightbulb.BotApp):
             default_enabled_guilds = ()
             db_name = "sned"
 
+        activity = hikari.Activity(name="to @Sned", type=hikari.ActivityType.LISTENING)
+
         super().__init__(
             token=config["token"],
             cache_settings=cache_settings,

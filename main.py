@@ -36,6 +36,7 @@ if __name__ == "__main__":
         try:
             bot.load_extensions(extension)
         except Exception as error:
-            print(f"Failed loading extension {extension} due to error: {error}")
+            logging.fatal(f"Failed loading extension {extension} due to error: {error}")
+            exit()
 
     bot.run()
