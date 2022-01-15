@@ -7,6 +7,8 @@ import asyncpg
 from objects.models.db_user import User
 from objects.utils import tasks
 
+logger = logging.getLogger(__name__)
+
 
 class ConfigHandler:
     """
@@ -16,14 +18,14 @@ class ConfigHandler:
 
     def __init__(self, bot):
         self.bot = bot
-        self.cleanup_userdata.start()
+        loop = tasks.IntervalLoop(self.cleanup_userdata, seconds=5.0)
+        loop.start()
 
-    @tasks.loop(seconds=3600.0)
     async def cleanup_userdata(self):
         """Clean up garbage userdata from db"""
 
         await self.bot.wait_until_ready()
-        logging.info("Cleaning up garbage userdata...")
+        logger.info("Cleaning up garbage userdata...")
         await self.bot.pool.execute("DELETE FROM users WHERE flags IS NULL and warns = 0 AND notes IS NULL")
 
     async def deletedata(self, guild_id):
@@ -38,8 +40,8 @@ class ConfigHandler:
             # This one is necessary so that the list of guilds the bot is in stays accurate
             await con.execute("""INSERT INTO global_config (guild_id) VALUES ($1)""", guild_id)
 
-        await self.caching.wipe(guild_id)
-        logging.warning(f"Config reset and cache wiped for guild {guild_id}.")
+        await self.bot.db_cache.wipe(guild_id)
+        logger.warning(f"Config reset and cache wiped for guild {guild_id}.")
 
     async def update_user(self, user: User):
         """
@@ -61,7 +63,7 @@ class ConfigHandler:
                 user.notes,
             )
         except asyncpg.exceptions.ForeignKeyViolationError:
-            logging.warning(
+            logger.warning(
                 "Trying to update a guild db_user whose guild no longer exists. This could be due to pending timers."
             )
 

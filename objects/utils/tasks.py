@@ -3,8 +3,8 @@ import inspect
 import logging
 
 
-class Loop:
-    def __init__(self, coro, seconds: float = None, minutes: float = None, hours: float = None, days: float = None):
+class IntervalLoop:
+    def __init__(self, callback, seconds: float = None, minutes: float = None, hours: float = None, days: float = None):
         if not seconds and not minutes and not hours and not days:
             raise ValueError("Expected a loop time.")
         else:
@@ -13,7 +13,7 @@ class Loop:
             hours = hours or 0
             days = hours or 0
 
-        self.coro = coro
+        self.coro = callback
         self._task = None
         self._failed = 0
         self._sleep = seconds + minutes * 60 + hours * 3600 + days * 24 * 3600
@@ -36,16 +36,15 @@ class Loop:
             else:
                 await asyncio.sleep(self._sleep)
         self.cancel()
-        self._task = None
 
-    def start(self):
+    def start(self, *args, **kwargs):
         """
         Start looping the task at the specified interval.
         """
         if self._task and not self._task.done():
             raise RuntimeError("Task is already running!")
 
-        self._task = asyncio.create_task(self._loopy_loop())
+        self._task = asyncio.create_task(self._loopy_loop(*args, **kwargs))
         return self._task
 
     def cancel(self):
@@ -64,12 +63,3 @@ class Loop:
         """
         if not self._task and not self._task.done():
             self._stop_next = True
-
-
-def loop(*, seconds: float = None, minutes: float = None, hours: float = None, days: float = None) -> None:
-    """My shoddy attempt at copying discord.py's ext.tasks functionality in it's simplest form."""
-
-    def decorator(func):
-        return Loop(func, seconds=seconds, minutes=minutes, hours=hours, days=days)
-
-    return decorator

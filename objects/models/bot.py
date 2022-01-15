@@ -4,14 +4,13 @@ import asyncio
 import asyncpg
 
 import hikari
-import lightbulb
 from objects.config_handler import ConfigHandler
 from objects.utils import cache
+import lightbulb
 
 
 class SnedBot(lightbulb.BotApp):
     def __init__(self, config: dict):
-
         self.loop = asyncio.get_event_loop()
         self._started = asyncio.Event()
 
@@ -47,8 +46,6 @@ class SnedBot(lightbulb.BotApp):
 
         # Initizaling configuration and database
         self.config = config
-        self.db_cache = cache.Caching(self)
-        self.global_config = ConfigHandler(self)
         self.dsn = self.config["postgres_dsn"].format(db_name=db_name)
         self.pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self.dsn))
 
@@ -84,10 +81,15 @@ class SnedBot(lightbulb.BotApp):
         await asyncio.wait_for(self._started.wait(), timeout=None)
 
     async def on_startup(self, event: hikari.StartedEvent):
+
         user = self.get_me()
         self.is_ready = True
         self._started.set()
         self.user_id = user.id
+
+        self.db_cache = cache.Caching(self)
+        self.global_config = ConfigHandler(self)
+
         logging.info(f"Startup complete, initialized as {user}")
 
         if self.experimental:

@@ -1,9 +1,6 @@
 #!/usr/bin/python3
 
 import logging
-
-import hikari
-import lightbulb
 import os
 
 from config import config
