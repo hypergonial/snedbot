@@ -18,7 +18,7 @@ class ConfigHandler:
 
     def __init__(self, bot):
         self.bot = bot
-        loop = tasks.IntervalLoop(self.cleanup_userdata, seconds=5.0)
+        loop = tasks.IntervalLoop(self.cleanup_userdata, hours=1.0)
         loop.start()
 
     async def cleanup_userdata(self):

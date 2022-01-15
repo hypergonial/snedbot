@@ -5,7 +5,7 @@ import asyncpg
 
 import hikari
 from objects.config_handler import ConfigHandler
-from objects.utils import cache
+from objects.utils import cache, scheduler
 import lightbulb
 
 
@@ -65,7 +65,7 @@ class SnedBot(lightbulb.BotApp):
 
         self.start_listeners()
 
-    def start_listeners(self):
+    def start_listeners(self) -> None:
         """
         Start all listeners located in this class.
         """
@@ -74,13 +74,13 @@ class SnedBot(lightbulb.BotApp):
         self.subscribe(hikari.StoppingEvent, self.on_stopping)
         self.subscribe(hikari.StoppedEvent, self.on_stop)
 
-    async def wait_until_ready(self):
+    async def wait_until_ready(self) -> None:
         """
         Wait until the bot has started up
         """
         await asyncio.wait_for(self._started.wait(), timeout=None)
 
-    async def on_startup(self, event: hikari.StartedEvent):
+    async def on_startup(self, event: hikari.StartedEvent) -> None:
 
         user = self.get_me()
         self.is_ready = True
@@ -89,6 +89,7 @@ class SnedBot(lightbulb.BotApp):
 
         self.db_cache = cache.Caching(self)
         self.global_config = ConfigHandler(self)
+        self.scheduler = scheduler.Scheduler(self)
 
         logging.info(f"Startup complete, initialized as {user}")
 
@@ -105,15 +106,15 @@ class SnedBot(lightbulb.BotApp):
                     guild,
                 )
 
-    async def on_stopping(self, event: hikari.StoppingEvent):
+    async def on_stopping(self, event: hikari.StoppingEvent) -> None:
         self.is_ready = False
         logging.info("Bot is shutting down...")
 
-    async def on_stop(self, event: hikari.StoppedEvent):
+    async def on_stop(self, event: hikari.StoppedEvent) -> None:
         await self.pool.close()
         logging.info("Closed database connection.")
 
-    async def on_message(self, event: hikari.MessageEvent):
+    async def on_message(self, event: hikari.MessageEvent) -> None:
         if self.is_ready and self.db_cache.is_ready and event.is_human:
             mentions = [f"<@{self.user_id}>", f"<@!{self.user_id}>"]
 

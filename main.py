@@ -18,11 +18,24 @@ if os.name != "nt":  # Lol imagine using Windows
     try:
         import uvloop
     except ImportError:
-        logging.warn("Failed to import uvloop! Make sure to install it for enhanced performance!")
+        logging.warn(
+            "Failed to import uvloop! Make sure to install it via 'pip install uvloop' for enhanced performance!"
+        )
     else:
         uvloop.install()
+
+initial_extensions = [
+    "extensions.reminders",
+]
 
 bot = SnedBot(config)
 
 if __name__ == "__main__":
+
+    for extension in initial_extensions:
+        try:
+            bot.load_extensions(extension)
+        except Exception as error:
+            print(f"Failed loading extension {extension} due to error: {error}")
+
     bot.run()

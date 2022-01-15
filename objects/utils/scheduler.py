@@ -3,18 +3,15 @@ import datetime
 import logging
 import re
 
+import attr
 import dateutil
 import hikari
 import Levenshtein as lev
-from objects.models.bot import SnedBot
+from objects.models.events import TimerCompleteEvent
 from objects.models.timer import Timer
 from objects.utils import tasks
 
 logger = logging.getLogger(__name__)
-
-
-async def has_owner(ctx):
-    return await ctx.bot.custom_checks.has_owner(ctx)
 
 
 class Scheduler:
@@ -24,7 +21,7 @@ class Scheduler:
     Essentially the internal scheduler of the bot.
     """
 
-    def __init__(self, bot: SnedBot):
+    def __init__(self, bot):
 
         self.bot = bot
         self.current_timer = None
@@ -150,9 +147,10 @@ class Scheduler:
         for this event to fire. This function is not documented, so if anything breaks, it
         is probably in here. It passes on the Timer
         """
+        event = TimerCompleteEvent(app=self.bot, timer=timer)
 
-        self.bot.dispatch(f"{timer.event}_timer_complete", timer)
-        logger.debug(f"Dispatched: {timer.event}_timer_complete")
+        self.bot.dispatch(event)
+        logger.info(f"Dispatched: TimerCompleteEvent for {timer.event}")
 
     async def dispatch_timers(self):
         """
@@ -160,7 +158,7 @@ class Scheduler:
         """
         logger.debug("Dispatching timers.")
         try:
-            while not self.bot.is_closed():
+            while self.bot.is_ready:
                 logger.debug("Getting timer")
 
                 timer = await self.get_latest_timer(days=40)
