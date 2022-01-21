@@ -3,7 +3,7 @@ import datetime
 import logging
 import re
 
-import dateutil
+from dateutil import parser as dateparser
 import hikari
 import Levenshtein as lev
 from objects.models.events import TimerCompleteEvent
@@ -39,13 +39,14 @@ class Scheduler:
         if not force_mode or force_mode == "absolute":
 
             try:
-                time = dateutil.parser.parse(timestr)
-            except:
+                time = dateparser.parse(timestr)
+            except Exception as error:
+                print(error)
                 if force_mode == "absolute":  # Only raise exception if this is the only conversion attempted
                     raise
             else:
                 if not time.tzinfo:
-                    time.tzinfo = datetime.timezone.utc
+                    time = datetime.datetime.fromtimestamp(time.timestamp(), tz=datetime.timezone.utc)
                 if time > datetime.datetime.now(datetime.timezone.utc):
                     return time
 

@@ -1,4 +1,5 @@
 hikari
 hikari-lightbulb
+hikari-miru
 Levenshtein
 python-dateutil

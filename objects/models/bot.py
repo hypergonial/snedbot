@@ -1,12 +1,14 @@
+import asyncio
 import logging
 import os
-import asyncio
-import asyncpg
 
+import asyncpg
 import hikari
+import lightbulb
+from lightbulb.ext import tasks
+
 from objects.config_handler import ConfigHandler
 from objects.utils import cache, scheduler
-import lightbulb
 
 
 class SnedBot(lightbulb.BotApp):
@@ -51,6 +53,9 @@ class SnedBot(lightbulb.BotApp):
         self.dsn = self.config["postgres_dsn"].format(db_name=db_name)
         self.pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self.dsn))
 
+        # Startup lightbulb.ext.tasks
+        tasks.load(self)
+
         # Some global variables
         self.base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
         self.skip_db_backup = True
@@ -72,7 +77,7 @@ class SnedBot(lightbulb.BotApp):
         Start all listeners located in this class.
         """
         self.subscribe(hikari.StartedEvent, self.on_startup)
-        self.subscribe(hikari.MessageEvent, self.on_message)
+        self.subscribe(hikari.MessageCreateEvent, self.on_message)
         self.subscribe(hikari.StoppingEvent, self.on_stopping)
         self.subscribe(hikari.StoppedEvent, self.on_stop)
 
@@ -116,7 +121,7 @@ class SnedBot(lightbulb.BotApp):
         await self.pool.close()
         logging.info("Closed database connection.")
 
-    async def on_message(self, event: hikari.MessageEvent) -> None:
+    async def on_message(self, event: hikari.MessageCreateEvent) -> None:
         if self.is_ready and self.db_cache.is_ready and event.is_human:
             mentions = [f"<@{self.user_id}>", f"<@!{self.user_id}>"]
 

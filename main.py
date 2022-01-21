@@ -26,6 +26,7 @@ if os.name != "nt":  # Lol imagine using Windows
 
 initial_extensions = [
     "extensions.reminders",
+    "extensions.test",
 ]
 
 bot = SnedBot(config)

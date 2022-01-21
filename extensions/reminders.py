@@ -1,15 +1,93 @@
+import asyncio
 import datetime
 import json
 import logging
+from typing import Any, Dict
 
 import hikari
 import lightbulb
+import miru
 from objects.models import events
+from objects.models.timer import Timer
 from objects.utils import helpers
 
 reminders = lightbulb.Plugin(name="Reminders")
 
 logger = logging.getLogger(__name__)
+
+
+class ReminderView(miru.View):
+    def __init__(self, timer_id: int, *args, **kwargs) -> None:
+        self.timer_id = timer_id
+        super().__init__(*args, **kwargs)
+
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True
+
+        await self.message.edit(components=self.build())
+
+    @miru.button(label="Remind me too!", emoji="✉️", style=hikari.ButtonStyle.PRIMARY)
+    async def add_recipient(self, button: miru.Button, interaction: miru.Interaction) -> None:
+        await self.message.edit("Added more content")
+        try:
+            timer: Timer = await self.app.scheduler.get_timer(self.timer_id, interaction.guild_id)
+        except ValueError:
+            embed = hikari.Embed(
+                title="❌ Invalid interaction",
+                description="Oops! It looks like this reminder is no longer valid!",
+                color=self.app.error_color,
+            )
+            await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        else:
+            if timer.user_id == interaction.user.id:
+                embed = hikari.Embed(
+                    title="❌ Invalid interaction",
+                    description="You cannot do this on your own reminder.",
+                    color=self.app.error_color,
+                )
+                return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+            notes: Dict[str, Any] = json.loads(timer.notes)
+
+            if interaction.user.id not in notes["additional_recipients"]:
+
+                if len(notes["additional_recipients"]) < 50:
+                    notes["additional_recipients"].append(interaction.user.id)
+                    await self.app.update_timer(
+                        datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
+                        self.timer_id,
+                        interaction.guild_id,
+                        new_notes=json.dumps(notes),
+                    )
+                    embed = hikari.Embed(
+                        title="✅ Signed up to reminder",
+                        description="You will also be notified when this reminder is due!",
+                        color=self.app.embed_green,
+                    )
+                    return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+                else:
+                    embed = hikari.Embed(
+                        title="❌ Invalid interaction",
+                        description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
+                        color=self.app.error_color,
+                    )
+                    return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            else:
+                notes["additional_recipients"].remove(interaction.user.id)
+                await self.app.update_timer(
+                    datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
+                    self.timer_id,
+                    self.guild_id,
+                    new_notes=json.dumps(notes),
+                )
+                embed = hikari.Embed(
+                    title="✅ Removed from reminder",
+                    description="Removed you from the list of recipients!",
+                    color=self.app.embed_green,
+                )
+                return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @reminders.command()
@@ -62,11 +140,9 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
             )
             embed = helpers.add_embed_footer(embed, ctx.member)
 
-            proxy = await ctx.respond(embed=embed)
-
             reminder_data = {
                 "message": ctx.options.message,
-                "jump_url": (await proxy.message()).make_link(ctx.guild_id),
+                "jump_url": None,
                 "additional_recipients": [],
             }
 
@@ -78,6 +154,12 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
                 channel_id=ctx.channel_id,
                 notes=json.dumps(reminder_data),
             )
+
+            view = ReminderView(timer.id, ctx.app, timeout=300)
+            proxy = await ctx.respond(embed=embed, components=view.build())
+            reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
+            await ctx.app.scheduler.update_timer(time, timer.id, timer.guild_id, new_notes=json.dumps(reminder_data))
+            view.start(await proxy.message())
 
 
 @reminder.child()
