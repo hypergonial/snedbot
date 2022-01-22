@@ -22,6 +22,30 @@ class WinState(IntEnum):
     TIE = 2
 
 
+class NitroView(miru.View):
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True
+            item.style = hikari.ButtonStyle.SECONDARY
+            item.label = "          Accept          "
+
+        embed = hikari.Embed(
+            title="You've been gifted a subscription!",
+            description="Hmm, it seems someone already claimed this gift.",
+            color=0x2F3136,
+        )
+
+        embed.set_thumbnail("https://i.imgur.com/w9aiD6F.png")
+        await self.message.edit(embed=embed, components=self.build())
+
+    @miru.button(style=hikari.ButtonStyle.SUCCESS, label="          Accept          ")
+    async def nitro_button(self, button: miru.Button, interaction: miru.Interaction) -> None:
+        await interaction.send_message(
+            "https://images-ext-1.discordapp.net/external/AoV9l5YhsWBj92gcKGkzyJAAXoYpGiN6BdtfzM-00SU/https/i.imgur.com/NQinKJB.mp4",
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+
+
 class TicTacToeButton(miru.Button):
     def __init__(self, x: int, y: int) -> None:
         super().__init__(style=hikari.ButtonStyle.SECONDARY, label="\u200b", row=y)
@@ -319,6 +343,108 @@ async def randomcat(ctx: lightbulb.SlashContext) -> None:
 
             embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
+
+
+@fun.command
+@lightbulb.command("randomdog", "Searches the interwebz™️ for a random dog picture.", auto_defer=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def randomdog(ctx: lightbulb.SlashContext) -> None:
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://api.thedogapi.com/v1/images/search") as response:
+            if response.status == 200:
+                dogjson = await response.json()
+
+                embed = hikari.Embed(title="🐶 Random doggo", color=ctx.app.embed_blue)
+                embed.set_image(dogjson[0]["url"])
+            else:
+                embed = hikari.Embed(
+                    title="🐶 Random doggo",
+                    description="Oops! Looks like the dog delivery service is unavailable! Check back later.",
+                    color=ctx.app.error_color,
+                )
+
+            embed = helpers.add_embed_footer(embed, ctx.member)
+            await ctx.respond(embed=embed)
+
+
+@fun.command
+@lightbulb.command("randomfox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def randomfox(ctx: lightbulb.SlashContext) -> None:
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://foxapi.dev/foxes/") as response:
+            if response.status == 200:
+                foxjson = await response.json()
+
+                embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00)
+                embed.set_image(foxjson["image"])
+            else:
+                embed = hikari.Embed(
+                    title="🦊 Random fox",
+                    description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
+                    color=ctx.app.error_color,
+                )
+
+            embed = helpers.add_embed_footer(embed, ctx.member)
+            await ctx.respond(embed=embed)
+
+
+@fun.command
+@lightbulb.command("nitro", 'Gives you "free" nitro.')
+@lightbulb.implements(lightbulb.SlashCommand)
+async def nitro(ctx: lightbulb.SlashContext) -> None:
+    embed = hikari.Embed(
+        title="You've been gifted a subscription!",
+        description="You've been gifted Nitro for **1 month!**",
+        color=0x2F3136,
+    )
+    embed.set_thumbnail("https://i.imgur.com/w9aiD6F.png")
+    view = NitroView(ctx.app)
+    proxy = await ctx.respond(embed=embed, components=view.build())
+    view.start(await proxy.message())
+
+
+@fun.command
+@lightbulb.option("question", "The question you want to ask of the mighty 8ball.")
+@lightbulb.command("8ball", "Ask a question, and the answers shall reveal themselves.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def eightball(ctx: lightbulb.SlashContext) -> None:
+    ball_path = Path(ctx.app.base_dir, "etc", "8ball.txt")
+    answers = open(ball_path, "r").readlines()
+    embed = hikari.Embed(
+        title=f"🎱 {ctx.options.question}",
+        description=f"{random.choice(answers)}",
+        color=ctx.app.embed_blue,
+    )
+    embed = helpers.add_embed_footer(embed, ctx.member)
+    await ctx.respond(embed=embed)
+
+
+@fun.command
+@lightbulb.option("query", "The query you want to search for on Wikipedia.")
+@lightbulb.command("wiki", "Search Wikipedia for articles!", auto_defer=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def wiki(ctx: lightbulb.SlashContext) -> None:
+    link = "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(link.format(query=ctx.options.query.replace(" ", "+"))) as response:
+            results = await response.json()
+            results_text = results[1]
+            results_link = results[3]
+
+        if len(results_text) > 0:
+            desc = ""
+            for i, result in enumerate(results_text):
+                desc = f"{desc}[{result}]({results_link[i]})\n"
+            embed = hikari.Embed(title=f"Wikipedia: {ctx.options.query}", description=desc, color=ctx.app.misc_color)
+        else:
+            embed = hikari.Embed(
+                title="❌ No results",
+                description="Could not find anything related to your query.",
+                color=ctx.app.error_color,
+            )
+        await ctx.respond(embed=embed)
 
 
 def load(bot):
