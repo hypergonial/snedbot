@@ -54,7 +54,7 @@ def get_avatar(user: Union[hikari.User, hikari.Member]) -> str:
         return user.default_avatar_url
 
 
-def get_color(member: hikari.Member) -> str:
+def get_color(member: hikari.Member) -> hikari.Color:
     roles = member.get_roles().__reversed__()
     if roles:
         for role in roles:
