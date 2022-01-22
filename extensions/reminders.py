@@ -217,8 +217,10 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
 
 
 def load(bot):
+    logger.info("Adding plugin: Reminders")
     bot.add_plugin(reminders)
 
 
 def unload(bot):
+    logger.info("Removing plugin: Reminders")
     bot.remove_plugin(reminders)
