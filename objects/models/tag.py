@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -11,5 +11,5 @@ class Tag:
     guild_id: int
     name: str
     owner_id: int
-    aliases: List[str]
+    aliases: Optional[List[str]]
     content: str

@@ -29,7 +29,6 @@ class ReminderView(miru.View):
 
     @miru.button(label="Remind me too!", emoji="✉️", style=hikari.ButtonStyle.PRIMARY)
     async def add_recipient(self, button: miru.Button, interaction: miru.Interaction) -> None:
-        await self.message.edit("Added more content")
         try:
             timer: Timer = await self.app.scheduler.get_timer(self.timer_id, interaction.guild_id)
         except ValueError:
@@ -54,7 +53,7 @@ class ReminderView(miru.View):
 
                 if len(notes["additional_recipients"]) < 50:
                     notes["additional_recipients"].append(interaction.user.id)
-                    await self.app.update_timer(
+                    await self.app.scheduler.update_timer(
                         datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
                         self.timer_id,
                         interaction.guild_id,
@@ -76,7 +75,7 @@ class ReminderView(miru.View):
                     return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             else:
                 notes["additional_recipients"].remove(interaction.user.id)
-                await self.app.update_timer(
+                await self.app.scheduler.update_timer(
                     datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
                     self.timer_id,
                     self.guild_id,
@@ -135,7 +134,7 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
 
             embed = hikari.Embed(
                 title="✅ Reminder set",
-                description=f"Reminder set for:  {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})",
+                description=f"Reminder set for:  {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{ctx.options.message}",
                 color=ctx.app.embed_green,
             )
             embed = helpers.add_embed_footer(embed, ctx.member)
@@ -163,17 +162,76 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
 
 
 @reminder.child()
+@lightbulb.option("id", "The ID of the timer to delete. You can get this via /reminder list", type=int)
 @lightbulb.command("delete", "Delete a currently pending reminder.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_del(ctx: lightbulb.Context) -> None:
-    await ctx.respond("Test delete!")
+    try:
+        await ctx.app.scheduler.cancel_timer(ctx.options.id, ctx.guild_id)
+    except ValueError:
+        embed = hikari.Embed(
+            title="❌ Reminder not found",
+            description=f"Cannot find reminder with ID **{ctx.options.id}**.",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    else:
+        embed = hikari.Embed(
+            title="✅ Reminder deleted",
+            description=f"Reminder **{ctx.options.id}** has been deleted.",
+            color=ctx.app.embed_green,
+        )
+        embed = helpers.add_embed_footer(embed, ctx.member)
+        await ctx.respond(embed=embed)
 
 
 @reminder.child()
 @lightbulb.command("list", "List your currently pending reminders.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_list(ctx: lightbulb.Context) -> None:
-    await ctx.respond("Test list!")
+    results = await ctx.app.pool.fetch(
+        """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = 'reminder' ORDER BY expires LIMIT 10""",
+        ctx.guild_id,
+        ctx.author.id,
+    )
+    timers = []
+    reminderstr = ""
+    for result in results:
+        note = json.loads(result.get("notes"))["message"].replace("\n", " ")
+        if len(note) > 50:
+            note = f"{note[slice(47)]}..."
+        timers.append(
+            Timer(
+                id=result.get("id"),
+                guild_id=result.get("guild_id"),
+                user_id=result.get("user_id"),
+                channel_id=result.get("channel_id"),
+                event=result.get("event"),
+                expires=result.get("expires"),
+                notes=note,
+            )
+        )
+
+    if len(timers) != 0:
+
+        for timer in timers:
+            time = datetime.datetime.fromtimestamp(timer.expires)
+
+            reminderstr = (
+                reminderstr
+                + f"**ID: {timer.id}** - {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n{timer.notes}\n"
+            )
+
+    else:
+        reminderstr = f"You have no reminders. You can set one via `/reminder create`!"
+
+    embed = hikari.Embed(
+        title="✉️ Your reminders:",
+        description=reminderstr,
+        color=ctx.app.embed_blue,
+    )
+    embed = helpers.add_embed_footer(embed, ctx.member)
+    await ctx.respond(embed=embed)
 
 
 @reminders.listener(events.TimerCompleteEvent, bind=True)

@@ -28,6 +28,7 @@ initial_extensions = [
     "extensions.reminders",
     "extensions.fun",
     "extensions.test",
+    "extensions.tags",
 ]
 
 bot = SnedBot(config)

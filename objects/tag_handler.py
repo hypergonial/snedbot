@@ -1,3 +1,5 @@
+from typing import List
+
 from objects.models.errors import TagAlreadyExists, TagNotFound
 from objects.models.tag import Tag
 
@@ -10,7 +12,7 @@ class TagHandler:
     def __init__(self, bot):
         self.bot = bot
 
-    async def get(self, name: str, guild_id: int):
+    async def get(self, name: str, guild_id: int) -> Tag:
         """
         Returns a Tag object for the given name & guild ID, returns None if not found.
         Will try to find aliases too.
@@ -45,7 +47,7 @@ class TagHandler:
                 )
                 return tag
 
-    async def create(self, tag: Tag):
+    async def create(self, tag: Tag) -> None:
         """
         Creates a new tag based on an instance of a Tag.
         """
@@ -60,7 +62,7 @@ class TagHandler:
             tag.content,
         )
 
-    async def get_all(self, guild_id: int):
+    async def get_all(self, guild_id: int) -> List[Tag]:
         """
         Returns a list of all tags for the specified guild.
         """
@@ -85,7 +87,7 @@ class TagHandler:
             guild_id,
         )
 
-    async def migrate(self, origin_id: int, destination_id: int, invoker_id: int, name: str):
+    async def migrate(self, origin_id: int, destination_id: int, invoker_id: int, name: str) -> None:
         """
         Migrates a tag from one guild to another.
         """
@@ -101,7 +103,7 @@ class TagHandler:
         else:
             raise TagAlreadyExists("This tag already exists at destination, cannot migrate.")
 
-    async def migrate_all(self, origin_id: int, destination_id: int, invoker_id: int, strategy: str):
+    async def migrate_all(self, origin_id: int, destination_id: int, invoker_id: int, strategy: str) -> None:
         """
         Migrates all tags from one server to a different one. 'strategy' defines overriding behaviour.
 
