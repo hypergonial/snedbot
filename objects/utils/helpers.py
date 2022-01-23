@@ -1,4 +1,5 @@
 import datetime
+import re
 from typing import Optional, Union
 
 import hikari
@@ -68,6 +69,18 @@ def get_jump_url(message: hikari.Message):
     """
     guild_id = "@me" if not message.guild_id else message.guild_id
     return f"https://discord.com/channels/{guild_id}/{message.channel_id}/{message.id}"
+
+
+def is_url(string: str) -> bool:
+    """
+    Returns True if the provided string is an URL, otherwise False.
+    """
+    url_regex = re.compile(
+        r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)"
+    )
+    if url_regex.fullmatch(string):
+        return True
+    return False
 
 
 def get_or_fetch_user(bot: hikari.GatewayBot, user_id: int):
