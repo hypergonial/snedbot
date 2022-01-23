@@ -81,7 +81,7 @@ class SnedBot(lightbulb.BotApp):
         self.subscribe(hikari.StoppingEvent, self.on_stopping)
         self.subscribe(hikari.StoppedEvent, self.on_stop)
 
-    async def wait_until_ready(self) -> None:
+    async def wait_until_started(self) -> None:
         """
         Wait until the bot has started up
         """

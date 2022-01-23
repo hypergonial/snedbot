@@ -21,7 +21,7 @@ class Caching:
         """
         Creates an empty dict for every table in the database
         """
-        await self.bot.wait_until_ready()
+        await self.bot.wait_until_started()
         records = await self.bot.pool.fetch(
             """
         SELECT * FROM pg_catalog.pg_tables 

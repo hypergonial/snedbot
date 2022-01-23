@@ -24,7 +24,7 @@ class ConfigHandler:
     async def cleanup_userdata(self):
         """Clean up garbage userdata from db"""
 
-        await self.bot.wait_until_ready()
+        await self.bot.wait_until_started()
         logger.info("Cleaning up garbage userdata...")
         await self.bot.pool.execute("DELETE FROM users WHERE flags IS NULL and warns = 0 AND notes IS NULL")
 

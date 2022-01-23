@@ -110,7 +110,7 @@ class Scheduler:
         Gets the first timer that is about to expire in the specified days and returns it
         Returns None if not found in that scope.
         """
-        await self.bot.wait_until_ready()
+        await self.bot.wait_until_started()
         logger.debug("Getting latest timer...")
         result = await self.bot.pool.fetch(
             """SELECT * FROM timers WHERE expires < $1 ORDER BY expires LIMIT 1""",
