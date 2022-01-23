@@ -108,7 +108,7 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
             description="Your reminder cannot exceed **1000** characters!",
             color=ctx.app.error_color,
         )
-        return await ctx.respond(embed=embed)
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     try:
         time = await ctx.app.scheduler.convert_time(ctx.options.when)
@@ -119,7 +119,7 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
             description=f"Your timeformat is invalid! \n**Error:** {error}",
             color=ctx.app.error_color,
         )
-        await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     else:
         if (time - datetime.datetime.now(datetime.timezone.utc)).total_seconds() >= 31536000 * 5:
@@ -128,7 +128,7 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
                 description="Sorry, but that's a bit too far in the future.",
                 color=ctx.app.error_color,
             )
-            await ctx.respond(embed=embed)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
         else:
 
