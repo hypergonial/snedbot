@@ -1,12 +1,11 @@
-import asyncio
 import logging
 from typing import List, Optional
 
 import hikari
 import lightbulb
 import miru
-from hikari.errors import ForbiddenError, HTTPError
 from objects.models.bot import SnedBot
+from objects import models
 
 logger = logging.getLogger(__name__)
 
@@ -44,36 +43,36 @@ class RoleButton(miru.Button):
         """
         Add or remove the role this button was instantiated with.
         """
-        if interaction.guild_id:
-            try:
-                if self.role.id in interaction.member.role_ids:
-                    await interaction.member.remove_role(
-                        self.role, reason=f"Removed by role-button (ID: {self.entry_id})"
-                    )
-                    embed = hikari.Embed(
-                        title="✅ Role removed",
-                        description=f"Removed role: {self.role.mention}",
-                        color=0x77B255,
-                    )
-                    await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        if not interaction.guild_id:
+            return
 
-                else:
-                    await interaction.member.add_role(self.role, reason=f"Granted by role-button (ID: {self.entry_id})")
-                    embed = hikari.Embed(
-                        title="✅ Role added",
-                        description=f"Added role: {self.role.mention}",
-                        color=0x77B255,
-                    )
-                    embed.set_footer(text="If you would like it removed, click the button again!")
-                    await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-            except (hikari.ForbiddenError, hikari.HTTPError):
+        try:
+            if self.role.id in interaction.member.role_ids:
+                await interaction.member.remove_role(self.role, reason=f"Removed by role-button (ID: {self.entry_id})")
                 embed = hikari.Embed(
-                    title="❌ Insufficient permissions",
-                    description="Failed adding role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
-                    color=0xFF0000,
+                    title="✅ Role removed",
+                    description=f"Removed role: {self.role.mention}",
+                    color=0x77B255,
                 )
                 await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+            else:
+                await interaction.member.add_role(self.role, reason=f"Granted by role-button (ID: {self.entry_id})")
+                embed = hikari.Embed(
+                    title="✅ Role added",
+                    description=f"Added role: {self.role.mention}",
+                    color=0x77B255,
+                )
+                embed.set_footer(text="If you would like it removed, click the button again!")
+                await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+        except (hikari.ForbiddenError, hikari.HTTPError):
+            embed = hikari.Embed(
+                title="❌ Insufficient permissions",
+                description="Failed adding role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
+                color=0xFF0000,
+            )
+            await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @role_buttons.listener()
@@ -110,6 +109,67 @@ async def start_rolebuttons(event: hikari.StartedEvent) -> None:
         view.start_listener(message_id=msg_id)
 
     logger.info(f"Started listeners for {count} button-roles!")
+
+
+@role_buttons.command()
+@lightbulb.command("rolebutton", "Commands relating to rolebuttons.")
+@lightbulb.implements(lightbulb.SlashCommandGroup)
+async def rolebutton(ctx: lightbulb.SlashContext) -> None:
+    pass
+
+
+@rolebutton.child()
+@lightbulb.command("list", "List all registered rolebuttons on this server.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def rolebutton_list(ctx: lightbulb.SlashContext) -> None:
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild.id)
+
+    if not records:
+        embed = hikari.Embed(
+            title="❌ Error: No role-buttons",
+            description="There are no role-buttons for this server.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.channel.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    paginator = lightbulb.utils.Paginator(max_chars=500)
+    for record in records:
+        role = ctx.app.cache.get_role(record["role_id"])
+        channel = ctx.app.cache.get_guild_channel(record["channel_id"])
+
+        if role and channel:
+            paginator.add_line(f"**#{record['entry_id']}** - {channel.mention} - {role.mention}")
+
+        else:
+            paginator.add_line(f"**#{record['entry_id']}** - C: {record['channel_id']} - R: {record['role_id']}")
+
+        embeds = []
+        for page in paginator.build_pages():
+            embed = hikari.Embed(
+                title="Rolebuttons on this server:",
+                description=page,
+                color=ctx.app.embed_blue,
+            )
+            embeds.append(embed)
+
+        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)
+        await navigator.send(ctx.interaction)
+
+
+@rolebutton.child()
+@lightbulb.option("button_id", "The ID of the rolebutton to delete. You can get this via /rolebutton list")
+@lightbulb.command("delete", "Delete a rolebutton.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild.id, entry_id=ctx.options.button_id)
+
+    if not records:
+        embed = hikari.Embed(
+            title="❌ Not found",
+            description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 def load(bot: SnedBot) -> None:

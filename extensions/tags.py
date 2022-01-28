@@ -6,8 +6,10 @@ from typing import List
 import hikari
 import lightbulb
 import miru
+from miru.ext import nav
 from objects.models.errors import TagAlreadyExists, TagNotFound
 from objects.models.tag import Tag
+from objects.models.views import AuthorOnlyNavigator
 from objects.tag_handler import TagHandler
 from objects.utils import helpers
 
@@ -327,8 +329,8 @@ async def tag_list(ctx: lightbulb.SlashContext) -> None:
             helpers.add_embed_footer(embed, ctx.member)
             embeds.append(embed)
 
-        navigator = lightbulb.utils.ButtonNavigator(pages=embeds)
-        await navigator.run(ctx)
+        navigator = AuthorOnlyNavigator(ctx, pages=embeds)
+        await navigator.send(ctx.interaction)
 
     else:
         embed = hikari.Embed(

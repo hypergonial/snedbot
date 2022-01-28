@@ -1,8 +1,14 @@
+import asyncio
 import datetime
 import re
-from typing import Optional, Union
+from typing import Optional, TypeVar, Union
 
 import hikari
+import lightbulb
+from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
+import miru
+
+from objects import models
 
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
@@ -88,3 +94,74 @@ def get_or_fetch_user(bot: hikari.GatewayBot, user_id: int):
     if not user:
         bot.rest.fetch_user(user_id)
     return user
+
+
+T = TypeVar("T")
+
+
+async def ask(
+    ctx: lightbulb.Context,
+    *,
+    options: miru.SelectOption,
+    return_type: T,
+    placeholder: str = None,
+    embed_or_content: Union[str, hikari.Embed],
+    message: Optional[hikari.Message] = None,
+) -> T:
+    """
+    A function that abstracts away the limitations of select menus by falling back to a text input from the user if limits are exceeded.
+    """
+    if return_type not in CONVERTER_TYPE_MAPPING.keys():
+        return TypeError(
+            f"return_type must be of types: {' '.join(list(CONVERTER_TYPE_MAPPING.keys()))}, not {return_type}"
+        )
+
+    converter: lightbulb.BaseConverter = CONVERTER_TYPE_MAPPING[return_type](ctx)
+
+    invalid_select: bool = False
+    if len(options) > 25:
+        invalid_select = True
+    else:
+        for option in options:
+            if len(option.label) > 25:
+                invalid_select = True
+
+    if isinstance(embed_or_content, str):
+        content = embed_or_content
+        embeds = []
+    elif isinstance(embed_or_content, hikari.Embed):
+        content = ""
+        embeds = [embed_or_content]
+    else:
+        raise TypeError(f"embed_or_content must be of type str or hikari.Embed, not {type(embed_or_content)}")
+
+    if not invalid_select:
+        view = models.AuthorOnlyView(ctx)
+        view.add_item(miru.Select(placeholder=placeholder, options=options))
+
+        if message:
+            message = await message.edit(content=content, embeds=embeds, components=view.build())
+        else:
+            response = await ctx.respond(content=content, embeds=embeds, components=view.build())
+            if isinstance(response, lightbulb.ResponseProxy):
+                message = await response.message()
+            else:
+                message = response
+
+        view.start(message)
+        await view.wait()
+        if view.children[0].values is not None:
+            return converter.convert(view.children[0].values[0])
+        raise asyncio.TimeoutError("View timed out without response.")
+
+    else:
+        if embeds:
+            embeds[0].description = f"{embeds[0].description}\n\nPlease type your response below!"
+        elif content:
+            content = f"{content}\n\nPlease type your response below!"
+
+        predicate = lambda e: e.author_id == ctx.author.id and e.channel_id == ctx.channel_id
+
+        event = await ctx.app.wait_for(hikari.MessageCreateEvent, timeout=120.0, predicate=predicate)
+        if event.content:
+            return converter.convert(event.content)
