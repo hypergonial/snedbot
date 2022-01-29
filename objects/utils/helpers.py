@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import re
-from typing import Optional, TypeVar, Union
+from typing import Optional, TypeVar, Union, List
 
 import hikari
 import lightbulb
@@ -96,16 +96,28 @@ def get_or_fetch_user(bot: hikari.GatewayBot, user_id: int):
     return user
 
 
+async def resolve_response(response: Union[lightbulb.ResponseProxy, hikari.Message]) -> hikari.Message:
+    """
+    Resolve a potential ResponseProxy into a hikari message object. If a hikari.Message is passed, it is returned directly.
+    """
+    if isinstance(response, hikari.Message):
+        return response
+    elif isinstance(response, lightbulb.ResponseProxy):
+        return await response.message()
+    else:
+        raise TypeError(f"response must be of type hikari.Message or lightbulb.ResponseProxy, not {type(response)}")
+
+
 T = TypeVar("T")
 
 
 async def ask(
     ctx: lightbulb.Context,
     *,
-    options: miru.SelectOption,
+    options: List[miru.SelectOption],
     return_type: T,
-    placeholder: str = None,
     embed_or_content: Union[str, hikari.Embed],
+    placeholder: str = None,
     message: Optional[hikari.Message] = None,
 ) -> T:
     """
@@ -116,14 +128,16 @@ async def ask(
             f"return_type must be of types: {' '.join(list(CONVERTER_TYPE_MAPPING.keys()))}, not {return_type}"
         )
 
+    # Get appropiate converter for return type
     converter: lightbulb.BaseConverter = CONVERTER_TYPE_MAPPING[return_type](ctx)
 
+    # If the select will result in a Bad Request or not
     invalid_select: bool = False
     if len(options) > 25:
         invalid_select = True
     else:
         for option in options:
-            if len(option.label) > 25:
+            if len(option.label) > 25 or len(option.description) > 100:
                 invalid_select = True
 
     if isinstance(embed_or_content, str):
@@ -143,15 +157,13 @@ async def ask(
             message = await message.edit(content=content, embeds=embeds, components=view.build())
         else:
             response = await ctx.respond(content=content, embeds=embeds, components=view.build())
-            if isinstance(response, lightbulb.ResponseProxy):
-                message = await response.message()
-            else:
-                message = response
+            message = resolve_response(response)
 
         view.start(message)
         await view.wait()
         if view.children[0].values is not None:
             return converter.convert(view.children[0].values[0])
+
         raise asyncio.TimeoutError("View timed out without response.")
 
     else:

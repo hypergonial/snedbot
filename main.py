@@ -30,6 +30,7 @@ initial_extensions = [
     "extensions.test",
     "extensions.tags",
     "extensions.misc",
+    "extensions.role_buttons",
 ]
 
 bot = SnedBot(config)

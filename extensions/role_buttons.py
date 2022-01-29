@@ -75,7 +75,7 @@ class RoleButton(miru.Button):
             await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@role_buttons.listener()
+@role_buttons.listener(hikari.StartedEvent)
 async def start_rolebuttons(event: hikari.StartedEvent) -> None:
     """
     Start up listeners for all role-buttons after application restart
@@ -94,7 +94,7 @@ async def start_rolebuttons(event: hikari.StartedEvent) -> None:
             entry_id=record.get("entry_id"),
             role=role,
             label=record.get("buttonlabel"),
-            style=button_styles[record.get("buttonstyle")],
+            style=button_styles[record.get("buttonstyle") or "Grey"],
             emoji=emoji,
         )
         if record.get("msg_id") not in add_to_persistent_views.keys():
@@ -105,7 +105,7 @@ async def start_rolebuttons(event: hikari.StartedEvent) -> None:
 
     for msg_id, buttons in add_to_persistent_views.items():
         # Use message_id optionally for improved accuracy
-        view = PersistentRoleView(buttons)
+        view = PersistentRoleView(event.app, buttons)
         view.start_listener(message_id=msg_id)
 
     logger.info(f"Started listeners for {count} button-roles!")
@@ -122,7 +122,7 @@ async def rolebutton(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.command("list", "List all registered rolebuttons on this server.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_list(ctx: lightbulb.SlashContext) -> None:
-    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild.id)
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id)
 
     if not records:
         embed = hikari.Embed(
@@ -132,7 +132,7 @@ async def rolebutton_list(ctx: lightbulb.SlashContext) -> None:
         )
         return await ctx.channel.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    paginator = lightbulb.utils.Paginator(max_chars=500)
+    paginator = lightbulb.utils.StringPaginator(max_chars=500)
     for record in records:
         role = ctx.app.cache.get_role(record["role_id"])
         channel = ctx.app.cache.get_guild_channel(record["channel_id"])
@@ -161,7 +161,7 @@ async def rolebutton_list(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.command("delete", "Delete a rolebutton.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
-    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild.id, entry_id=ctx.options.button_id)
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, entry_id=ctx.options.button_id)
 
     if not records:
         embed = hikari.Embed(
@@ -170,6 +170,152 @@ async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
             color=ctx.app.error_color,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    await ctx.app.pool.execute(
+        """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""", ctx.guild_id, ctx.options.button_id
+    )
+    await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
+
+    try:
+        message = await ctx.app.rest.fetch_message(records[0]["channel_id"], records[0]["msg_id"])
+    except hikari.NotFoundError:
+        pass
+    else:
+        records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message.id)
+        buttons = []
+        if records:
+            # Re-sync rolebuttons with db if message still exists
+            for record in records:
+                emoji = hikari.Emoji.parse(record.get("emoji"))
+                role = ctx.app.cache.get_role(record.get("role_id"))
+                if role:
+                    buttons.append(
+                        RoleButton(
+                            entry_id=record.get("entry_id"),
+                            role=ctx.app.cache.get_role(record.get("role_id")),
+                            label=record.get("buttonlabel"),
+                            style=button_styles[record.get("buttonstyle")],
+                            emoji=emoji,
+                        )
+                    )
+            view = PersistentRoleView(buttons)
+            components = view.build() if len(buttons) > 0 else []
+            message = await message.edit(components=components)
+            view.start(message)
+
+
+@rolebutton.child()
+@lightbulb.option("buttonstyle", "The style of the button. Options: Blurple, Grey, Red, Green", required=False)
+@lightbulb.option("label", "The label that should appear on the button.", required=False)
+@lightbulb.option("emoji", "The emoji that should appear in the button.", type=hikari.Emoji)
+@lightbulb.option("role", "The role that should be handed out by the button.", type=hikari.Role)
+@lightbulb.option("message_id", "The ID of a message that MUST be from the bot, the rolebutton will be attached here.")
+@lightbulb.option(
+    "channel",
+    "The channel where the message is located in.",
+    type=hikari.TextableGuildChannel,
+    channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
+)
+@lightbulb.command("add", "Add a new rolebutton. For new users, it is recommended to use /rolebutton setup instead.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def rolebutton_add(ctx: lightbulb.SlashContext) -> None:
+    style = ctx.options.buttonstyle or "Grey"
+
+    if style.capitalize() not in button_styles.keys():
+        embed = hikari.Embed(
+            title="❌ Invalid button style",
+            description=f"Button style must be one of the following: `{', '.join(button_styles.keys())}`.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    if ctx.options.role.name == "@everyone" or ctx.options.role.is_managed:
+        embed = hikari.Embed(
+            title="❌ Invalid role",
+            description="The specified role cannot be manually assigned.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    try:
+        message_id = int(ctx.options.message_id)
+    except (TypeError, AssertionError):
+        embed = hikari.Embed(
+            title="❌ Invalid ID",
+            description="Please enter a valid integer for parameter `message_id`",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    print(ctx.options.channel)
+
+    try:
+        message = await ctx.app.rest.fetch_message(ctx.options.channel.id, message_id)
+    except (hikari.NotFoundError, hikari.ForbiddenError):
+        embed = hikari.Embed(
+            title="❌ Unknown message",
+            description="Could not find message with this ID. Ensure the ID is valid, and that the bot has permissions to view the channel.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    records = await ctx.app.pool.fetch("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC LIMIT 1""")
+    entry_id = records[0].get("entry_id") + 1 if records else 1
+
+    button = RoleButton(
+        entry_id=entry_id,
+        role=ctx.options.role,
+        emoji=hikari.Emoji.parse(ctx.options.emoji),
+        label=ctx.options.label,
+        style=button_styles[style.capitalize() or "Grey"],
+    )
+
+    buttons = []
+
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message_id)
+    if records:
+        # Account for other rolebuttons on the same message
+        for record in records:
+            emoji = hikari.Emoji.parse(record.get("emoji"))
+            role = ctx.app.cache.get_role(record.get("role_id"))
+            if role:
+                buttons.append(
+                    RoleButton(
+                        entry_id=record.get("entry_id"),
+                        role=role,
+                        label=record.get("buttonlabel"),
+                        style=button_styles[record.get("buttonstyle") or "Grey"],
+                        emoji=emoji,
+                    )
+                )
+
+    buttons.append(button)
+    view = PersistentRoleView(ctx.app, buttons=buttons)
+    message = await message.edit(components=view.build())
+    view.start(message)
+
+    await ctx.app.pool.execute(
+        """
+        INSERT INTO button_roles (entry_id, guild_id, channel_id, msg_id, emoji, buttonlabel, buttonstyle, role_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        """,
+        entry_id,
+        ctx.guild_id,
+        ctx.options.channel.id,
+        message_id,
+        str(ctx.options.emoji),
+        ctx.options.label,
+        ctx.options.buttonstyle,
+        ctx.options.role.id,
+    )
+    await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
+
+    embed = hikari.Embed(
+        title="✅ Done!",
+        description=f"A new rolebutton for role {ctx.options.role.mention} in channel {ctx.options.channel.name} has been created!",
+        color=ctx.app.embed_green,
+    )
+    await ctx.respond(embed=embed)
 
 
 def load(bot: SnedBot) -> None:
