@@ -20,8 +20,8 @@ button_styles = {
 
 
 class PersistentRoleView(miru.View):
-    def __init__(self, app: hikari.GatewayBot, buttons: List[miru.Button]) -> None:
-        super().__init__(app, timeout=None)
+    def __init__(self, buttons: List[miru.Button]) -> None:
+        super().__init__(timeout=None)
         for button in buttons:
             self.add_item(button)
 
@@ -29,42 +29,56 @@ class PersistentRoleView(miru.View):
 class RoleButton(miru.Button):
     def __init__(
         self,
+        *,
         entry_id: int,
-        role: hikari.Role,
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
         label: Optional[str] = None,
+        role: Optional[hikari.Role] = None,
     ):
+        if not role:
+            self.orphaned = True
+            return
+
         super().__init__(style=style, label=label, emoji=emoji, custom_id=f"{entry_id}:{role.id}")
         self.entry_id: int = entry_id
         self.role: hikari.Role = role
+        self.orphaned = False
 
-    async def callback(self, interaction: miru.Interaction) -> None:
+    async def callback(self, ctx: miru.Context) -> None:
         """
         Add or remove the role this button was instantiated with.
         """
-        if not interaction.guild_id:
+        if not ctx.guild_id:
             return
 
+        if self.orphaned:
+            embed = hikari.Embed(
+                title="❌ Orphaned",
+                description="The role this button was pointing to was deleted!",
+                color=0xFF0000,
+            )
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
         try:
-            if self.role.id in interaction.member.role_ids:
-                await interaction.member.remove_role(self.role, reason=f"Removed by role-button (ID: {self.entry_id})")
+            if self.role.id in ctx.member.role_ids:
+                await ctx.member.remove_role(self.role, reason=f"Removed by role-button (ID: {self.entry_id})")
                 embed = hikari.Embed(
                     title="✅ Role removed",
                     description=f"Removed role: {self.role.mention}",
                     color=0x77B255,
                 )
-                await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
             else:
-                await interaction.member.add_role(self.role, reason=f"Granted by role-button (ID: {self.entry_id})")
+                await ctx.member.add_role(self.role, reason=f"Granted by role-button (ID: {self.entry_id})")
                 embed = hikari.Embed(
                     title="✅ Role added",
                     description=f"Added role: {self.role.mention}",
                     color=0x77B255,
                 )
                 embed.set_footer(text="If you would like it removed, click the button again!")
-                await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
         except (hikari.ForbiddenError, hikari.HTTPError):
             embed = hikari.Embed(
@@ -72,7 +86,7 @@ class RoleButton(miru.Button):
                 description="Failed adding role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
                 color=0xFF0000,
             )
-            await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @role_buttons.listener(hikari.StartedEvent)
@@ -105,7 +119,7 @@ async def start_rolebuttons(event: hikari.StartedEvent) -> None:
 
     for msg_id, buttons in add_to_persistent_views.items():
         # Use message_id optionally for improved accuracy
-        view = PersistentRoleView(event.app, buttons)
+        view = PersistentRoleView(buttons)
         view.start_listener(message_id=msg_id)
 
     logger.info(f"Started listeners for {count} button-roles!")

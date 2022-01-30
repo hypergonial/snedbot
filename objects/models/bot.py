@@ -6,6 +6,7 @@ import asyncpg
 import hikari
 import lightbulb
 from lightbulb.ext import tasks
+import miru
 
 from objects.config_handler import ConfigHandler
 from objects.utils import cache, scheduler
@@ -53,8 +54,9 @@ class SnedBot(lightbulb.BotApp):
         self.dsn = self.config["postgres_dsn"].format(db_name=db_name)
         self.pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self.dsn))
 
-        # Startup lightbulb.ext.tasks
+        # Startup lightbulb.ext.tasks and miru
         tasks.load(self)
+        miru.load(self)
 
         # Some global variables
         self.base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")

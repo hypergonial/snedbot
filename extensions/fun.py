@@ -39,8 +39,8 @@ class NitroView(miru.View):
         await self.message.edit(embed=embed, components=self.build())
 
     @miru.button(style=hikari.ButtonStyle.SUCCESS, label="          Accept          ")
-    async def nitro_button(self, button: miru.Button, interaction: miru.Interaction) -> None:
-        await interaction.send_message(
+    async def nitro_button(self, button: miru.Button, ctx: miru.Context) -> None:
+        await ctx.respond(
             "https://images-ext-1.discordapp.net/external/AoV9l5YhsWBj92gcKGkzyJAAXoYpGiN6BdtfzM-00SU/https/i.imgur.com/NQinKJB.mp4",
             flags=hikari.MessageFlag.EPHEMERAL,
         )
@@ -52,8 +52,8 @@ class TicTacToeButton(miru.Button):
         self.x: int = x
         self.y: int = y
 
-    async def callback(self, interaction: miru.Interaction) -> None:
-        if isinstance(self.view, TicTacToeView) and self.view.current_player.id == interaction.user.id:
+    async def callback(self, ctx: miru.Context) -> None:
+        if isinstance(self.view, TicTacToeView) and self.view.current_player.id == ctx.user.id:
             view: TicTacToeView = self.view
             value: int = view.board[self.y][self.x]
 
@@ -107,7 +107,7 @@ class TicTacToeButton(miru.Button):
 
                 view.stop()
 
-            await interaction.edit_message(embed=embed, components=view.build())
+            await ctx.edit_response(embed=embed, components=view.build())
 
 
 class TicTacToeView(miru.View):
@@ -268,7 +268,7 @@ async def tictactoe(ctx: lightbulb.SlashContext) -> None:
         )
         embed.set_thumbnail(helpers.get_display_avatar(ctx.member))
 
-        view = TicTacToeView(ctx.app, size, ctx.member, ctx.options.user)
+        view = TicTacToeView(size, ctx.member, ctx.options.user)
         proxy = await ctx.respond(embed=embed, components=view.build())
         view.start(await proxy.message())
 

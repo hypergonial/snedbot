@@ -28,35 +28,35 @@ class ReminderView(miru.View):
         await self.message.edit(components=self.build())
 
     @miru.button(label="Remind me too!", emoji="✉️", style=hikari.ButtonStyle.PRIMARY)
-    async def add_recipient(self, button: miru.Button, interaction: miru.Interaction) -> None:
+    async def add_recipient(self, button: miru.Button, ctx: miru.Context) -> None:
         try:
-            timer: Timer = await self.app.scheduler.get_timer(self.timer_id, interaction.guild_id)
+            timer: Timer = await self.app.scheduler.get_timer(self.timer_id, ctx.guild_id)
         except ValueError:
             embed = hikari.Embed(
                 title="❌ Invalid interaction",
                 description="Oops! It looks like this reminder is no longer valid!",
                 color=self.app.error_color,
             )
-            await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         else:
-            if timer.user_id == interaction.user.id:
+            if timer.user_id == ctx.user.id:
                 embed = hikari.Embed(
                     title="❌ Invalid interaction",
                     description="You cannot do this on your own reminder.",
                     color=self.app.error_color,
                 )
-                return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
             notes: Dict[str, Any] = json.loads(timer.notes)
 
-            if interaction.user.id not in notes["additional_recipients"]:
+            if ctx.user.id not in notes["additional_recipients"]:
 
                 if len(notes["additional_recipients"]) < 50:
-                    notes["additional_recipients"].append(interaction.user.id)
+                    notes["additional_recipients"].append(ctx.user.id)
                     await self.app.scheduler.update_timer(
                         datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
                         self.timer_id,
-                        interaction.guild_id,
+                        ctx.guild_id,
                         new_notes=json.dumps(notes),
                     )
                     embed = hikari.Embed(
@@ -64,7 +64,7 @@ class ReminderView(miru.View):
                         description="You will also be notified when this reminder is due!",
                         color=self.app.embed_green,
                     )
-                    return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                    return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
                 else:
                     embed = hikari.Embed(
@@ -72,9 +72,9 @@ class ReminderView(miru.View):
                         description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
                         color=self.app.error_color,
                     )
-                    return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                    return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             else:
-                notes["additional_recipients"].remove(interaction.user.id)
+                notes["additional_recipients"].remove(ctx.user.id)
                 await self.app.scheduler.update_timer(
                     datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
                     self.timer_id,
@@ -86,7 +86,7 @@ class ReminderView(miru.View):
                     description="Removed you from the list of recipients!",
                     color=self.app.embed_green,
                 )
-                return await interaction.send_message(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @reminders.command()
@@ -154,7 +154,7 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
                 notes=json.dumps(reminder_data),
             )
 
-            view = ReminderView(timer.id, ctx.app, timeout=300)
+            view = ReminderView(timer.id, timeout=300)
             proxy = await ctx.respond(embed=embed, components=view.build())
             reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
             await ctx.app.scheduler.update_timer(time, timer.id, timer.guild_id, new_notes=json.dumps(reminder_data))

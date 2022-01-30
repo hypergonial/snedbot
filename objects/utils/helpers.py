@@ -157,7 +157,7 @@ async def ask(
             message = await message.edit(content=content, embeds=embeds, components=view.build())
         else:
             response = await ctx.respond(content=content, embeds=embeds, components=view.build())
-            message = resolve_response(response)
+            message = await resolve_response(response)
 
         view.start(message)
         await view.wait()
