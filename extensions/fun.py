@@ -8,7 +8,6 @@ import aiohttp
 import hikari
 import lightbulb
 import miru
-from hikari.impl.bot import GatewayBot
 from objects.utils import helpers
 
 logger = logging.getLogger(__name__)
@@ -111,8 +110,8 @@ class TicTacToeButton(miru.Button):
 
 
 class TicTacToeView(miru.View):
-    def __init__(self, app: GatewayBot, size: int, playerx: hikari.Member, playero: hikari.Member) -> None:
-        super().__init__(app)
+    def __init__(self, size: int, playerx: hikari.Member, playero: hikari.Member, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.current_player: hikari.Member = playerx
         self.size: int = size
         self.playerx: hikari.Member = playerx
