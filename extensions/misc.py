@@ -4,6 +4,7 @@ import hikari
 import lightbulb
 import psutil
 from utils import helpers
+from models import SnedBot
 
 logger = logging.getLogger(__name__)
 
@@ -177,11 +178,11 @@ async def serverinfo(ctx: lightbulb.SlashContext) -> None:
     await ctx.respond(embed=embed)
 
 
-def load(bot):
+def load(bot: SnedBot) -> None:
     logging.info("Adding plugin: Miscellaneous Commands")
     bot.add_plugin(misc)
 
 
-def unload(bot):
+def unload(bot: SnedBot) -> None:
     logging.info("Removing plugin: Miscellaneous Commands")
     bot.remove_plugin(misc)

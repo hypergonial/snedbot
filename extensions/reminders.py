@@ -275,11 +275,11 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
                     logger.info(f"Failed to deliver a reminder to user {user}.")
 
 
-def load(bot: SnedBot):
+def load(bot: SnedBot) -> None:
     logger.info("Adding plugin: Reminders")
     bot.add_plugin(reminders)
 
 
-def unload(bot: SnedBot):
+def unload(bot: SnedBot) -> None:
     logger.info("Removing plugin: Reminders")
     bot.remove_plugin(reminders)

@@ -7,6 +7,7 @@ import hikari
 import lightbulb
 from models import Tag
 from models import AuthorOnlyNavigator
+from models.bot import SnedBot
 from utils import TagHandler
 from utils import helpers
 
@@ -390,13 +391,13 @@ async def tag_search(ctx: lightbulb.SlashContext) -> None:
         await ctx.respond(embed=embed)
 
 
-def load(bot):
+def load(bot: SnedBot) -> None:
     logging.info("Adding plugin: Tags")
     tag_handler = TagHandler(bot)
     bot.add_plugin(tags)
     tags.d.tag_handler = tag_handler
 
 
-def unload(bot):
+def unload(bot: SnedBot) -> None:
     logging.info("Removing plugin: Tags")
     bot.remove_plugin(tags)

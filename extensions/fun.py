@@ -9,6 +9,7 @@ import hikari
 import lightbulb
 import miru
 from utils import helpers
+from models import SnedBot
 
 logger = logging.getLogger(__name__)
 
@@ -446,11 +447,11 @@ async def wiki(ctx: lightbulb.SlashContext) -> None:
         await ctx.respond(embed=embed)
 
 
-def load(bot):
+def load(bot: SnedBot) -> None:
     logging.info("Adding plugin: Fun")
     bot.add_plugin(fun)
 
 
-def unload(bot):
+def unload(bot: SnedBot) -> None:
     logging.info("Removing plugin: Fun")
     bot.remove_plugin(fun)
