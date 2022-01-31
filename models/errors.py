@@ -20,3 +20,9 @@ class UserInputError(Exception):
     """
 
     pass
+
+
+class PunishFailed(Exception):
+    """
+    Raised when punishing the user failed.
+    """

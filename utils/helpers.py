@@ -8,7 +8,7 @@ import lightbulb
 from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
 import miru
 
-from objects import models
+import models
 
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
@@ -177,3 +177,19 @@ async def ask(
         event = await ctx.app.wait_for(hikari.MessageCreateEvent, timeout=120.0, predicate=predicate)
         if event.content:
             return converter.convert(event.content)
+
+
+def format_reason(reason: str = None, moderator: Optional[hikari.Member] = None, max_length: int = 240) -> str:
+    """
+    Format a reason for a moderation action
+    """
+    if not reason:
+        reason = "No reason provided."
+
+    if moderator:
+        reason = f"{moderator} ({moderator.id}): {reason}"
+
+    if len(reason) > max_length:
+        reason = reason[: max_length - 3] + "..."
+
+    return reason
