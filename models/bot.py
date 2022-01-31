@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from typing import Dict, Any
 
 import asyncpg
 import hikari
@@ -13,7 +14,7 @@ from utils import cache, scheduler
 
 
 class SnedBot(lightbulb.BotApp):
-    def __init__(self, config: dict):
+    def __init__(self, config: Dict[str, Any]) -> None:
         self.loop = asyncio.get_event_loop()
         self._started = asyncio.Event()
 
