@@ -8,8 +8,8 @@ import lightbulb
 from lightbulb.ext import tasks
 import miru
 
-from objects.config_handler import ConfigHandler
-from objects.utils import cache, scheduler
+from utils.config_handler import ConfigHandler
+from utils import cache, scheduler
 
 
 class SnedBot(lightbulb.BotApp):

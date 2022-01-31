@@ -8,7 +8,7 @@ import aiohttp
 import hikari
 import lightbulb
 import miru
-from objects.utils import helpers
+from utils import helpers
 
 logger = logging.getLogger(__name__)
 

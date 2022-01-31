@@ -1,6 +1,6 @@
 import attr
 import hikari
-from objects.models.timer import Timer
+from models import Timer
 
 
 @attr.define()

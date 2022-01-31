@@ -4,7 +4,7 @@ import logging
 import os
 
 from config import config
-from objects.models.bot import SnedBot
+from models import SnedBot
 
 try:
     from config import config

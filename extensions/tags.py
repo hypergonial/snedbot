@@ -5,13 +5,10 @@ from typing import List
 
 import hikari
 import lightbulb
-import miru
-from miru.ext import nav
-from objects.models.errors import TagAlreadyExists, TagNotFound
-from objects.models.tag import Tag
-from objects.models.views import AuthorOnlyNavigator
-from objects.tag_handler import TagHandler
-from objects.utils import helpers
+from models import Tag
+from models import AuthorOnlyNavigator
+from utils import TagHandler
+from utils import helpers
 
 logger = logging.getLogger(__name__)
 

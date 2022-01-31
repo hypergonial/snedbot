@@ -19,11 +19,11 @@ class AuthorOnlyView(miru.View):
             embed = hikari.Embed(
                 title="❌ Oops!",
                 description="A magical barrier is stopping you from interacting with this component menu!",
-                color=self.ctx.app.error_color,
+                color=self.lctx.app.error_color,
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-        return ctx.user.id == self.ctx.author.id
+        return ctx.user.id == self.lctx.author.id
 
 
 class AuthorOnlyNavigator(nav.NavigatorView):

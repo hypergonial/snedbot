@@ -4,8 +4,8 @@ from typing import List, Optional
 import hikari
 import lightbulb
 import miru
-from objects.models.bot import SnedBot
-from objects import models
+from models import SnedBot
+import models
 
 logger = logging.getLogger(__name__)
 

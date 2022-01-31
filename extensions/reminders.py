@@ -7,9 +7,10 @@ from typing import Any, Dict
 import hikari
 import lightbulb
 import miru
-from objects.models import events
-from objects.models.timer import Timer
-from objects.utils import helpers
+from models import events
+from models import SnedBot
+from models import Timer
+from utils import helpers
 
 reminders = lightbulb.Plugin(name="Reminders")
 
@@ -274,11 +275,11 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
                     logger.info(f"Failed to deliver a reminder to user {user}.")
 
 
-def load(bot):
+def load(bot: SnedBot):
     logger.info("Adding plugin: Reminders")
     bot.add_plugin(reminders)
 
 
-def unload(bot):
+def unload(bot: SnedBot):
     logger.info("Removing plugin: Reminders")
     bot.remove_plugin(reminders)
