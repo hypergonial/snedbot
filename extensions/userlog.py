@@ -2,16 +2,10 @@ import asyncio
 import datetime
 import json
 import logging
-import inspect
-from typing import TypeVar, Union, Optional, Dict, Any, Tuple
+from typing import TypeVar, Union, Optional, Dict, Tuple
 
 import hikari
-from hikari.audit_logs import AuditLog, AuditLogEntry
-from hikari.errors import ForbiddenError
 import lightbulb
-from lightbulb import plugins
-from lightbulb.commands import user
-from lightbulb.utils.search import get
 
 from models import SnedBot
 from utils import helpers
