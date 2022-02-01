@@ -150,13 +150,16 @@ async def freeze_logging(guild_id: int) -> None:
     if guild_id not in userlog.d.frozen_guilds:
         userlog.d.frozen_guilds.append(guild_id)
 
+
 userlog.d.actions["freeze_logging"] = freeze_logging
+
 
 async def unfreeze_logging(guild_id: int) -> None:
     """Call to stop suspending the logging in a given guild."""
     await asyncio.sleep(5)  # For any pending actions, kinda crappy solution, but audit logs suck :/
     if guild_id in userlog.d.frozen_guilds:
         userlog.d.frozen_guilds.remove(guild_id)
+
 
 userlog.d.actions["unfreeze_logging"] = unfreeze_logging
 
@@ -227,16 +230,18 @@ def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str:
             continue
         elif old_perms ^ perm and new_perms ^ perm:
             continue
-        
+
         old_state = "Yes" if old_perms & perm else "No"
         new_state = "Yes" if new_perms & perm else "No"
 
         perms_diff = f"{perms_diff}\n   {perms_str[perm]}: {old_state} -> {new_state}"
-    
+
     return perm_diff
 
 
 T = TypeVar("T")
+
+
 def get_diff(old_object: T, object: T, attrs: Dict[str, str]) -> str:
     """
     A helper function for displaying differences between certain attributes
@@ -251,9 +256,9 @@ def get_diff(old_object: T, object: T, attrs: Dict[str, str]) -> str:
         old = getattr(old_object, attribute)
         new = getattr(object, attribute)
 
-        if hasattr(old, "name"): # Handling flags enums
+        if hasattr(old, "name"):  # Handling flags enums
             diff = f"{diff}\n{attrs[attribute]}: {old.name} -> {new.name}" if old != new else diff
-        elif isinstance(old, datetime.timedelta): # Handling timedeltas
+        elif isinstance(old, datetime.timedelta):  # Handling timedeltas
             diff = f"{diff}\n{attrs[attribute]}: {old.total_seconds()} -> {new.total_seconds()}" if old != new else diff
         else:
             diff = f"{diff}\n{attrs[attribute]}: {old} -> {new}" if old != new else diff
@@ -275,6 +280,7 @@ def create_log_content(message: hikari.Message, max_length: Optional[int] = None
 
     return contents
 
+
 def strip_bot_reason(reason: str) -> Tuple[str]:
     """
     Strip action author for it to be parsed into the actual embed instead of the bot
@@ -283,7 +289,9 @@ def strip_bot_reason(reason: str) -> Tuple[str]:
     reason = reason.split("): ", maxsplit=1)[1]  # Remove author
     return reason, moderator
 
+
 # Event Listeners start below
+
 
 @userlog.listener(hikari.GuildMessageDeleteEvent, bind=True)
 async def message_delete(event: hikari.GuildMessageDeleteEvent, plugin: lightbulb.Plugin) -> None:
@@ -292,7 +300,9 @@ async def message_delete(event: hikari.GuildMessageDeleteEvent, plugin: lightbul
 
     contents = create_log_content(event.old_message)
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MESSAGE_DELETE, user_id=event.old_message.author.id)
+    entry = await find_auditlog_data(
+        event, type=hikari.AuditLogEventType.MESSAGE_DELETE, user_id=event.old_message.author.id
+    )
     if entry:
         moderator: hikari.Member = plugin.app.cache.get_member(entry.user_id)
         embed = hikari.Embed(
@@ -402,7 +412,9 @@ async def role_update(event: hikari.RoleUpdateEvent, plugin: lightbulb.Plugin) -
 
         embed = hikari.Embed(
             title=f"🖊️ Role updated",
-            description=f"**Role:** `{event.role.name}` \n**Moderator:** `{moderator}```\n**Changes:**\n```{diff}\n'{f'Permissions:\n{perms_diff}'} if perms_diff != "" else ""}```",
+            description=f"**Role:** `{event.role.name}` \n**Moderator:** `{moderator}```\n**Changes:**\n```{diff}\n'{f'Permissions:\n{perms_diff}'} if perms_diff != "
+            " else "
+            "}```",
             color=plugin.app.embed_blue,
         )
         await log("roles", embed, event.guild.id)
@@ -472,9 +484,12 @@ async def guild_update(event: hikari.GuildUpdateEvent, plugin: lightbulb.Plugin)
             moderator: Union[hikari.Member, str] = plugin.app.cache.get_member(entry.user_id) if entry else "Discord"
             moderator = moderator or "Discord"
         else:
-            moderator = "Discord" 
+            moderator = "Discord"
 
-        if event.old_guild.premium_subscription_count != event.guild.premium_subscription_count and event.old_guild.premium_tier == event.guild.premium_tier:
+        if (
+            event.old_guild.premium_subscription_count != event.guild.premium_subscription_count
+            and event.old_guild.premium_tier == event.guild.premium_tier
+        ):
             # If someone boosted but there was no tier change, ignore
             return
 
@@ -529,7 +544,7 @@ async def member_ban_remove(event: hikari.BanDeleteEvent, plugin: lightbulb.Plug
 
     if moderator != "Unknown" and moderator.id == plugin.app.get_me().id:
         reason, moderator = strip_bot_reason(reason)
-    
+
     embed = hikari.Embed(
         title=f"🔨 User unbanned",
         description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:** ```{reason}```",
@@ -548,15 +563,15 @@ async def member_ban_add(event: hikari.BanCreateEvent, plugin: lightbulb.Plugin)
     else:
         moderator = "Unknown"
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
-    
+
     if moderator != "Unknown" and moderator.id == plugin.app.get_me().id:
         reason, moderator = strip_bot_reason(reason)
-    
+
     embed = hikari.Embed(
         title=f"🔨 User banned",
         description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:**```{reason}```",
         color=plugin.app.error_color,
-        )
+    )
     await log("ban", embed, event.guild_id)
 
 
@@ -565,7 +580,7 @@ async def member_delete(event: hikari.MemberDeleteEvent, plugin: lightbulb.Plugi
 
     entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_KICK, user_id=event.user.id)
 
-    if entry: # This is a kick
+    if entry:  # This is a kick
         moderator: Union[hikari.Member, str] = plugin.app.cache.get_member(entry.user_id) if entry else "Unknown"
         reason: Optional[str] = entry.reason or "No reason provided"
 
@@ -578,7 +593,7 @@ async def member_delete(event: hikari.MemberDeleteEvent, plugin: lightbulb.Plugi
             color=plugin.app.error_color,
         )
         return await log("kick", embed, event.guild_id)
-    
+
     embed = hikari.Embed(
         title=f"🚪 User left",
         description=f"**User:** `{event.user} ({event.user.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
@@ -613,23 +628,22 @@ async def member_update(event: hikari.MemberUpdateEvent, plugin: lightbulb.Plugi
     old_member = event.old_member
     member = event.member
 
-
     if old_member.communication_disabled_until != member.communication_disabled_until:
         """Timeout logging"""
         entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id)
 
         if not entry:
             return
-        
+
         if entry.reason == "Automatic timeout extension applied." and entry.user_id == plugin.app.get_me().id:
             return
-        
+
         reason = entry.reason
         moderator: hikari.Member = plugin.app.cache.get_member(entry.user_id)
-        
+
         if entry.user_id == plugin.app.get_me().id:
             reason, moderator = strip_bot_reason(reason)
-        
+
         if member.communication_disabled_until is None:
             embed = helpers.Embed(
                 title=f"🔉 User timeout removed",
@@ -647,7 +661,6 @@ async def member_update(event: hikari.MemberUpdateEvent, plugin: lightbulb.Plugi
             )
         await log("timeout", embed, event.guild_id)
 
-
     elif old_member.nickname != member.nickname:
         """Nickname change handling"""
         embed = hikari.Embed(
@@ -656,7 +669,6 @@ async def member_update(event: hikari.MemberUpdateEvent, plugin: lightbulb.Plugi
             color=plugin.app.embed_blue,
         )
         await log("nickname", embed, event.guild_id)
-
 
     elif old_member.role_ids != member.role_ids:
         # Check difference in roles between the two
@@ -678,14 +690,14 @@ async def member_update(event: hikari.MemberUpdateEvent, plugin: lightbulb.Plugi
                 title=f"🖊️ Member roles updated",
                 description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role added:** `{role.mention}`",
                 color=plugin.app.embed_blue,
-        )
+            )
         elif len(rem_diff) != 0:
             role = plugin.app.cache.get_role(rem_diff[0])
             embed = hikari.Embed(
                 title=f"🖊️ Member roles updated",
                 description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role removed:** `{role.mention}`",
                 color=plugin.app.embed_blue,
-        )
+            )
 
         await log("roles", embed, event.guild_id)
 

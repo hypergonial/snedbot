@@ -171,7 +171,10 @@ async def rolebutton_list(ctx: lightbulb.SlashContext) -> None:
 
 
 @rolebutton.child()
-@lightbulb.option("button_id", "The ID of the rolebutton to delete. You can get this via /rolebutton list")
+@lightbulb.option(
+    "button_id",
+    "The ID of the rolebutton to delete. You can get this via /rolebutton list",
+)
 @lightbulb.command("delete", "Delete a rolebutton.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
@@ -186,7 +189,9 @@ async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     await ctx.app.pool.execute(
-        """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""", ctx.guild_id, ctx.options.button_id
+        """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""",
+        ctx.guild_id,
+        ctx.options.button_id,
     )
     await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
 
@@ -219,18 +224,28 @@ async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
 
 
 @rolebutton.child()
-@lightbulb.option("buttonstyle", "The style of the button. Options: Blurple, Grey, Red, Green", required=False)
+@lightbulb.option(
+    "buttonstyle",
+    "The style of the button. Options: Blurple, Grey, Red, Green",
+    required=False,
+)
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
 @lightbulb.option("emoji", "The emoji that should appear in the button.", type=hikari.Emoji)
 @lightbulb.option("role", "The role that should be handed out by the button.", type=hikari.Role)
-@lightbulb.option("message_id", "The ID of a message that MUST be from the bot, the rolebutton will be attached here.")
+@lightbulb.option(
+    "message_id",
+    "The ID of a message that MUST be from the bot, the rolebutton will be attached here.",
+)
 @lightbulb.option(
     "channel",
     "The channel where the message is located in.",
     type=hikari.TextableGuildChannel,
     channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
 )
-@lightbulb.command("add", "Add a new rolebutton. For new users, it is recommended to use /rolebutton setup instead.")
+@lightbulb.command(
+    "add",
+    "Add a new rolebutton. For new users, it is recommended to use /rolebutton setup instead.",
+)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_add(ctx: lightbulb.SlashContext) -> None:
     style = ctx.options.buttonstyle or "Grey"

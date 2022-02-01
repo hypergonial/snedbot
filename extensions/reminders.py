@@ -262,13 +262,21 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
 
             try:
                 await plugin.app.rest.create_message(
-                    event.timer.channel_id, content=" ".join(pings), embed=embed, user_mentions=True
+                    event.timer.channel_id,
+                    content=" ".join(pings),
+                    embed=embed,
+                    user_mentions=True,
                 )
 
-            except (hikari.ForbiddenError, hikari.NotFoundError, hikari.InternalServerError):
+            except (
+                hikari.ForbiddenError,
+                hikari.NotFoundError,
+                hikari.InternalServerError,
+            ):
                 try:
                     await user.send(
-                        content="I lost access to the channel this reminder was sent from, so here it is!", embed=embed
+                        content="I lost access to the channel this reminder was sent from, so here it is!",
+                        embed=embed,
                     )
 
                 except hikari.ForbiddenError:

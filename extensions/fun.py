@@ -67,7 +67,9 @@ class TicTacToeButton(miru.Button):
                 view.board[self.y][self.x] = -1
                 view.current_player = view.playero
                 embed = hikari.Embed(
-                    title="Tic Tac Toe!", description=f"It is **{view.playero.username}**'s turn!", color=0x009DFF
+                    title="Tic Tac Toe!",
+                    description=f"It is **{view.playero.username}**'s turn!",
+                    color=0x009DFF,
                 )
                 embed.set_thumbnail(helpers.get_display_avatar(view.playero))
 
@@ -78,7 +80,9 @@ class TicTacToeButton(miru.Button):
                 view.board[self.y][self.x] = 1
                 view.current_player = view.playerx
                 embed = hikari.Embed(
-                    title="Tic Tac Toe!", description=f"It is **{view.playerx.username}**'s turn!", color=0x009DFF
+                    title="Tic Tac Toe!",
+                    description=f"It is **{view.playerx.username}**'s turn!",
+                    color=0x009DFF,
                 )
                 embed.set_thumbnail(helpers.get_display_avatar(view.playerx))
 
@@ -88,13 +92,17 @@ class TicTacToeButton(miru.Button):
 
                 if winner == WinState.PLAYER_X:
                     embed = hikari.Embed(
-                        title="Tic Tac Toe!", description=f"**{view.playerx.username}** won!", color=0x77B255
+                        title="Tic Tac Toe!",
+                        description=f"**{view.playerx.username}** won!",
+                        color=0x77B255,
                     )
                     embed.set_thumbnail(helpers.get_display_avatar(view.playerx))
 
                 elif winner == WinState.PLAYER_O:
                     embed = hikari.Embed(
-                        title="Tic Tac Toe!", description=f"**{view.playero.username}** won!", color=0x77B255
+                        title="Tic Tac Toe!",
+                        description=f"**{view.playero.username}** won!",
+                        color=0x77B255,
                     )
                     embed.set_thumbnail(helpers.get_display_avatar(view.playero))
 
@@ -134,7 +142,9 @@ class TicTacToeView(miru.View):
             item.disabled = True
 
         embed = hikari.Embed(
-            title="Tic Tac Toe!", description="This game timed out! Try starting a new one!", color=0xFF0000
+            title="Tic Tac Toe!",
+            description="This game timed out! Try starting a new one!",
+            color=0xFF0000,
         )
         await self.message.edit(embed=embed, components=self.build())
 
@@ -282,7 +292,12 @@ async def tictactoe(ctx: lightbulb.SlashContext) -> None:
 
 
 @fun.command
-@lightbulb.option("show_global", "To show the global avatar or not, if applicable", bool, required=False)
+@lightbulb.option(
+    "show_global",
+    "To show the global avatar or not, if applicable",
+    bool,
+    required=False,
+)
 @lightbulb.option("user", "The user to show the avatar for.", hikari.Member, required=False)
 @lightbulb.command("avatar", "Displays a user's avatar for your viewing pleasure.")
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -305,7 +320,11 @@ async def avatar(ctx: lightbulb.SlashContext) -> None:
 async def funfact(ctx: lightbulb.SlashContext) -> None:
     fun_path = Path(ctx.app.base_dir, "etc", "funfacts.txt")
     fun_facts = open(fun_path, "r").readlines()
-    embed = hikari.Embed(title="🤔 Did you know?", description=f"{random.choice(fun_facts)}", color=ctx.app.embed_blue)
+    embed = hikari.Embed(
+        title="🤔 Did you know?",
+        description=f"{random.choice(fun_facts)}",
+        color=ctx.app.embed_blue,
+    )
     embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
 
@@ -317,7 +336,9 @@ async def funfact(ctx: lightbulb.SlashContext) -> None:
     penguin_path = Path(ctx.app.base_dir, "etc", "penguinfacts.txt")
     penguin_facts = open(penguin_path, "r").readlines()
     embed = hikari.Embed(
-        title="🐧 Penguin Fact", description=f"{random.choice(penguin_facts)}", color=ctx.app.embed_blue
+        title="🐧 Penguin Fact",
+        description=f"{random.choice(penguin_facts)}",
+        color=ctx.app.embed_blue,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
@@ -437,7 +458,11 @@ async def wiki(ctx: lightbulb.SlashContext) -> None:
             desc = ""
             for i, result in enumerate(results_text):
                 desc = f"{desc}[{result}]({results_link[i]})\n"
-            embed = hikari.Embed(title=f"Wikipedia: {ctx.options.query}", description=desc, color=ctx.app.misc_color)
+            embed = hikari.Embed(
+                title=f"Wikipedia: {ctx.options.query}",
+                description=desc,
+                color=ctx.app.misc_color,
+            )
         else:
             embed = hikari.Embed(
                 title="❌ No results",

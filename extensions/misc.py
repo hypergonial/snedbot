@@ -33,11 +33,27 @@ async def ping(ctx: lightbulb.SlashContext) -> None:
     required=False,
 )
 @lightbulb.option("author_url", "An URL to direct users to if the author is clicked.", required=False)
-@lightbulb.option("author_image_url", "An URL pointing to an image to use for the author's avatar.", required=False)
+@lightbulb.option(
+    "author_image_url",
+    "An URL pointing to an image to use for the author's avatar.",
+    required=False,
+)
 @lightbulb.option("author", "The author of the embed. Appears above the title.", required=False)
-@lightbulb.option("footer_image_url", "An url pointing to an image to use for the embed footer.", required=False)
-@lightbulb.option("image_url", "An url pointing to an image to use for the embed image.", required=False)
-@lightbulb.option("thumbnail_url", "An url pointing to an image to use for the thumbnail.", required=False)
+@lightbulb.option(
+    "footer_image_url",
+    "An url pointing to an image to use for the embed footer.",
+    required=False,
+)
+@lightbulb.option(
+    "image_url",
+    "An url pointing to an image to use for the embed image.",
+    required=False,
+)
+@lightbulb.option(
+    "thumbnail_url",
+    "An url pointing to an image to use for the thumbnail.",
+    required=False,
+)
 @lightbulb.option("footer", "The footer of the embed.", required=False)
 @lightbulb.option("description", "The description of the embed.", required=False)
 @lightbulb.option("title", "The title of the embed. Required.")
@@ -60,11 +76,19 @@ async def embed(ctx: lightbulb.SlashContext) -> None:
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    embed = hikari.Embed(title=ctx.options.title, description=ctx.options.description, color=ctx.options.color)
+    embed = hikari.Embed(
+        title=ctx.options.title,
+        description=ctx.options.description,
+        color=ctx.options.color,
+    )
     embed.set_footer(ctx.options.footer, icon=ctx.options.footer_image_url)
     embed.set_image(ctx.options.image_url)
     embed.set_thumbnail(ctx.options.thumbnail_url)
-    embed.set_author(name=ctx.options.author, url=ctx.options.author_url, icon=ctx.options.author_image_url)
+    embed.set_author(
+        name=ctx.options.author,
+        url=ctx.options.author_url,
+        icon=ctx.options.author_image_url,
+    )
 
     await ctx.respond(embed=embed)
 
@@ -99,10 +123,22 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
     embed.set_thumbnail(me.avatar_url)
-    embed.add_field(name="CPU utilization", value=f"`{round(psutil.cpu_percent(interval=None))}%`", inline=True)
+    embed.add_field(
+        name="CPU utilization",
+        value=f"`{round(psutil.cpu_percent(interval=None))}%`",
+        inline=True,
+    )
     process = psutil.Process()  # gets current process
-    embed.add_field(name="Memory utilization", value=f"`{round(process.memory_info().vms / 1048576)}MB`", inline=True)
-    embed.add_field(name="Latency", value=f"`{round(ctx.app.heartbeat_latency * 1000)}ms`", inline=True)
+    embed.add_field(
+        name="Memory utilization",
+        value=f"`{round(process.memory_info().vms / 1048576)}MB`",
+        inline=True,
+    )
+    embed.add_field(
+        name="Latency",
+        value=f"`{round(ctx.app.heartbeat_latency * 1000)}ms`",
+        inline=True,
+    )
     await ctx.respond(embed=embed)
 
 

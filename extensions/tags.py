@@ -194,7 +194,10 @@ async def tag_delalias(ctx: lightbulb.SlashContext) -> None:
 @tag.child()
 @lightbulb.option("receiver", "The user to receive the tag.", type=hikari.Member)
 @lightbulb.option("name", "The name of the tag to transfer.")
-@lightbulb.command("transfer", "Transfer ownership of a tag to another user, letting them modify or delete it.")
+@lightbulb.command(
+    "transfer",
+    "Transfer ownership of a tag to another user, letting them modify or delete it.",
+)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_transfer(ctx: lightbulb.SlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
@@ -221,7 +224,10 @@ async def tag_transfer(ctx: lightbulb.SlashContext) -> None:
 
 @tag.child()
 @lightbulb.option("name", "The name of the tag to claim.")
-@lightbulb.command("claim", "Claim a tag that has been created by a user that has since left the server.")
+@lightbulb.command(
+    "claim",
+    "Claim a tag that has been created by a user that has since left the server.",
+)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_claim(ctx: lightbulb.SlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
@@ -233,7 +239,9 @@ async def tag_claim(ctx: lightbulb.SlashContext) -> None:
             tag.owner_id = ctx.author.id
             await tags.d.tag_handler.create(tag)
             embed = hikari.Embed(
-                title="✅ Tag claimed", description=f"Tag `{tag.name}` now belongs to you.", color=ctx.app.embed_green
+                title="✅ Tag claimed",
+                description=f"Tag `{tag.name}` now belongs to you.",
+                color=ctx.app.embed_green,
             )
             embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
@@ -293,7 +301,9 @@ async def tag_delete(ctx: lightbulb.SlashContext) -> None:
     if tag and tag.owner_id == ctx.author.id:
         await tags.d.tag_handler.delete(ctx.options.name.lower(), ctx.guild_id)
         embed = hikari.Embed(
-            title="✅ Tag deleted", description=f"Tag `{tag.name}` has been deleted.", color=ctx.app.embed_green
+            title="✅ Tag deleted",
+            description=f"Tag `{tag.name}` has been deleted.",
+            color=ctx.app.embed_green,
         )
         embed = helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
@@ -322,7 +332,9 @@ async def tag_list(ctx: lightbulb.SlashContext) -> None:
         embeds = []
         for contents in tags_fmt:
             embed = hikari.Embed(
-                title="💬 Available tags for this server:", description="\n".join(contents), color=ctx.app.embed_blue
+                title="💬 Available tags for this server:",
+                description="\n".join(contents),
+                color=ctx.app.embed_blue,
             )
             helpers.add_embed_footer(embed, ctx.member)
             embeds.append(embed)
@@ -376,7 +388,9 @@ async def tag_search(ctx: lightbulb.SlashContext) -> None:
 
         else:
             embed = hikari.Embed(
-                title="Not found", description="Unable to find tags with that name.", color=ctx.app.warn_color
+                title="Not found",
+                description="Unable to find tags with that name.",
+                color=ctx.app.warn_color,
             )
             embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
