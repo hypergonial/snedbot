@@ -27,6 +27,13 @@ def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
     return f"<t:{int(time.timestamp())}>"
 
 
+def utcnow() -> datetime.datetime:
+    """
+    A short-hand function to return a timezone-aware utc datetime.
+    """
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
 def add_embed_footer(embed: hikari.Embed, invoker: hikari.Member) -> hikari.Embed:
     """
     Add a note about the command invoker in the embed passed.
