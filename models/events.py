@@ -9,5 +9,5 @@ class TimerCompleteEvent(hikari.Event):
     Dispatched when a scheduled timer has expired.
     """
 
-    app: hikari.RESTAware = attr.field()
+    app: hikari.GatewayBotAware = attr.field()
     timer: Timer = attr.field()

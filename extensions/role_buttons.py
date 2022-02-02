@@ -202,25 +202,27 @@ async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
     else:
         records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message.id)
         buttons = []
-        if records:
-            # Re-sync rolebuttons with db if message still exists
-            for record in records:
-                emoji = hikari.Emoji.parse(record.get("emoji"))
-                role = ctx.app.cache.get_role(record.get("role_id"))
-                if role:
-                    buttons.append(
-                        RoleButton(
-                            entry_id=record.get("entry_id"),
-                            role=ctx.app.cache.get_role(record.get("role_id")),
-                            label=record.get("buttonlabel"),
-                            style=button_styles[record.get("buttonstyle")],
-                            emoji=emoji,
-                        )
-                    )
-            view = PersistentRoleView(buttons)
-            components = view.build() if len(buttons) > 0 else []
-            message = await message.edit(components=components)
-            view.start(message)
+        if not records:
+            return
+        # Re-sync rolebuttons with db if message still exists
+        for record in records:
+            emoji = hikari.Emoji.parse(record.get("emoji"))
+            role = ctx.app.cache.get_role(record.get("role_id"))
+            if not role:
+                continue
+            buttons.append(
+                RoleButton(
+                    entry_id=record.get("entry_id"),
+                    role=ctx.app.cache.get_role(record.get("role_id")),
+                    label=record.get("buttonlabel"),
+                    style=button_styles[record.get("buttonstyle")],
+                    emoji=emoji,
+                )
+            )
+        view = PersistentRoleView(buttons)
+        components = view.build() if len(buttons) > 0 else []
+        message = await message.edit(components=components)
+        view.start(message)
 
 
 @rolebutton.child()
@@ -307,16 +309,17 @@ async def rolebutton_add(ctx: lightbulb.SlashContext) -> None:
         for record in records:
             emoji = hikari.Emoji.parse(record.get("emoji"))
             role = ctx.app.cache.get_role(record.get("role_id"))
-            if role:
-                buttons.append(
-                    RoleButton(
-                        entry_id=record.get("entry_id"),
-                        role=role,
-                        label=record.get("buttonlabel"),
-                        style=button_styles[record.get("buttonstyle") or "Grey"],
-                        emoji=emoji,
-                    )
+            if not role:
+                continue
+            buttons.append(
+                RoleButton(
+                    entry_id=record.get("entry_id"),
+                    role=role,
+                    label=record.get("buttonlabel"),
+                    style=button_styles[record.get("buttonstyle") or "Grey"],
+                    emoji=emoji,
                 )
+            )
 
     buttons.append(button)
     view = PersistentRoleView(ctx.app, buttons=buttons)

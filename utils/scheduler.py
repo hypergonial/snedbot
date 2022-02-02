@@ -6,9 +6,9 @@ import re
 from dateutil import parser as dateparser
 import hikari
 import Levenshtein as lev
-from objects.models.events import TimerCompleteEvent
-from objects.models.timer import Timer
-from objects.utils import tasks
+from models import TimerCompleteEvent
+from models import Timer
+from utils.tasks import IntervalLoop
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class Scheduler:
         self.bot = bot
         self.current_timer = None
         self.currenttask = None
-        self.timer_loop = tasks.IntervalLoop(self.wait_for_active_timers, hours=1.0)
+        self.timer_loop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
         self.timer_loop.start()
 
     async def convert_time(self, timestr: str, force_mode: str = None) -> datetime.datetime:

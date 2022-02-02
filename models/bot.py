@@ -93,6 +93,7 @@ class SnedBot(lightbulb.BotApp):
     async def on_startup(self, event: hikari.StartedEvent) -> None:
 
         user = self.get_me()
+        self.user_id = user.id
         self.is_ready = True
         self._started.set()
         self.user_id = user.id

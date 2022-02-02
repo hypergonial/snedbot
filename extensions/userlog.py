@@ -622,7 +622,7 @@ async def member_update(event: hikari.MemberUpdateEvent, plugin: lightbulb.Plugi
     old_member = event.old_member
     member = event.member
 
-    if old_member.communication_disabled_until != member.communication_disabled_until:
+    if old_member.communication_disabled_until() != member.communication_disabled_until():
         """Timeout logging"""
         entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id)
 
@@ -638,7 +638,7 @@ async def member_update(event: hikari.MemberUpdateEvent, plugin: lightbulb.Plugi
         if entry.user_id == plugin.app.get_me().id:
             reason, moderator = strip_bot_reason(reason)
 
-        if member.communication_disabled_until is None:
+        if member.communication_disabled_until() is None:
             embed = helpers.Embed(
                 title=f"🔉 User timeout removed",
                 description=f"**User:** `{member.name} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
@@ -649,7 +649,7 @@ async def member_update(event: hikari.MemberUpdateEvent, plugin: lightbulb.Plugi
                 title=f"🔇 User timed out",
                 description=f"""**User:** `{member.name} ({member.id})`
 **Moderator:** `{moderator}` 
-**Until:** {helpers.format_dt(member.communication_disabled_until)} ({helpers.format_dt(member.communication_disabled_until, style='R')})
+**Until:** {helpers.format_dt(member.communication_disabled_until())} ({helpers.format_dt(member.communication_disabled_until(), style='R')})
 **Reason:** ```{reason}```""",
                 color=plugin.app.error_color,
             )
