@@ -1,3 +1,6 @@
+import hikari
+
+
 class TagAlreadyExists(Exception):
     """
     Raised when a tag is trying to get created but already exists.
@@ -25,4 +28,21 @@ class UserInputError(Exception):
 class PunishFailed(Exception):
     """
     Raised when punishing the user failed.
+    """
+
+
+class PermissionsMissing(Exception):
+    """
+    Raised when a permission check performed on certain actions failed.
+    """
+
+    def __init__(self, missing_perms: hikari.Permissions, *args: object) -> None:
+        super().__init__(*args)
+        self.missing_perms: hikari.Permissions = missing_perms
+
+
+class BotPermissionsMissing(PermissionsMissing):
+    """
+    Raised when a permission check performed on certain actions failed
+    due to the bot lacking permissions.
     """

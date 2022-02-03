@@ -1,10 +1,11 @@
 import asyncio
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import asyncpg
 import hikari
+from hikari.snowflakes import Snowflake
 import lightbulb
 from lightbulb.ext import tasks
 import miru
@@ -26,12 +27,13 @@ class SnedBot(lightbulb.BotApp):
             | hikari.Intents.GUILD_MEMBERS
             | hikari.Intents.GUILD_BANS
             | hikari.Intents.GUILD_EMOJIS
-            | hikari.Intents.GUILD_MESSAGES
             | hikari.Intents.GUILD_INVITES
             | hikari.Intents.ALL_MESSAGE_REACTIONS
+            | hikari.Intents.ALL_MESSAGES
         )
 
         self.experimental = config["experimental"]
+
         if self.experimental:
             default_enabled_guilds = (config["home_guild"]) if isinstance(config["home_guild"], int) else ()
             db_name = "sned_exp"
@@ -60,10 +62,9 @@ class SnedBot(lightbulb.BotApp):
         miru.load(self)
 
         # Some global variables
-        self.base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+        self._base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
         self.skip_db_backup = True
-        self.is_ready = False
-        self.user_id = None
+        self._user_id: Optional[Snowflake] = None
 
         # Color scheme
         self.error_color = 0xFF0000
@@ -74,6 +75,24 @@ class SnedBot(lightbulb.BotApp):
         self.misc_color = 0xC2C2C2
 
         self.start_listeners()
+
+    @property
+    def user_id(self) -> Snowflake:
+        """The application user's ID."""
+        if self._user_id is None:
+            raise RuntimeError("The bot is not yet initialized, user_id is unavailable.")
+
+        return self._user_id
+
+    @property
+    def is_ready(self) -> bool:
+        """Indicates if the application is ready to accept instructions or not."""
+        return self.is_alive
+
+    @property
+    def base_dir(self) -> str:
+        """The absolute path to the bot's project."""
+        return self._base_dir
 
     def start_listeners(self) -> None:
         """
@@ -93,8 +112,7 @@ class SnedBot(lightbulb.BotApp):
     async def on_startup(self, event: hikari.StartedEvent) -> None:
 
         user = self.get_me()
-        self.user_id = user.id
-        self.is_ready = True
+        self._user_id = user.id
         self._started.set()
         self.user_id = user.id
 
@@ -118,7 +136,7 @@ class SnedBot(lightbulb.BotApp):
                 )
 
     async def on_stopping(self, event: hikari.StoppingEvent) -> None:
-        self.is_ready = False
+        self._is_ready = False
         logging.info("Bot is shutting down...")
 
     async def on_stop(self, event: hikari.StoppedEvent) -> None:

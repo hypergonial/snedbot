@@ -186,7 +186,9 @@ async def ask(
             return converter.convert(event.content)
 
 
-def format_reason(reason: str = None, moderator: Optional[hikari.Member] = None, max_length: int = 240) -> str:
+def format_reason(
+    reason: str = None, moderator: Optional[hikari.Member] = None, max_length: Optional[int] = 512
+) -> str:
     """
     Format a reason for a moderation action
     """
@@ -196,7 +198,7 @@ def format_reason(reason: str = None, moderator: Optional[hikari.Member] = None,
     if moderator:
         reason = f"{moderator} ({moderator.id}): {reason}"
 
-    if len(reason) > max_length:
+    if max_length and len(reason) > max_length:
         reason = reason[: max_length - 3] + "..."
 
     return reason
