@@ -94,6 +94,15 @@ async def set_log_channel(log_event: str, guild_id: int, channel_id: Optional[in
 userlog.d.actions["set_log_channel"] = set_log_channel
 
 
+async def is_color_enabled(guild_id: int) -> bool:
+
+    records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id)
+    return records[0]["color"]
+
+
+userlog.d.actions["is_color_enabled"] = is_color_enabled
+
+
 async def log(
     log_event: str,
     log_content: Union[str, hikari.Embed],
@@ -201,7 +210,7 @@ async def find_auditlog_data(
     """
 
     guild = userlog.app.cache.get_guild(event.guild_id)
-    await asyncio.sleep(2.0)
+    await asyncio.sleep(2.0)  # Wait for auditlog to hopefully fill in
 
     if not guild:
         raise ValueError("Cannot find guild to parse auditlogs for.")
@@ -231,7 +240,7 @@ async def find_auditlog_data(
         return
 
 
-def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str:
+async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str:
     """
     A helper function for displaying role updates.
     Returns a string containing the differences between two roles.
@@ -240,40 +249,60 @@ def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str:
     old_perms = old_role.permissions
     new_perms = role.permissions
     perms_diff = ""
+    is_colored = await is_color_enabled(role.guild_id)
+    gray = "[1;30m" if is_colored else ""
+    white = "[0;37m" if is_colored else ""
+    red = "[1;31m" if is_colored else ""
+    green = "[1;32m" if is_colored else ""
+    reset = "[0m" if is_colored else ""
 
     for perm in hikari.Permissions:
         if (old_perms & perm) == (new_perms & perm):
             continue
 
-        old_state = "Yes" if (old_perms & perm) else "No"
-        new_state = "Yes" if (new_perms & perm) else "No"
+        old_state = f"{green}Allow" if (old_perms & perm) else f"{red}Deny"
+        new_state = f"{green}Allow" if (new_perms & perm) else f"{red}Deny"
 
-        perms_diff = f"{perms_diff}\n   {get_perm_str(perm)}: {old_state} -> {new_state}"
+        perms_diff = f"{perms_diff}\n   {white}{get_perm_str(perm)}: {old_state} {gray}-> {new_state}"
 
-    return perms_diff
+    return perms_diff + reset
 
 
 T = TypeVar("T")
 
 
-def get_diff(old_object: T, object: T, attrs: Dict[str, str]) -> str:
+async def get_diff(guild_id: int, old_object: T, object: T, attrs: Dict[str, str]) -> str:
     """
     A helper function for displaying differences between certain attributes
     Returns a formatted string containing the differences.
     The two objects are expected to share the same attributes.
     """
     diff = ""
+
+    is_colored = await is_color_enabled(guild_id)
+    gray = "[1;30m" if is_colored else ""
+    white = "[0;37m" if is_colored else ""
+    red = "[1;31m" if is_colored else ""
+    green = "[1;32m" if is_colored else ""
+    reset = "[0m" if is_colored else ""
+
     for attribute in attrs.keys():
         old = getattr(old_object, attribute)
         new = getattr(object, attribute)
 
         if hasattr(old, "name"):  # Handling flags enums
-            diff = f"{diff}\n{attrs[attribute]}: {old.name} -> {new.name}" if old != new else diff
+            diff = (
+                f"{diff}\n{white}{attrs[attribute]}: {red}{old.name} {gray}-> {green}{new.name}" if old != new else diff
+            )
         elif isinstance(old, datetime.timedelta):  # Handling timedeltas
-            diff = f"{diff}\n{attrs[attribute]}: {old.total_seconds()} -> {new.total_seconds()}" if old != new else diff
+            diff = (
+                f"{diff}\n{white}{attrs[attribute]}: {red}{old.total_seconds()} {gray}-> {green}{new.total_seconds()}"
+                if old != new
+                else diff
+            )
         else:
-            diff = f"{diff}\n{attrs[attribute]}: {old} -> {new}" if old != new else diff
-    return diff
+            diff = f"{diff}\n{white}{attrs[attribute]}: {red}{old} {gray}-> {green}{new}" if old != new else diff
+    return diff + reset
 
 
 def create_log_content(message: hikari.Message, max_length: Optional[int] = None) -> str:
@@ -419,14 +448,14 @@ async def role_update(plugin: lightbulb.Plugin, event: hikari.RoleUpdateEvent) -
             "icon_hash": "Icon Hash",
             "unicode_emoji": "Unicode Emoji",
         }
-        diff = get_diff(event.old_role, event.role, attrs)
-        perms_diff = get_perms_diff(event.old_role, event.role)
+        diff = await get_diff(event.guild_id, event.old_role, event.role, attrs)
+        perms_diff = await get_perms_diff(event.old_role, event.role)
         if not diff and not perms_diff:
             diff = "Changes could not be resolved."
 
         embed = hikari.Embed(
             title=f"🖊️ Role updated",
-            description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{moderator}\n**Changes:**```\n{diff}\n{f'Permissions: {perms_diff if perms_diff else ""}'}  ```""",
+            description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{moderator}`\n**Changes:**```ansi\n{diff}\n{f'Permissions: {perms_diff if perms_diff else ""}'}  ```""",
             color=plugin.app.embed_blue,
         )
         await log("roles", embed, event.guild_id)
@@ -487,12 +516,12 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
         if isinstance(event.channel, hikari.GuildVoiceChannel):
             attrs["video_quality_mode"] = "Video Quality"
 
-        diff = get_diff(event.old_channel, event.channel, attrs)
+        diff = await get_diff(event.guild_id, event.old_channel, event.channel, attrs)
         diff = diff or "Changes could not be resolved."
 
         embed = hikari.Embed(
             title=f"#️⃣ Channel updated",
-            description=f"Channel {event.channel.mention} was updated by `{moderator}`.\n**Changes:**\n```{diff}```",
+            description=f"Channel {event.channel.mention} was updated by `{moderator}`.\n**Changes:**\n```ansi\n{diff}```",
             color=plugin.app.embed_blue,
         )
         await log("channels", embed, event.guild_id)
@@ -546,12 +575,12 @@ async def guild_update(plugin: lightbulb.Plugin, event: hikari.GuildUpdateEvent)
             "widget_channel_id": "Widget channel",
             "nsfw_level": "NSFW Level",
         }
-        diff = get_diff(event.old_guild, event.guild, attrs)
+        diff = await get_diff(event.guild_id, event.old_guild, event.guild, attrs)
         diff = diff or "Changes could not be resolved."
 
         embed = hikari.Embed(
             title=f"🖊️ Guild updated",
-            description=f"Guild settings have been updated by `{moderator}`.\n**Changes:**\n```{diff}```",
+            description=f"Guild settings have been updated by `{moderator}`.\n**Changes:**\n```ansi\n{diff}```",
             color=plugin.app.embed_blue,
         )
         await log("guild_settings", embed, event.guild_id)

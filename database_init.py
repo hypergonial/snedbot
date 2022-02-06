@@ -246,6 +246,7 @@ try:
                     (
                         guild_id bigint NOT NULL,
                         log_channels json,
+                        color bool NOT NULL DEFAULT true,
                         PRIMARY KEY (guild_id),
                         FOREIGN KEY (guild_id)
                             REFERENCES global_config (guild_id)

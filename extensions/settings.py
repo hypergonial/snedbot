@@ -36,6 +36,27 @@ class SettingsContext(lightbulb.SlashContext):
 # Settings Menu Views
 
 
+class BooleanButton(miru.Button):
+    """A boolean toggle button."""
+
+    def __init__(self, *, state: bool, label: str = None, row: Optional[int] = None) -> None:
+        style = hikari.ButtonStyle.SUCCESS if state else hikari.ButtonStyle.DANGER
+        emoji = "✔️" if state else "✖️"
+
+        self.state = state
+
+        super().__init__(style=style, label=label, emoji=emoji, row=row)
+
+    async def callback(self, context: miru.Context) -> None:
+        self.state = not self.state
+
+        self.style = hikari.ButtonStyle.SUCCESS if self.state else hikari.ButtonStyle.DANGER
+        self.emoji = "✔️" if self.state else "✖️"
+        self.view.value = (self.label, self.state)
+
+        self.view.stop()
+
+
 class OptionButton(miru.Button):
     """Button that sets view value to label, stops view."""
 
@@ -252,6 +273,8 @@ async def settings_logging(ctx: lightbulb.SlashContext, message: hikari.Message)
         options.append(miru.SelectOption(label=log_event_strings[log_category], value=log_category))
 
     view = SelectMenuView(ctx, options=options, placeholder="Select a logging category...", is_nested=True)
+    is_color = await logging.d.actions.is_color_enabled(ctx.guild_id)
+    view.add_item(BooleanButton(state=is_color, label="Color logs"))
     ctx.parent = "Main"
 
     message = await helpers.maybe_edit(message, embed=embed, components=view.build())
@@ -260,6 +283,13 @@ async def settings_logging(ctx: lightbulb.SlashContext, message: hikari.Message)
 
     if view.value in menu_actions.keys():
         return await menu_actions[view.value](ctx, message)
+
+    if isinstance(view.value, tuple) and view.value[0] == "Color logs":
+        await ctx.app.pool.execute(
+            """UPDATE log_config SET color = $1 WHERE guild_id = $2""", view.value[1], ctx.guild_id
+        )
+        await ctx.app.db_cache.refresh(table="log_config", guild_id=ctx.guild_id)
+        return await settings_logging(ctx, message)
 
     log_event = view.value
 

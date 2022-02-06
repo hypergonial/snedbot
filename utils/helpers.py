@@ -226,16 +226,14 @@ async def maybe_delete(message: hikari.Message) -> None:
     try:
         await message.delete()
     except:
-        raise
-        # pass
+        pass
 
 
 async def maybe_edit(message: hikari.Message, *args, **kwargs) -> None:
     try:
         return await message.edit(*args, **kwargs)
     except:
-        raise
-        # pass
+        pass
 
 
 def format_reason(
