@@ -4,6 +4,7 @@ import logging
 import hikari
 import lightbulb
 import miru
+from miru.ext import nav
 from models.bot import SnedBot
 from utils import helpers
 
@@ -16,7 +17,10 @@ test = lightbulb.Plugin("Test")
 @lightbulb.command("test", "aaa")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def test_cmd(ctx: lightbulb.SlashContext) -> None:
-    pass
+    embed = hikari.Embed(title="Page 2")
+    pages = ["Page 1", embed, "Page 3"]
+    navigator = nav.NavigatorView(pages=pages, timeout=1800)
+    await navigator.send(ctx.interaction, ephemeral=True)
 
 
 def load(bot: SnedBot) -> None:

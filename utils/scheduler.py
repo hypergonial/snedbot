@@ -40,8 +40,7 @@ class Scheduler:
 
             try:
                 time = dateparser.parse(timestr)
-            except Exception as error:
-                print(error)
+            except Exception:
                 if force_mode == "absolute":  # Only raise exception if this is the only conversion attempted
                     raise
             else:

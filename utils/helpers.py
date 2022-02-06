@@ -9,6 +9,7 @@ from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
 import miru
 
 import models
+from models import errors
 
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
@@ -76,6 +77,37 @@ def get_color(member: hikari.Member) -> hikari.Color:
                 return role.color
 
     return hikari.Color.from_rgb(0, 0, 0)
+
+
+def is_above(me: hikari.Member, member: hikari.Member) -> bool:
+    """
+    Returns True if me's top role's position is higher than the specified member's.
+    """
+    if me.get_top_role().position > member.get_top_role().position:
+        return True
+    return False
+
+
+def can_harm(
+    me: hikari.Member, member: hikari.Member, permission: hikari.Permissions, *, raise_error: bool = False
+) -> bool:
+    """
+    Returns True if "member" can be harmed by "me", also checks if "me" has "permission".
+    """
+
+    perms = lightbulb.utils.permissions_for(me)
+
+    if not (perms & permission):
+        if raise_error:
+            raise lightbulb.BotMissingRequiredPermission(perms=permission)
+        return False
+
+    if not is_above(me, member):
+        if raise_error:
+            raise errors.RoleHierarchyError
+        return False
+
+    return True
 
 
 def get_jump_url(message: hikari.Message):

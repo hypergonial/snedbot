@@ -38,12 +38,12 @@ class RoleButton(miru.Button):
     ):
         if not role:
             self.orphaned = True
-            return
+        else:
+            self.orphaned = False
 
         super().__init__(style=style, label=label, emoji=emoji, custom_id=f"{entry_id}:{role.id}")
         self.entry_id: int = entry_id
         self.role: hikari.Role = role
-        self.orphaned = False
 
     async def callback(self, ctx: miru.Context) -> None:
         """
@@ -55,7 +55,7 @@ class RoleButton(miru.Button):
         if self.orphaned:
             embed = hikari.Embed(
                 title="❌ Orphaned",
-                description="The role this button was pointing to was deleted!",
+                description="The role this button was pointing to was deleted! Please notify an administrator!",
                 color=0xFF0000,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)

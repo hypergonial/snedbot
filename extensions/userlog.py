@@ -706,15 +706,15 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             reason, moderator = strip_bot_reason(reason)
 
         if member.communication_disabled_until() is None:
-            embed = helpers.Embed(
+            embed = hikari.Embed(
                 title=f"🔉 User timeout removed",
-                description=f"**User:** `{member.name} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
+                description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
                 color=plugin.app.embed_green,
             )
         else:
-            embed = helpers.Embed(
+            embed = hikari.Embed(
                 title=f"🔇 User timed out",
-                description=f"""**User:** `{member.name} ({member.id})`
+                description=f"""**User:** `{member} ({member.id})`
 **Moderator:** `{moderator}` 
 **Until:** {helpers.format_dt(member.communication_disabled_until())} ({helpers.format_dt(member.communication_disabled_until(), style='R')})
 **Reason:** ```{reason}```""",
@@ -726,7 +726,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         """Nickname change handling"""
         embed = hikari.Embed(
             title=f"🖊️ Nickname changed",
-            description=f"**User:** `{member.name} ({member.id})`\nNickname before: `{old_member.nickname}`\nNickname after: `{member.nickname}`",
+            description=f"**User:** `{member} ({member.id})`\nNickname before: `{old_member.nickname}`\nNickname after: `{member.nickname}`",
             color=plugin.app.embed_blue,
         )
         await log("nickname", embed, event.guild_id)

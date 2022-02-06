@@ -12,7 +12,7 @@ from models import PunishFailed
 from models.bot import SnedBot
 import models
 from models.db_user import User
-from models.errors import BotPermissionsMissing
+from models.errors import RoleHierarchyError
 from models.timer import Timer
 from utils import helpers
 
@@ -169,7 +169,7 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: Optional
 
 
 @mod.listener(models.TimerCompleteEvent)
-async def timeout_extend(self, event: models.TimerCompleteEvent) -> None:
+async def timeout_extend(event: models.TimerCompleteEvent) -> None:
     """
     Extend timeouts longer than 28 days
     """
@@ -179,20 +179,18 @@ async def timeout_extend(self, event: models.TimerCompleteEvent) -> None:
     if timer.event != "timeout_extend":
         return
 
-    perms = lightbulb.utils.permissions_for(mod.app.cache.get_member(event.timer.guild_id, mod.app.user_id))
-    if not (perms & hikari.Permissions.MODERATE_MEMBERS):
-        return
-
     member = event.app.cache.get_member(timer.guild_id, timer.user_id)
     expiry = int(timer.notes)
 
     if member:
+        me = mod.app.cache.get_member(timer.guild_id, mod.app.user_id)
+        if not helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS):
+            return
 
-        await event.app.get_plugin("Logging").freeze_logging(timer.guild_id)
         if expiry - helpers.utcnow().timestamp() > max_timeout_seconds:
 
-            event.app.scheduler.create_timer(
-                helpers.utils.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+            await event.app.scheduler.create_timer(
+                helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
                 "timeout_extend",
                 timer.guild_id,
                 member.id,
@@ -207,8 +205,6 @@ async def timeout_extend(self, event: models.TimerCompleteEvent) -> None:
             timeout_for = helpers.utcnow() + datetime.timedelta(seconds=expiry - round(helpers.utcnow().timestamp()))
             await member.edit(communication_disabled_until=timeout_for, reason="Automatic timeout extension applied.")
 
-        await event.app.get_plugin("Logging").unfreeze_logging(timer.guild_id)
-
     else:
         db_user = await event.app.global_config.get_user(timer.user_id, timer.guild_id)
         if "timeout_on_join" not in db_user.flags.keys():
@@ -222,8 +218,8 @@ async def member_create(event: hikari.MemberCreateEvent):
     Reapply timeout if member left between two cycles
     """
 
-    perms = lightbulb.utils.permissions_for(mod.app.cache.get_member(event.guild_id, mod.app.user_id))
-    if not (perms & hikari.Permissions.MODERATE_MEMBERS):
+    me = mod.app.cache.get_member(event.guild_id, mod.app.user_id)
+    if not helpers.can_harm(me, event.member, hikari.Permissions.MODERATE_MEMBERS):
         return
 
     db_user: User = await event.app.global_config.get_user(event.member.id, event.guild_id)
@@ -237,15 +233,9 @@ async def member_create(event: hikari.MemberCreateEvent):
         # If this is in the past already
         return
 
-    perms = lightbulb.utils.permissions_for(event.app.user_id)
-    if not (perms & hikari.Permissions.MODERATE_MEMBERS):
-        return
-
-    await event.app.get_plugin("Logging").freeze_logging(event.guild_id)
-
     if expiry - helpers.utcnow().timestamp() > max_timeout_seconds:
-        event.app.scheduler.create_timer(
-            helpers.utils.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+        await event.app.scheduler.create_timer(
+            helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
             "timeout_extend",
             event.member.guild_id,
             event.member.id,
@@ -261,8 +251,6 @@ async def member_create(event: hikari.MemberCreateEvent):
             communication_disabled_until=expiry,
             reason="Automatic timeout extension applied.",
         )
-
-    await event.app.get_plugin("Logging").unfreeze_logging(event.guild_id)
 
 
 @mod.listener(hikari.MemberUpdateEvent)
@@ -291,7 +279,7 @@ async def member_update(event: hikari.MemberUpdateEvent):
 
 
 async def timeout(
-    member: hikari.Member, moderator: hikari.Member, duration: Optional[str] = None, reason: Optional[str] = None
+    member: hikari.Member, moderator: hikari.Member, duration: datetime.datetime, reason: Optional[str] = None
 ) -> datetime.datetime:
     """
     Times out a member for the specified duration, converts duration from string.
@@ -299,11 +287,10 @@ async def timeout(
     """
 
     reason = helpers.format_reason(reason, moderator, max_length=512)
-    duration = mod.app.scheduler.convert_time(duration)
 
-    perms = lightbulb.utils.permissions_for(mod.app.cache.get_member(member.guild_id, mod.app.user_id))
-    if not (perms & hikari.Permissions.MODERATE_MEMBERS):
-        raise BotPermissionsMissing(hikari.Permissions.MODERATE_MEMBERS)
+    me = mod.app.cache.get_member(member.guild_id, mod.app.user_id)
+    # Raise error if cannot harm user
+    helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
 
     if duration > helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds):
         await mod.app.scheduler.create_timer(
@@ -373,8 +360,6 @@ async def ban(
     ------
     RuntimeError
         Both soft & tempban were specified.
-    BotPermissionsMissing
-        The bot has no permissions to ban in this guild.
     """
 
     reason = reason or "No reason provided."
@@ -382,13 +367,19 @@ async def ban(
     if duration and soft:
         raise RuntimeError("Ban type cannot be soft when a duration is specified.")
 
-    perms = lightbulb.utils.permissions_for(mod.app.cache.get_member(guild_id, mod.app.user_id))
+    me = mod.app.cache.get_member(guild_id, mod.app.user_id)
+
+    perms = lightbulb.utils.permissions_for(me)
+
     if not (perms & hikari.Permissions.BAN_MEMBERS):
-        raise BotPermissionsMissing(hikari.Permissions.BAN_MEMBERS)
+        raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.BAN_MEMBERS)
+
+    if isinstance(user, hikari.Member) and not helpers.is_above(me, user):
+        raise RoleHierarchyError
 
     if duration:
         try:
-            duration = mod.app.scheduler.convert_time(duration)
+            duration = await mod.app.scheduler.convert_time(duration)
             reason = f"[TEMPBAN] Banned until: {duration} (UTC)  |  {reason}"
         except ValueError:
             embed = hikari.Embed(
@@ -416,7 +407,7 @@ async def ban(
             await mod.app.rest.unban_user(guild_id, user.id, reason="Automatic unban by softban.")
 
         elif duration:
-            mod.app.scheduler.create_timer(expires=duration, event="tempban", guild_id=guild_id, user_id=user.id)
+            await mod.app.scheduler.create_timer(expires=duration, event="tempban", guild_id=guild_id, user_id=user.id)
 
         return embed
 
@@ -451,19 +442,14 @@ async def kick(
     hikari.Embed
         The response embed to display to the user. May include any
         potential input errors.
-
-    Raises
-    ------
-    BotPermissionsMissing
-        The bot has no permissions to kick in this guild.
     """
 
     raw_reason = reason or "No reason provided."
     reason = helpers.format_reason(reason, moderator, max_length=512)
 
-    perms = lightbulb.utils.permissions_for(member)
-    if not (perms & hikari.Permissions.KICK_MEMBERS):
-        raise BotPermissionsMissing(hikari.Permissions.KICK_MEMBERS)
+    me = mod.app.cache.get_member(member.guild_id, mod.app.user_id)
+    # Raise error if cannot harm user
+    helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
 
     try:
         await mod.app.rest.kick_user(member.guild_id, member, reason=reason)
@@ -613,3 +599,78 @@ def load(bot: SnedBot) -> None:
 
 def unload(bot: SnedBot) -> None:
     bot.remove_plugin(mod)
+
+
+@mod.command()
+@lightbulb.option("reason", "The reason for timing out this user.", required=False)
+@lightbulb.option("duration", "The duration to time the user out for.")
+@lightbulb.option("user", "The user to time out.", type=hikari.Member)
+@lightbulb.command("timeout", "Timeout a user, supports durations longer than 28 days.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def timeout_cmd(ctx: lightbulb.SlashContext) -> None:
+    member: hikari.Member = ctx.options.user
+    reason: str = helpers.format_reason(ctx.options.reason, max_length=1024)
+
+    if member.communication_disabled_until() is not None:
+        embed = hikari.Embed(
+            title="❌ User already timed out",
+            description="User is already timed out. Use `/timeouts remove` to remove it.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    try:
+        duration: datetime.datetime = await ctx.app.scheduler.convert_time(ctx.options.duration)
+    except ValueError:
+        embed = hikari.Embed(
+            title="❌ Invalid data entered",
+            description="Your entered timeformat is invalid.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+
+    await timeout(member, ctx.member, duration, reason)
+
+    embed = hikari.Embed(
+        title="🔇 " + "User timed out",
+        description=f"**{member}** has been timed out until {helpers.format_dt(duration)}.\n**Reason:** ```{reason}```",
+        color=ctx.app.embed_green,
+    )
+    await ctx.respond(embed=embed)
+
+
+@mod.command()
+@lightbulb.command("timeouts", "Manage timeouts.")
+@lightbulb.implements(lightbulb.SlashCommandGroup)
+async def timeouts(ctx: lightbulb.SlashContext) -> None:
+    pass
+
+
+@timeouts.child()
+@lightbulb.option("reason", "The reason for timing out this user.", required=False)
+@lightbulb.option("user", "The user to time out.", type=hikari.Member)
+@lightbulb.command("remove", "Remove timeout from a user.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def timeouts_remove_cmd(ctx: lightbulb.SlashContext) -> None:
+    member: hikari.Member = ctx.options.user
+    reason: str = helpers.format_reason(ctx.options.reason, max_length=1024)
+
+    if member.communication_disabled_until() is None:
+        embed = hikari.Embed(
+            title="❌ User not timed out",
+            description="This user is not timed out.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+    await remove_timeout(member, ctx.member, reason)
+
+    embed = hikari.Embed(
+        title="🔉 " + "Timeout removed",
+        description=f"**{member}**'s timeout was removed.\n**Reason:** ```{reason}```",
+        color=ctx.app.embed_green,
+    )
+    await ctx.respond(embed=embed)
