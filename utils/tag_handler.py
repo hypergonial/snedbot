@@ -1,7 +1,7 @@
 from typing import List
 
-from objects.models.errors import TagAlreadyExists, TagNotFound
-from objects.models.tag import Tag
+from models.errors import TagAlreadyExists, TagNotFound
+from models.tag import Tag
 
 
 class TagHandler:

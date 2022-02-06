@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import re
-from typing import Optional, TypeVar, Union, List
+from typing import Optional, TypeVar, Union, List, Any
 
 import hikari
 import lightbulb
@@ -38,7 +38,7 @@ def add_embed_footer(embed: hikari.Embed, invoker: hikari.Member) -> hikari.Embe
     """
     Add a note about the command invoker in the embed passed.
     """
-    avatar_url = get_display_avatar(invoker)
+    avatar_url = invoker.display_avatar_url
 
     embed.set_footer(text=f"Requested by {invoker}", icon=avatar_url)
     return embed
@@ -74,6 +74,8 @@ def get_color(member: hikari.Member) -> hikari.Color:
         for role in roles:
             if role.color != hikari.Color.from_rgb(0, 0, 0):
                 return role.color
+
+    return hikari.Color.from_rgb(0, 0, 0)
 
 
 def get_jump_url(message: hikari.Message):
@@ -125,10 +127,40 @@ async def ask(
     return_type: T,
     embed_or_content: Union[str, hikari.Embed],
     placeholder: str = None,
+    ignore: Optional[List[Any]] = None,
     message: Optional[hikari.Message] = None,
-) -> T:
-    """
-    A function that abstracts away the limitations of select menus by falling back to a text input from the user if limits are exceeded.
+) -> Union[T, Any]:
+    """A function that abstracts away the limitations of select menus
+    by falling back to a text input from the user if limits are exceeded.
+
+    Parameters
+    ----------
+    ctx : lightbulb.Context
+        The lightbulb context to use for converters.
+    options : List[miru.SelectOption]
+        A list of select options to use, if not falling back for text input.
+    return_type : T
+        The expected return type, an appropriate converter will be used.
+    embed_or_content : Union[str, hikari.Embed]
+        The embed or content to use for the prompt.
+    placeholder : str, optional
+        The select menu's placeholder, by default None
+    ignore : List[Any], optional
+        Return values to skip conversion for, by default None
+    message : Optional[hikari.Message], optional
+        If provided, a message to edit, by default None
+
+    Returns
+    -------
+    Union[T, Any]
+        An object corresponding to the specified return type, or raw value if in ignore.
+
+    Raises
+    ------
+    TypeError
+        An invalid return_type was provided or conversion to it failed.
+    asyncio.TimeoutError
+        Timed out without a response.
     """
     if return_type not in CONVERTER_TYPE_MAPPING.keys():
         return TypeError(
@@ -144,7 +176,7 @@ async def ask(
         invalid_select = True
     else:
         for option in options:
-            if len(option.label) > 25 or len(option.description) > 100:
+            if len(option.label) > 25 or (option.description and len(option.description) > 100):
                 invalid_select = True
 
     if isinstance(embed_or_content, str):
@@ -158,7 +190,7 @@ async def ask(
 
     if not invalid_select:
         view = models.AuthorOnlyView(ctx)
-        view.add_item(miru.Select(placeholder=placeholder, options=options))
+        view.add_item(models.StopSelect(placeholder=placeholder, options=options))
 
         if message:
             message = await message.edit(content=content, embeds=embeds, components=view.build())
@@ -168,8 +200,10 @@ async def ask(
 
         view.start(message)
         await view.wait()
-        if view.children[0].values is not None:
-            return converter.convert(view.children[0].values[0])
+        if view.children[0].values:
+            if view.children[0].values[0] in ignore:
+                return view.children[0].values[0]
+            return await converter.convert(view.children[0].values[0])
 
         raise asyncio.TimeoutError("View timed out without response.")
 
@@ -183,11 +217,29 @@ async def ask(
 
         event = await ctx.app.wait_for(hikari.MessageCreateEvent, timeout=120.0, predicate=predicate)
         if event.content:
-            return converter.convert(event.content)
+            if event.content in ignore:
+                return event.content
+            return await converter.convert(event.content)
+
+
+async def maybe_delete(message: hikari.Message) -> None:
+    try:
+        await message.delete()
+    except:
+        raise
+        # pass
+
+
+async def maybe_edit(message: hikari.Message, *args, **kwargs) -> None:
+    try:
+        return await message.edit(*args, **kwargs)
+    except:
+        raise
+        # pass
 
 
 def format_reason(
-    reason: str = None, moderator: Optional[hikari.Member] = None, max_length: Optional[int] = 512
+    reason: str = None, moderator: Optional[hikari.Member] = None, *, max_length: Optional[int] = 512
 ) -> str:
     """
     Format a reason for a moderation action

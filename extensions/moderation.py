@@ -19,7 +19,7 @@ from utils import helpers
 logger = logging.getLogger(__name__)
 
 mod = lightbulb.Plugin("Moderation", include_datastore=True)
-mod.d.actions = {}
+mod.d.actions = lightbulb.utils.DataStore()
 max_timeout_seconds = 2246400  # Duration of segments to break timeouts up to
 
 
@@ -29,7 +29,7 @@ default_mod_settings = {
 }
 
 
-async def get_settings(self, guild_id: int) -> Dict[str, bool]:
+async def get_settings(guild_id: int) -> Dict[str, bool]:
     records = await mod.app.db_cache.get(table="mod_config", guild_id=guild_id)
     if records:
         mod_settings = {
@@ -40,6 +40,9 @@ async def get_settings(self, guild_id: int) -> Dict[str, bool]:
         mod_settings = default_mod_settings
 
     return mod_settings
+
+
+mod.d.actions.get_settings = get_settings
 
 
 def mod_punish(func):
@@ -114,13 +117,13 @@ def mod_punish(func):
     return inner
 
 
-async def get_notes(self, user_id: Snowflakeish, guild_id: Snowflakeish) -> List[str]:
+async def get_notes(user_id: Snowflakeish, guild_id: Snowflakeish) -> List[str]:
     """Returns a list of strings corresponding to a user's journal."""
     db_user = await mod.app.global_config.get_user(user_id, guild_id)
     return db_user.notes
 
 
-async def add_note(self, user_id: Snowflakeish, guild_id: Snowflakeish, note: str) -> None:
+async def add_note(user_id: Snowflakeish, guild_id: Snowflakeish, note: str) -> None:
     """Add a new journal entry to this user."""
     note = helpers.format_reason(note, max_length=256)
 
@@ -133,7 +136,7 @@ async def add_note(self, user_id: Snowflakeish, guild_id: Snowflakeish, note: st
     await mod.app.global_config.update_user(db_user)
 
 
-async def clear_notes(self, user_id: Snowflakeish, guild_id: Snowflakeish) -> None:
+async def clear_notes(user_id: Snowflakeish, guild_id: Snowflakeish) -> None:
     """Clear all notes a user has."""
 
     db_user = await mod.app.global_config.get_user(user_id, guild_id)
@@ -159,7 +162,7 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: Optional
         color=mod.app.warn_color,
     )
 
-    await mod.app.get_plugin("Logging").log("warn", log_embed, member.guild_id)
+    await mod.app.get_plugin("Logging").d.actions.log("warn", log_embed, member.guild_id)
     return embed
 
     # TODO: Add note
@@ -432,6 +435,28 @@ async def kick(
     *,
     reason: Optional[str] = None,
 ) -> hikari.Embed:
+    """[summary]
+
+    Parameters
+    ----------
+    member : hikari.Member
+        The member that needs to be kicked.
+    moderator : hikari.Member
+        The moderator to log the kick under.
+    reason : Optional[str], optional
+        The reason for the kick, by default None
+
+    Returns
+    -------
+    hikari.Embed
+        The response embed to display to the user. May include any
+        potential input errors.
+
+    Raises
+    ------
+    BotPermissionsMissing
+        The bot has no permissions to kick in this guild.
+    """
 
     raw_reason = reason or "No reason provided."
     reason = helpers.format_reason(reason, moderator, max_length=512)
@@ -458,11 +483,133 @@ async def kick(
         return embed
 
 
+@mod.command()
+@lightbulb.command("journal", "Access and manage the moderation journal.")
+@lightbulb.implements(lightbulb.SlashCommandGroup)
+async def journal(ctx: lightbulb.SlashContext) -> None:
+    pass
+
+
+@journal.child()
+@lightbulb.option("user", "The user to retrieve the journal for.", type=hikari.User)
+@lightbulb.command("get", "Retrieve the journal for the specified user.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def journal_get(ctx: lightbulb.SlashContext) -> None:
+
+    notes = await get_notes(ctx.options.user.id, ctx.guild_id)
+    paginator = lightbulb.utils.StringPaginator(max_chars=1500)
+
+    if notes:
+        notes_fmt = []
+        for i, note in enumerate(notes):
+            notes_fmt.append(f"`#{i}` {note}")
+
+        for note in notes_fmt:
+            paginator.add_line(note)
+
+        embeds = []
+        for page in paginator.build_pages():
+            embed = hikari.Embed(
+                title="📒 " + "Journal entries for this user:",
+                description=page,
+                color=ctx.app.embed_blue,
+            )
+            embeds.append(embed)
+
+        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)
+
+        await navigator.send(ctx.interaction)
+
+    else:
+        embed = hikari.Embed(
+            title="📒 Journal entries for this user:",
+            description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {ctx.options.user}` ",
+            color=ctx.app.embed_blue,
+        )
+        await ctx.respond(embed=embed)
+
+
+@journal.child()
+@lightbulb.option("note", "The journal note to add.")
+@lightbulb.option("user", "The user to add a journal entry for.", type=hikari.User)
+@lightbulb.command("add", "Add a new journal entry for the specified user.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def journal_add(ctx: lightbulb.SlashContext) -> None:
+
+    await add_note(ctx.options.user.id, ctx.guild_id, f"💬 **Note by {ctx.author}:** {ctx.options.note}")
+    embed = hikari.Embed(
+        title="✅ Journal entry added!",
+        description=f"Added a new journal entry to user **{ctx.options.user}**. You can view this user's journal via the command `/journal get {ctx.options.user}`.",
+        color=ctx.app.embed_green,
+    )
+    await ctx.respond(embed=embed)
+
+
+@mod.command()
+@lightbulb.option("reason", "The reason for this warn", required=False)
+@lightbulb.option("user", "The user to be warned.", type=hikari.Member)
+@lightbulb.command("warn", "Warn a user. This gets added to their journal and their warn counter is incremented.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def warn_cmd(ctx: lightbulb.SlashContext) -> None:
+
+    embed = await warn(ctx.options.user, ctx.member, reason=ctx.options.reason)
+    await ctx.respond(embed=embed)
+
+
+@mod.command()
+@lightbulb.command("warns", "Manage warnings.")
+@lightbulb.implements(lightbulb.SlashCommandGroup)
+async def warns(ctx: lightbulb.SlashContext) -> None:
+    pass
+
+
+@warns.child()
+@lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
+@lightbulb.command("list", "List the current warning count for a user.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def warns_list(ctx: lightbulb.SlashContext) -> None:
+    db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
+    warns = db_user.warns
+    embed = hikari.Embed(
+        title=f"{ctx.options.user}'s warnings",
+        description=f"**Warnings:** `{warns}`",
+        color=ctx.app.warn_color,
+    )
+    embed.set_thumbnail(ctx.options.user.display_avatar_url)
+    await ctx.respond(embed=embed)
+
+
+@warns.child()
+@lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
+@lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
+@lightbulb.command("clear", "Clear warnings for the specified user.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def warns_clear(ctx: lightbulb.SlashContext) -> None:
+    db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
+    db_user.warns = 0
+    await ctx.app.global_config.update_user(db_user)
+
+    reason = helpers.format_reason(ctx.options.reason)
+
+    embed = hikari.Embed(
+        title="✅ Warnings cleared",
+        description=f"**{ctx.options.user}**'s warnings have been cleared.\n**Reason:** ```{reason}```",
+        color=ctx.app.embed_green,
+    )
+    log_embed = hikari.Embed(
+        title="⚠️ Warnings cleared.",
+        description=f"{ctx.options.user.mention}'s warnings have been cleared by {ctx.author.mention}.\n**Reason:** ```{reason}```",
+        color=ctx.app.embed_green,
+    )
+
+    await add_note(ctx.options.user.id, ctx.guild_id, f"⚠️ **Warnings cleared by {ctx.author}:** {reason}")
+    await mod.app.get_plugin("Logging").d.actions.log("warn", log_embed, ctx.guild_id)
+    await ctx.respond(embed=embed)
+
+
 def load(bot: SnedBot) -> None:
-    logging.info("Adding plugin: Moderation")
     bot.add_plugin(mod)
 
 
 def unload(bot: SnedBot) -> None:
-    logging.info("Removing plugin: Moderation")
     bot.remove_plugin(mod)

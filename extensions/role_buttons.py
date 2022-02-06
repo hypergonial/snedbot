@@ -120,7 +120,7 @@ async def start_rolebuttons(event: hikari.StartedEvent) -> None:
     for msg_id, buttons in add_to_persistent_views.items():
         # Use message_id optionally for improved accuracy
         view = PersistentRoleView(buttons)
-        view.start_listener(message_id=msg_id)
+        view.start_listener(message=msg_id)
 
     logger.info(f"Started listeners for {count} button-roles!")
 
@@ -351,10 +351,8 @@ async def rolebutton_add(ctx: lightbulb.SlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    logging.info("Adding plugin: Role-Buttons")
     bot.add_plugin(role_buttons)
 
 
 def unload(bot: SnedBot) -> None:
-    logging.info("Removing plugin: Role-Buttons")
     bot.remove_plugin(role_buttons)

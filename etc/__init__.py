@@ -1,1 +1,1 @@
-from perms_str import *
+from .perms_str import *

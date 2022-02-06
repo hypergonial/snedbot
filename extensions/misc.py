@@ -215,10 +215,8 @@ async def serverinfo(ctx: lightbulb.SlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    logging.info("Adding plugin: Miscellaneous Commands")
     bot.add_plugin(misc)
 
 
 def unload(bot: SnedBot) -> None:
-    logging.info("Removing plugin: Miscellaneous Commands")
     bot.remove_plugin(misc)

@@ -6,8 +6,8 @@ import re
 from dateutil import parser as dateparser
 import hikari
 import Levenshtein as lev
-from models import TimerCompleteEvent
-from models import Timer
+from models.events import TimerCompleteEvent
+from models.timer import Timer
 from utils.tasks import IntervalLoop
 
 logger = logging.getLogger(__name__)

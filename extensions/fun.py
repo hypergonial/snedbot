@@ -473,10 +473,8 @@ async def wiki(ctx: lightbulb.SlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    logging.info("Adding plugin: Fun")
     bot.add_plugin(fun)
 
 
 def unload(bot: SnedBot) -> None:
-    logging.info("Removing plugin: Fun")
     bot.remove_plugin(fun)

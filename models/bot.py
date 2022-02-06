@@ -35,7 +35,7 @@ class SnedBot(lightbulb.BotApp):
         self.experimental = config["experimental"]
 
         if self.experimental:
-            default_enabled_guilds = (config["home_guild"]) if isinstance(config["home_guild"], int) else ()
+            default_enabled_guilds = (config["debug_guilds"]) if config["debug_guilds"] else ()
             db_name = "sned_exp"
         else:
             default_enabled_guilds = ()
@@ -114,7 +114,6 @@ class SnedBot(lightbulb.BotApp):
         user = self.get_me()
         self._user_id = user.id
         self._started.set()
-        self.user_id = user.id
 
         self.db_cache = cache.Caching(self)
         self.global_config = ConfigHandler(self)

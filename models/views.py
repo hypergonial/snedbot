@@ -5,6 +5,15 @@ import hikari
 import lightbulb
 
 
+class StopSelect(miru.Select):
+    """
+    A select that stops the view after interaction.
+    """
+
+    async def callback(self, context: miru.Context) -> None:
+        self.view.stop()
+
+
 class AuthorOnlyView(miru.View):
     """
     A navigator that only works for the user who invoked it.

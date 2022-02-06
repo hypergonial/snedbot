@@ -406,12 +406,10 @@ async def tag_search(ctx: lightbulb.SlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    logging.info("Adding plugin: Tags")
     tag_handler = TagHandler(bot)
     bot.add_plugin(tags)
     tags.d.tag_handler = tag_handler
 
 
 def unload(bot: SnedBot) -> None:
-    logging.info("Removing plugin: Tags")
     bot.remove_plugin(tags)

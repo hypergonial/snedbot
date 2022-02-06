@@ -12,4 +12,5 @@ config = {
     "home_guild": 123456789,  # ID of guild to send debug info to (optional)
     "error_logging_channel": 123456789,  # Sends tracebacks of command errors here (optional)
     "db_backup_channel": 123456789,  # Sends daily database backup files here (optional)
+    "debug_guilds": (123, 456, 789),  # Register global slash only under these guilds, leave empty in prod
 }

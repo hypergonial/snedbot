@@ -27,6 +27,7 @@ if os.name != "nt":  # Lol imagine using Windows
 initial_extensions = [
     "extensions.userlog",
     "extensions.moderation",
+    "extensions.settings",
     "extensions.reminders",
     "extensions.fun",
     "extensions.test",

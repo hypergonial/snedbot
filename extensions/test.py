@@ -20,10 +20,8 @@ async def test_cmd(ctx: lightbulb.SlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    logging.info("Adding plugin: Test")
     bot.add_plugin(test)
 
 
 def unload(bot: SnedBot) -> None:
-    logging.info("Removing plugin: Test")
     bot.remove_plugin(test)

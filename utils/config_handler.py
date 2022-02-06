@@ -4,8 +4,8 @@ from typing import List
 
 import asyncpg
 
-from objects.models.db_user import User
-from objects.utils import tasks
+from models.db_user import User
+from utils import tasks
 
 logger = logging.getLogger(__name__)
 
@@ -87,9 +87,7 @@ class ConfigHandler:
             )
             return user
         else:
-            user = User(user_id=user_id, guild_id=guild_id)  # Generate a new db user if none exists
-            await self.update_user(user)
-            return user
+            return User(user_id, guild_id, flags=None, notes=None, warns=0)
 
     async def get_all_guild_users(self, guild_id) -> List[User]:
         """
