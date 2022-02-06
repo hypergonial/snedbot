@@ -469,17 +469,16 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
         event.channel
 
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
-
         attrs = {
             "name": "Name",
             "position": "Position",
             "permission_overwrites": "Permission Overwrites",
-            "is_nsfw": "NSFW",
             "parent_id": "Category",
         }
         if isinstance(event.channel, hikari.TextableGuildChannel):
             attrs["topic"] = "Topic"
-        elif isinstance(event.channel, hikari.GuildTextChannel):
+            attrs["is_nsfw"] = "Is NSFW"
+        if isinstance(event.channel, hikari.GuildTextChannel):
             attrs["rate_limit_per_user"] = "Slowmode duration"
         if isinstance(event.channel, (hikari.GuildVoiceChannel, hikari.GuildStageChannel)):
             attrs["bitrate"] = "Bitrate"
