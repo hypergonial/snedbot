@@ -1,7 +1,10 @@
 import asyncio
+from __future__ import annotations
+
 import datetime
 import logging
 import re
+import typing
 
 from dateutil import parser as dateparser
 import hikari
@@ -13,6 +16,10 @@ from utils.tasks import IntervalLoop
 logger = logging.getLogger(__name__)
 
 
+if typing.TYPE_CHECKING:
+    from models.bot import SnedBot
+
+
 class Scheduler:
     """
     All timer-related functionality, including time conversion from strings,
@@ -20,12 +27,11 @@ class Scheduler:
     Essentially the internal scheduler of the bot.
     """
 
-    def __init__(self, bot):
-
-        self.bot = bot
-        self.current_timer = None
-        self.currenttask = None
-        self.timer_loop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
+    def __init__(self, bot: SnedBot):
+        self.bot: SnedBot = bot
+        self.current_timer: Timer = None  # Currently active timer that is being awaited
+        self.current_task: asyncio.Task = None  # Current task that is handling current_timer
+        self.timer_loop: IntervalLoop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
         self.timer_loop.start()
 
     async def convert_time(self, timestr: str, force_mode: str = None) -> datetime.datetime:
@@ -184,8 +190,8 @@ class Scheduler:
         except asyncio.CancelledError:
             raise
         except (OSError, hikari.GatewayServerClosedConnectionError):
-            self.currenttask.cancel()
-            self.currenttask = asyncio.create_task(self.dispatch_timers())
+            self.current_task.cancel()
+            self.current_task = asyncio.create_task(self.dispatch_timers())
 
     async def update_timer(
         self,
@@ -214,8 +220,8 @@ class Scheduler:
             )
         if self.current_timer and self.current_timer.id == entry_id:
             logger.debug("Updating timers resulted in reshuffling.")
-            self.currenttask.cancel()
-            self.currenttask = asyncio.create_task(self.dispatch_timers())
+            self.current_task.cancel()
+            self.current_task = asyncio.create_task(self.dispatch_timers())
 
     async def get_timer(self, entry_id: int, guild_id: int) -> Timer:
         """Retrieve a pending timer"""
@@ -279,10 +285,10 @@ class Scheduler:
         # Then we reboot the dispatch_timers() function to re-check for the latest timer.
         if self.current_timer and expires < self.current_timer.expires:
             logger.debug("Reshuffled timers, this is now the latest timer.")
-            self.currenttask.cancel()
-            self.currenttask = asyncio.create_task(self.dispatch_timers())
+            self.current_task.cancel()
+            self.current_task = asyncio.create_task(self.dispatch_timers())
         elif self.current_timer is None:
-            self.currenttask = asyncio.create_task(self.dispatch_timers())
+            self.current_task = asyncio.create_task(self.dispatch_timers())
         return timer
 
     async def cancel_timer(self, entry_id: int, guild_id: int) -> Timer:
@@ -296,13 +302,15 @@ class Scheduler:
                 """DELETE FROM timers WHERE id = $1 AND guild_id = $2""", timer.id, timer.guild_id
             )
             if self.current_timer and self.current_timer.id == int(timer.id):
-                self.currenttask.cancel()
-                self.currenttask = asyncio.create_task(self.dispatch_timers())
+                self.current_task.cancel()
+                self.current_task = asyncio.create_task(self.dispatch_timers())
             return timer
 
     async def wait_for_active_timers(self):
         """
         Check every hour to see if new timers meet criteria in the database.
         """
-        if self.currenttask is None:
-            self.currenttask = asyncio.create_task(self.dispatch_timers())
+        await self.bot.wait_until_started()
+
+        if self.current_task is None:
+            self.current_task = asyncio.create_task(self.dispatch_timers())

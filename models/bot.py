@@ -15,6 +15,15 @@ from utils import cache, scheduler
 
 
 class SnedBot(lightbulb.BotApp):
+    """A customized subclass of lightbulb.BotApp
+
+    Parameters
+    ----------
+    config : Dict[str, Any]
+        The bot configuration to initialize the bot with.
+        See the included config_example.py for formatting help.
+    """
+
     def __init__(self, config: Dict[str, Any]) -> None:
         self.loop = asyncio.get_event_loop()
         self._started = asyncio.Event()
