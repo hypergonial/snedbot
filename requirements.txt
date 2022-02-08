@@ -1,5 +1,6 @@
-hikari
-hikari-lightbulb
-hikari-miru
+hikari>=2.0.0.dev106
+hikari-lightbulb>=2.2.0
+hikari-miru>=1.1.1
+perspective.py>=0.1.1
 Levenshtein
 python-dateutil

@@ -11,7 +11,8 @@ from lightbulb.ext import tasks
 import miru
 
 from utils.config_handler import ConfigHandler
-from utils import cache, scheduler, perspective
+from utils import cache, scheduler
+import perspective
 
 
 class SnedBot(lightbulb.BotApp):
@@ -71,7 +72,7 @@ class SnedBot(lightbulb.BotApp):
         miru.load(self)
 
         # Some global variables
-        self._base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+        self._base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
         self.skip_db_backup = True
         self._user_id: Optional[Snowflake] = None
 
@@ -127,7 +128,7 @@ class SnedBot(lightbulb.BotApp):
         self.db_cache = cache.Caching(self)
         self.global_config = ConfigHandler(self)
         self.scheduler = scheduler.Scheduler(self)
-        self.perspective = perspective.Client(self.config["perspective_api_key"])
+        self.perspective = perspective.Client(self.config["perspective_api_key"], do_not_store=True)
 
         logging.info(f"Startup complete, initialized as {user}")
 
