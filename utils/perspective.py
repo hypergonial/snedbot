@@ -176,7 +176,7 @@ class Client:
         await event.wait()
         return self._values.pop(key)
 
-    async def analyize(
+    async def analyze(
         self,
         text: str,
         languages: List[str],

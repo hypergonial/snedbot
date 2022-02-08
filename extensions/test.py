@@ -22,7 +22,7 @@ async def testmultiple_cmd(ctx: lightbulb.SlashContext) -> None:
     attribs = perspective.Attribute(perspective.AttributeType.TOXICITY)
     resps = []
     for i in range(1, 10):
-        resp: perspective.AnalysisResponse = await ctx.app.perspective.analyize(text, ["en"], [attribs])
+        resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(text, ["en"], [attribs])
         resps.append(resp)
 
     resp_strs = []
@@ -47,7 +47,7 @@ async def test_cmd(ctx: lightbulb.SlashContext) -> None:
         perspective.Attribute(perspective.AttributeType.THREAT),
     ]
 
-    resp: perspective.AnalysisResponse = await ctx.app.perspective.analyize(text, ["en"], attribs)
+    resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(text, ["en"], attribs)
 
     content = ""
     for score in resp.attribute_scores:
