@@ -795,7 +795,7 @@ async def timeouts_remove_cmd(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option(
     "days_to_delete",
     "The number of days of messages to delete. If not set, defaults to 0.",
-    choices=[0, 1, 2, 3, 4, 5, 6, 7],
+    choices=["0", "1", "2", "3", "4", "5", "6", "7"],
     required=False,
     default=0,
 )
@@ -823,7 +823,7 @@ async def ban_cmd(ctx: lightbulb.SlashContext) -> None:
         ctx.guild_id,
         ctx.member,
         duration=duration,
-        days_to_delete=ctx.options.days_to_delete,
+        days_to_delete=int(ctx.options.days_to_delete),
         reason=ctx.options.reason,
     )
     await ctx.respond(embed=embed)
@@ -839,13 +839,13 @@ async def ban_cmd(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option(
     "days_to_delete",
     "The number of days of messages to delete. If not set, defaults to 0.",
-    choices=[0, 1, 2, 3, 4, 5, 6, 7],
+    choices=["0", "1", "2", "3", "4", "5", "6", "7"],
     required=False,
     default=0,
 )
 @lightbulb.option("reason", "The reason why this ban was performed", required=False)
 @lightbulb.option("user", "The user to be banned", type=hikari.User)
-@lightbulb.command("ban", "Bans a user from the server. Optionally specify a duration to make this a tempban.")
+@lightbulb.command("softban", "Bans a user from the server. Optionally specify a duration to make this a tempban.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def softban_cmd(ctx: lightbulb.SlashContext) -> None:
 
@@ -855,7 +855,7 @@ async def softban_cmd(ctx: lightbulb.SlashContext) -> None:
         ctx.guild_id,
         ctx.member,
         soft=True,
-        days_to_delete=ctx.options.days_to_delete,
+        days_to_delete=int(ctx.options.days_to_delete),
         reason=ctx.options.reason,
     )
     await ctx.respond(embed=embed)
@@ -927,7 +927,7 @@ async def kick_cmd(ctx: lightbulb.SlashContext) -> None:
 async def massban(ctx: lightbulb.SlashContext) -> None:
 
     predicates = [
-        lambda member: not member.bot,
+        lambda member: not member.is_bot,
         lambda member: member.id != ctx.author.id,
         lambda member: member.discriminator != "0000",  # Deleted users
     ]
@@ -1016,7 +1016,7 @@ async def massban(ctx: lightbulb.SlashContext) -> None:
         content.append(f"{member} ({member.id})  |  Joined: {member.joined_at}  |  Created: {member.created_at}")
 
     content = "\n".join(content)
-    file = hikari.Bytes(content.encode("utf-8"), filename="members_to_ban.txt")
+    file = hikari.Bytes(content.encode("utf-8"), "members_to_ban.txt")
 
     if ctx.options.show == True:
         return await ctx.respond(attachment=file, flags=hikari.MessageFlag.EPHEMERAL)
@@ -1055,7 +1055,7 @@ async def massban(ctx: lightbulb.SlashContext) -> None:
         description=f"Banned **{count}/{len(to_ban)}** users.\n**Moderator:** `{ctx.author} ({ctx.author.id if ctx.author else '0'})`\n**Reason:** ```{reason}```",
         color=ctx.app.error_color,
     )
-    file = hikari.Bytes(content.encode("utf-8"), filename="members_banned.txt")
+    file = hikari.Bytes(content.encode("utf-8"), "members_banned.txt")
     await userlog.log("ban", log_embed, ctx.guild_id, file=file, bypass=True)
 
     embed = hikari.Embed(

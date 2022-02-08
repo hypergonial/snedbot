@@ -11,7 +11,7 @@ from lightbulb.ext import tasks
 import miru
 
 from utils.config_handler import ConfigHandler
-from utils import cache, scheduler
+from utils import cache, scheduler, perspective
 
 
 class SnedBot(lightbulb.BotApp):
@@ -127,6 +127,7 @@ class SnedBot(lightbulb.BotApp):
         self.db_cache = cache.Caching(self)
         self.global_config = ConfigHandler(self)
         self.scheduler = scheduler.Scheduler(self)
+        self.perspective = perspective.Client(self.config["perspective_api_key"])
 
         logging.info(f"Startup complete, initialized as {user}")
 
