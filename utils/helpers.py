@@ -208,7 +208,7 @@ async def ask(
         invalid_select = True
     else:
         for option in options:
-            if len(option.label) > 25 or (option.description and len(option.description) > 100):
+            if len(option.label) > 100 or (option.description and len(option.description) > 100):
                 invalid_select = True
 
     if isinstance(embed_or_content, str):
@@ -233,7 +233,7 @@ async def ask(
         view.start(message)
         await view.wait()
         if view.children[0].values:
-            if view.children[0].values[0] in ignore:
+            if ignore and view.children[0].values[0] in ignore:
                 return view.children[0].values[0]
             return await converter.convert(view.children[0].values[0])
 
@@ -245,11 +245,17 @@ async def ask(
         elif content:
             content = f"{content}\n\nPlease type your response below!"
 
+        if message:
+            message = await message.edit(content=content, embeds=embeds)
+        else:
+            response = await ctx.respond(content=content, embeds=embeds)
+            message = await resolve_response(response)
+
         predicate = lambda e: e.author_id == ctx.author.id and e.channel_id == ctx.channel_id
 
         event = await ctx.app.wait_for(hikari.MessageCreateEvent, timeout=120.0, predicate=predicate)
         if event.content:
-            if event.content in ignore:
+            if ignore and event.content in ignore:
                 return event.content
             return await converter.convert(event.content)
 

@@ -89,8 +89,8 @@ class RoleButton(miru.Button):
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@role_buttons.listener(hikari.StartedEvent)
-async def start_rolebuttons(event: hikari.StartedEvent) -> None:
+@role_buttons.listener(lightbulb.LightbulbStartedEvent)
+async def start_rolebuttons(event: lightbulb.LightbulbStartedEvent) -> None:
     """
     Start up listeners for all role-buttons after application restart
     """
@@ -122,7 +122,7 @@ async def start_rolebuttons(event: hikari.StartedEvent) -> None:
         view = PersistentRoleView(buttons)
         view.start_listener(message=msg_id)
 
-    logger.info(f"Started listeners for {count} button-roles!")
+    logger.info(f"Started listeners for {count} role-buttons!")
 
 
 @role_buttons.command()

@@ -1,19 +1,65 @@
 import logging
+import typing as t
 from difflib import get_close_matches
 from itertools import chain
 from typing import List
 
 import hikari
 import lightbulb
-from models import Tag
-from models import AuthorOnlyNavigator
+import miru
+from models import AuthorOnlyNavigator, Tag
 from models.bot import SnedBot
-from utils import TagHandler
-from utils import helpers
+from utils import TagHandler, helpers
 
 logger = logging.getLogger(__name__)
 
 tags = lightbulb.Plugin("Tag", include_datastore=True)
+
+
+class TagEditorModal(miru.Modal):
+    """Modal for creation and editing of tags."""
+
+    def __init__(self, name: t.Optional[str] = None, content: t.Optional[str] = None) -> None:
+        title = "Create a tag"
+        if content:
+            title = f"Editing tag {name}"
+
+        super().__init__(title, timeout=600, autodefer=False)
+
+        if not content:
+            self.add_item(
+                miru.TextInput(
+                    label="Tag Name",
+                    placeholder="Enter a tag name...",
+                    required=True,
+                    min_length=3,
+                    max_length=200,
+                    value=name,
+                )
+            )
+        self.add_item(
+            miru.TextInput(
+                label="Tag Content",
+                style=hikari.TextInputStyle.PARAGRAPH,
+                placeholder="Enter tag content, supports markdown formatting...",
+                required=True,
+                max_length=1500,
+                value=content,
+            )
+        )
+
+        self.tag_name = ""
+        self.tag_content = ""
+
+    async def callback(self, ctx: miru.ModalContext) -> None:
+        if not ctx.values:
+            return
+
+        for item, value in ctx.values.items():
+            if item.label == "Tag Name":
+                self.tag_name = value
+            elif item.label == "Tag Content":
+                self.tag_content = value
 
 
 @tags.command()
@@ -42,35 +88,39 @@ async def tag_call(ctx: lightbulb.SlashContext) -> None:
 
 
 @tag.child()
-@lightbulb.option("content", "The content of the tag to create.")
-@lightbulb.option("name", "The name of the tag to create.")
-@lightbulb.command("create", "Create a new tag with the specified name and content.")
+@lightbulb.command("create", "Create a new tag. Opens a modal to specify the details.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_create(ctx: lightbulb.SlashContext) -> None:
-    tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
+
+    modal = TagEditorModal()
+    await modal.send(ctx.interaction)
+    await modal.wait()
+    mctx = modal.get_response_context()
+
+    tag: Tag = await tags.d.tag_handler.get(modal.tag_name.lower(), ctx.guild_id)
     if tag:
         embed = hikari.Embed(
             title="❌ Tag exists",
-            description=f"This tag already exists. If the owner of this tag is no longer in the server, you can try doing `/tag claim {ctx.options.name.lower()}`",
+            description=f"This tag already exists. If the owner of this tag is no longer in the server, you can try doing `/tag claim {modal.tag_name.lower()}`",
             color=ctx.app.error_color,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return await mctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     new_tag = Tag(
         guild_id=ctx.guild_id,
-        name=ctx.options.name.lower(),
+        name=modal.tag_name.lower(),
         owner_id=ctx.author.id,
         aliases=None,
-        content=ctx.options.content,
+        content=modal.tag_content,
     )
     await tags.d.tag_handler.create(new_tag)
     embed = hikari.Embed(
         title="✅ Tag created!",
-        description=f"You can now call it with `/tag call {ctx.options.name.lower()}`",
+        description=f"You can now call it with `/tag call {modal.tag_name.lower()}`",
         color=ctx.app.embed_green,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
-    await ctx.respond(embed=embed)
+    await mctx.respond(embed=embed)
 
 
 @tag.child()
@@ -264,32 +314,39 @@ async def tag_claim(ctx: lightbulb.SlashContext) -> None:
 
 
 @tag.child()
-@lightbulb.option("new_content", "The new content for this tag.")
 @lightbulb.option("name", "The name of the tag to edit.")
 @lightbulb.command("edit", "Edit the content of a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_edit(ctx: lightbulb.SlashContext) -> None:
+
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
-    if tag and tag.owner_id == ctx.author.id:
-        await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
-        tag.content = ctx.options.new_content
-        await tags.d.tag_handler.create(tag)
 
-        embed = hikari.Embed(
-            title="✅ Tag edited",
-            description=f"Tag `{tag.name}` has been successfully edited.",
-            color=ctx.app.embed_green,
-        )
-        embed = helpers.add_embed_footer(embed, ctx.member)
-        await ctx.respond(embed=embed)
-
-    else:
+    if not tag or tag.owner_id != ctx.author.id:
         embed = hikari.Embed(
             title="❌ Invalid tag",
             description="You either do not own this tag or it does not exist.",
             color=ctx.app.error_color,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    modal = TagEditorModal(name=tag.name, content=tag.content)
+    await modal.send(ctx.interaction)
+    await modal.wait()
+    mctx = modal.get_response_context()
+
+    await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
+
+    tag.content = modal.tag_content
+
+    await tags.d.tag_handler.create(tag)
+
+    embed = hikari.Embed(
+        title="✅ Tag edited",
+        description=f"Tag `{tag.name}` has been successfully edited.",
+        color=ctx.app.embed_green,
+    )
+    embed = helpers.add_embed_footer(embed, ctx.member)
+    await mctx.respond(embed=embed)
 
 
 @tag.child()

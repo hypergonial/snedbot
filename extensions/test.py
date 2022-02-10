@@ -14,9 +14,73 @@ logger = logging.getLogger(__name__)
 test = lightbulb.Plugin("Test")
 
 
+class BasicView(miru.View):
+
+    # Define a new Select menu with two options
+    @miru.select(
+        placeholder="Select me!",
+        options=[
+            miru.SelectOption(label="Option 1"),
+            miru.SelectOption(label="Option 2"),
+        ],
+    )
+    async def basic_select(self, select: miru.Select, ctx: miru.ViewContext) -> None:
+        await ctx.respond(f"You've chosen {select.values[0]}!")
+
+    # Define a new Button with the Style of success (Green)
+    @miru.button(label="Click me!", style=hikari.ButtonStyle.SUCCESS)
+    async def basic_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        await ctx.respond("You clicked me!")
+
+    # Define a new Button that when pressed will stop the view & invalidate all the buttons in this view
+    @miru.button(label="Stop me!", style=hikari.ButtonStyle.DANGER)
+    async def stop_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        self.stop()  # Called to stop the view
+
+    # Define a new Button that when pressed will stop the view & invalidate all the buttons in this view
+    @miru.button(label="Modal!", style=hikari.ButtonStyle.PRIMARY)
+    async def stop_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        modal = BasicModal()
+        await ctx.respond_with_modal(modal)
+
+
+class BasicModal(miru.Modal):
+    def __init__(self) -> None:
+        super().__init__("Miru is cool!")
+        self.add_item(miru.TextInput(label="Enter something!", placeholder="Miru is cool!"))
+        self.add_item(
+            miru.TextInput(
+                label="Enter something long!",
+                style=hikari.TextInputStyle.PARAGRAPH,
+                min_length=200,
+                max_length=1000,
+            )
+        )
+
+    async def callback(self, ctx: miru.ModalContext) -> None:
+        await ctx.respond(self.values)
+
+
+@test.command()
+@lightbulb.command("mirutest", "Test miru views")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def viewtest(ctx: lightbulb.SlashContext) -> None:
+    view = BasicView()
+    resp = await ctx.respond("foo", components=view.build())
+    view.start(await resp.message())
+
+
+@test.command()
+@lightbulb.command("modaltest", "Test miru modals")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def modaltest(ctx: lightbulb.SlashContext) -> None:
+    modal = BasicModal()
+    await modal.send(ctx.interaction)
+
+
 @test.command()
 @lightbulb.option("text", "Text to analyze.")
-@lightbulb.command("testmultiple", "aaa", auto_defer=True)
+@lightbulb.command("perspectivetestmultiple", "aaa", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def testmultiple_cmd(ctx: lightbulb.SlashContext) -> None:
     text = ctx.options.text
@@ -39,7 +103,7 @@ async def testmultiple_cmd(ctx: lightbulb.SlashContext) -> None:
 
 @test.command()
 @lightbulb.option("text", "Text to analyze.")
-@lightbulb.command("test", "aaa", auto_defer=True)
+@lightbulb.command("perspectivetest", "aaa", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def test_cmd(ctx: lightbulb.SlashContext) -> None:
     text = ctx.options.text

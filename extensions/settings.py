@@ -161,6 +161,18 @@ class SelectMenuView(MenuBaseView):
 # Menu functions and handling
 
 
+async def error_view_handler(
+    ctx: SettingsContext, message: hikari.Message, embed: hikari.Embed, return_to: str
+) -> None:
+    """Add a standard 'Back' button below the error message to return to previous step."""
+    ctx.parent = return_to
+    view = ButtonMenuView(ctx, is_nested=True)
+    await helpers.maybe_edit(message, embed=embed, components=view.build())
+    view.start(message)
+    await view.wait()
+    await menu_actions[view.value](ctx, message)
+
+
 async def settings_main(ctx: lightbulb.SlashContext, message: Optional[hikari.Message] = None) -> None:
     """Show and handle settings main menu."""
 
@@ -177,6 +189,7 @@ async def settings_main(ctx: lightbulb.SlashContext, message: Optional[hikari.Me
         OptionButton(label="Moderation"),
         OptionButton(label="Auto-Moderation"),
         OptionButton(label="Logging"),
+        OptionButton(label="Reports"),
     ]
 
     view = ButtonMenuView(ctx, buttons, is_nested=False)
@@ -322,12 +335,7 @@ async def settings_logging(ctx: lightbulb.SlashContext, message: hikari.Message)
             description="Unable to locate channel. Please type a channel mention or ID.",
             color=ctx.app.error_color,
         )
-        ctx.parent = "Logging"
-        view = ButtonMenuView(ctx, is_nested=True)
-        await helpers.maybe_edit(message, embed=embed, components=view.build())
-        view.start(message)
-        await view.wait()
-        await menu_actions[view.value](ctx, message)
+        return await error_view_handler(ctx, message, embed, "Logging")
 
     except asyncio.TimeoutError:
         await menu_actions["Quit"](ctx, message)
@@ -337,6 +345,187 @@ async def settings_logging(ctx: lightbulb.SlashContext, message: hikari.Message)
         await logging.d.actions.set_log_channel(log_event, ctx.guild_id, channel_id)
 
         await settings_logging(ctx, message)
+
+
+async def settings_report(ctx: SettingsContext, message: hikari.Message) -> None:
+
+    records = await ctx.app.db_cache.get(table="reports", guild_id=ctx.guild_id)
+    if not records:
+        records = [{"guild_id": ctx.guild_id, "is_enabled": False, "channel_id": None, "pinged_role_ids": None}]
+
+    pinged_roles = (
+        [ctx.app.cache.get_role(role_id) for role_id in records[0]["pinged_role_ids"]]
+        if records[0]["pinged_role_ids"]
+        else []
+    )
+    all_roles = list(ctx.app.cache.get_roles_view_for_guild(ctx.guild_id).values())
+    unadded_roles = list(set(all_roles) - set(pinged_roles))
+
+    channel = ctx.app.cache.get_guild_channel(records[0]["channel_id"]) if records[0]["channel_id"] else None
+
+    embed = hikari.Embed(
+        title="Reports Settings",
+        description="Below you can see all settings for configuring the reporting of other users or messages. This allows other users to flag suspicious content for review.",
+        color=ctx.app.embed_blue,
+    )
+    embed.add_field("Channel", value=channel.mention if channel else "*Not set*", inline=True)
+    embed.add_field(name="​", value="​", inline=True)  # Spacer
+    embed.add_field(
+        "Pinged Roles", value=" ".join([role.mention for role in pinged_roles if role]) or "*None set*", inline=True
+    )
+
+    buttons = [
+        BooleanButton(state=records[0]["is_enabled"], label="Enabled"),
+        OptionButton(label="Set Channel"),
+        OptionButton(label="Add Role", disabled=not bool(unadded_roles)),
+        OptionButton(label="Remove Role", disabled=not bool(pinged_roles)),
+    ]
+
+    ctx.parent = "Main"
+    view = ButtonMenuView(ctx, buttons=buttons, is_nested=True)
+    await helpers.maybe_edit(message, embed=embed, components=view.build())
+    view.start(message)
+    await view.wait()
+
+    if view.value in menu_actions.keys():
+        return await menu_actions[view.value](ctx, message)
+
+    if isinstance(view.value, tuple) and view.value[0] == "Enabled":
+        await ctx.app.pool.execute(
+            """INSERT INTO reports (is_enabled, guild_id)
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO
+            UPDATE SET is_enabled = $1""",
+            view.value[1],
+            ctx.guild_id,
+        )
+        await ctx.app.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
+        return await settings_report(ctx, message)
+
+    if view.value == "Set Channel":
+
+        embed = hikari.Embed(
+            title="Reports Settings",
+            description=f"Please select a channel where reports will be sent.",
+            color=ctx.app.embed_blue,
+        )
+
+        options = []
+        for guild_id, channel in ctx.app.cache.get_guild_channels_view_for_guild(ctx.guild_id).items():
+            if isinstance(channel, hikari.TextableGuildChannel):
+                options.append(miru.SelectOption(label=f"#{channel.name}", value=channel.id))
+
+        try:
+            channel = await helpers.ask(
+                ctx,
+                options=options,
+                return_type=hikari.TextableGuildChannel,
+                embed_or_content=embed,
+                placeholder="Select a channel...",
+                message=message,
+            )
+        except TypeError:
+            embed = hikari.Embed(
+                title="❌ Channel not found.",
+                description="Unable to locate channel. Please type a channel mention or ID.",
+                color=ctx.app.error_color,
+            )
+            return await error_view_handler(ctx, message, embed, "Reports")
+
+        except asyncio.TimeoutError:
+            await menu_actions["Quit"](ctx, message)
+
+        else:
+            await ctx.app.pool.execute(
+                """INSERT INTO reports (channel_id, guild_id)
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO
+            UPDATE SET channel_id = $1""",
+                channel.id,
+                ctx.guild_id,
+            )
+            await ctx.app.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
+            return await settings_report(ctx, message)
+
+    if view.value == "Add Role":
+
+        embed = hikari.Embed(
+            title="Reports Settings",
+            description=f"Select a role to add to the list of roles that will be mentioned when a new report is made.",
+            color=ctx.app.embed_blue,
+        )
+
+        options = []
+        for role in unadded_roles:
+            options.append(miru.SelectOption(label=f"{role.name}", value=role.id))
+
+        try:
+            role = await helpers.ask(
+                ctx,
+                options=options,
+                return_type=hikari.Role,
+                embed_or_content=embed,
+                placeholder="Select a role...",
+                message=message,
+            )
+            pinged_roles.append(role)
+        except TypeError:
+            embed = hikari.Embed(
+                title="❌ Role not found.",
+                description="Unable to locate role. Please type a role mention or ID.",
+                color=ctx.app.error_color,
+            )
+            return await error_view_handler(ctx, message, embed, "Reports")
+
+        except asyncio.TimeoutError:
+            await menu_actions["Quit"](ctx, message)
+
+    elif view.value == "Remove Role":
+
+        embed = hikari.Embed(
+            title="Reports Settings",
+            description=f"Remove a role from the list of roles that is mentioned when a new report is made.",
+            color=ctx.app.embed_blue,
+        )
+
+        options = []
+        for role in pinged_roles:
+            options.append(miru.SelectOption(label=f"{role.name}", value=role.id))
+
+        try:
+            role = await helpers.ask(
+                ctx,
+                options=options,
+                return_type=hikari.Role,
+                embed_or_content=embed,
+                placeholder="Select a role...",
+                message=message,
+            )
+            if role in pinged_roles:
+                pinged_roles.remove(role)
+            else:
+                raise TypeError
+        except TypeError:
+            embed = hikari.Embed(
+                title="❌ Role not found.",
+                description="Unable to locate role, or it is not a pinged role.",
+                color=ctx.app.error_color,
+            )
+            return await error_view_handler(ctx, message, embed, "Reports")
+
+        except asyncio.TimeoutError:
+            await menu_actions["Quit"](ctx, message)
+
+    await ctx.app.pool.execute(
+        """INSERT INTO reports (pinged_role_ids, guild_id)
+    VALUES ($1, $2)
+    ON CONFLICT (guild_id) DO
+    UPDATE SET pinged_role_ids = $1""",
+        [role.id for role in pinged_roles],
+        ctx.guild_id,
+    )
+    await ctx.app.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
+    await settings_report(ctx, message)
 
 
 async def timeout_or_quit(ctx: SettingsContext, message: Optional[hikari.Message] = None) -> None:
@@ -360,6 +549,7 @@ menu_actions = {
     "Moderation": settings_mod,
     "Auto-Moderation": settings_automod,
     "Logging": settings_logging,
+    "Reports": settings_report,
     "Timeout": timeout_or_quit,
     "Quit": timeout_or_quit,
     "Back": back,

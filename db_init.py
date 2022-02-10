@@ -91,10 +91,24 @@ try:
                 """
                 CREATE TABLE IF NOT EXISTS public.mod_config
                 (
-                    guild_id bigint,
+                    guild_id bigint NOT NULL,
                     dm_users_on_punish bool NOT NULL DEFAULT true,
                     clean_up_mod_commands bool NOT NULL DEFAULT false,
-                    automod_policies text NOT NULL DEFAULT '{}',
+                    automod_policies json NOT NULL DEFAULT '{}',
+                    PRIMARY KEY (guild_id),
+                    FOREIGN KEY (guild_id)
+                        REFERENCES global_config (guild_id)
+                        ON DELETE CASCADE
+                )"""
+            )
+            await con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.reports
+                (
+                    guild_id bigint NOT NULL,
+                    is_enabled bool NOT NULL DEFAULT false,
+                    channel_id bigint,
+                    pinged_role_ids bigint[],
                     PRIMARY KEY (guild_id),
                     FOREIGN KEY (guild_id)
                         REFERENCES global_config (guild_id)
@@ -271,7 +285,7 @@ try:
 
             print("Tables created, database is ready!")
 
-    asyncio.get_event_loop().run_until_complete(init_tables())
+    asyncio.run(init_tables())
     input("\nPress enter to exit...")
 
 except KeyboardInterrupt:
