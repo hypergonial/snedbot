@@ -564,6 +564,114 @@ async def kick(
 
 
 @mod.command()
+@lightbulb.option("user", "The user to show information about.", type=hikari.User, required=True)
+@lightbulb.command("whois", "Show user information about the specified user.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def whois(ctx: lightbulb.SlashContext) -> None:
+    embed = await helpers.get_userinfo(ctx, ctx.options.user)
+    await ctx.respond(embed=embed)
+
+
+@mod.command()
+@lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
+@lightbulb.add_checks(lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS))
+@lightbulb.option("regex", "Delete messages that match with the regular expression.", required=False)
+@lightbulb.option("embeds", "Delete messages that contain embeds.", type=bool, required=False)
+@lightbulb.option("links", "Delete messages that contain links.", type=bool, required=False)
+@lightbulb.option("invites", "Delete messages that contain Discord invites.", type=bool, required=False)
+@lightbulb.option("attachments", "Delete messages that contain files & images.", type=bool, required=False)
+@lightbulb.option("notext", "Delete messages that do not contain text.", type=bool, required=False)
+@lightbulb.option("endswith", "Delete messages that end with the specified text.", required=False)
+@lightbulb.option("startswith", "Delete messages that start with the specified text.", required=False)
+@lightbulb.option("count", "The amount of messages to delete.", type=int, min_value=1, max_value=100)
+@lightbulb.command("purge", "Purge multiple messages in this channel.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def purge(ctx: lightbulb.SlashContext) -> None:
+    pass
+
+    channel = ctx.get_channel()
+    predicates = [
+        # Ignore deferred typing indicator so it doesn't get deleted lmfao
+        lambda message: not (hikari.MessageFlag.LOADING & message.flags)
+    ]
+
+    if ctx.options.regex:
+        try:
+            regex = re.compile(ctx.options.regex)
+        except re.error as error:
+            embed = hikari.Embed(
+                title="❌ Invalid regex passed",
+                description=f"Failed parsing regex: ```{str(error)}```",
+                color=ctx.app.error_color,
+            )
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return await ctx.invoked.cooldown_manager.reset_cooldown(ctx)
+        else:
+            predicates.append(lambda message, regex=regex: regex.match(message.content) if message.content else False)
+
+    if ctx.options.startswith:
+        predicates.append(
+            lambda message: message.content.startswith(ctx.options.startswith) if message.content else False
+        )
+
+    if ctx.options.endswith:
+        predicates.append(lambda message: message.content.endswith(ctx.options.endswith) if message.content else False)
+
+    if ctx.options.notext:
+        predicates.append(lambda message: not message.content)
+
+    if ctx.options.attachments:
+        predicates.append(lambda message: bool(message.attachments))
+
+    if ctx.options.invites:
+        predicates.append(
+            lambda message: helpers.is_invite(message.content, fullmatch=False) if message.content else False
+        )
+
+    if ctx.options.links:
+        predicates.append(
+            lambda message: helpers.is_url(message.content, fullmatch=False) if message.content else False
+        )
+
+    if ctx.options.embeds:
+        predicates.append(lambda message: bool(message.embeds))
+
+    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+
+    messages = []
+
+    async for message in ctx.app.rest.fetch_messages(channel):
+        if all(predicate(message) for predicate in predicates):
+            messages.append(message)
+        if len(messages) >= ctx.options.count:
+            break
+
+    if messages:
+        try:
+            await ctx.app.rest.delete_messages(channel, messages)
+            embed = hikari.Embed(
+                title="🗑️ Messages purged",
+                description=f"**{len(messages)}** messages have been deleted.",
+                color=ctx.app.embed_green,
+            )
+
+        except hikari.BulkDeleteError as error:
+            embed = hikari.Embed(
+                title="🗑️ Messages purged",
+                description=f"Only **{len(error.messages_deleted)}/{len(messages)}** messages have been deleted due to an error.",
+                color=ctx.app.warn_color,
+            )
+    else:
+        embed = hikari.Embed(
+            title="🗑️ Not found",
+            description=f"No messages matched the specified criteria from the past two weeks!",
+            color=ctx.app.error_color,
+        )
+
+    await ctx.respond(embed=embed)
+
+
+@mod.command()
 @lightbulb.command("journal", "Access and manage the moderation journal.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def journal(ctx: lightbulb.SlashContext) -> None:

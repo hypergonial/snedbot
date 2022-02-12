@@ -39,13 +39,13 @@ class SettingsContext(lightbulb.SlashContext):
 class BooleanButton(miru.Button):
     """A boolean toggle button."""
 
-    def __init__(self, *, state: bool, label: str = None, row: Optional[int] = None) -> None:
+    def __init__(self, *, state: bool, label: str = None, disabled: bool = False, row: Optional[int] = None) -> None:
         style = hikari.ButtonStyle.SUCCESS if state else hikari.ButtonStyle.DANGER
         emoji = "✔️" if state else "✖️"
 
         self.state = state
 
-        super().__init__(style=style, label=label, emoji=emoji, row=row)
+        super().__init__(style=style, label=label, emoji=emoji, disabled=disabled, row=row)
 
     async def callback(self, context: miru.Context) -> None:
         self.state = not self.state
@@ -375,10 +375,10 @@ async def settings_report(ctx: SettingsContext, message: hikari.Message) -> None
     )
 
     buttons = [
-        BooleanButton(state=records[0]["is_enabled"], label="Enabled"),
+        BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enabled", disabled=not channel),
         OptionButton(label="Set Channel"),
-        OptionButton(label="Add Role", disabled=not bool(unadded_roles)),
-        OptionButton(label="Remove Role", disabled=not bool(pinged_roles)),
+        OptionButton(label="Add Role", disabled=not unadded_roles),
+        OptionButton(label="Remove Role", disabled=not pinged_roles),
     ]
 
     ctx.parent = "Main"

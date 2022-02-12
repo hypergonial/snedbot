@@ -28,6 +28,7 @@ initial_extensions = [
     "extensions.userlog",
     "extensions.moderation",
     "extensions.settings",
+    "extensions.reports",
     "extensions.reminders",
     "extensions.fun",
     "extensions.test",

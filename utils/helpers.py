@@ -10,6 +10,7 @@ import miru
 
 import models
 from models import errors
+from models.db_user import User
 
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
@@ -76,7 +77,102 @@ def get_color(member: hikari.Member) -> hikari.Color:
             if role.color != hikari.Color.from_rgb(0, 0, 0):
                 return role.color
 
-    return hikari.Color.from_rgb(0, 0, 0)
+    return None
+
+
+def sort_roles(roles: List[hikari.Role]) -> List[hikari.Role]:
+    """Sort a list of roles in a descending order based on position."""
+    return sorted(roles, key=lambda r: r.position, reverse=True)
+
+
+def get_badges(ctx: lightbulb.Context, user: hikari.User) -> List[str]:
+    """Return a list of badge emojies that the user has."""
+
+    badge_emoji_mapping = {
+        hikari.UserFlag.BUG_HUNTER_LEVEL_1: str(ctx.app.cache.get_emoji(927590809241530430)),
+        hikari.UserFlag.BUG_HUNTER_LEVEL_2: str(ctx.app.cache.get_emoji(927590820448710666)),
+        hikari.UserFlag.DISCORD_CERTIFIED_MODERATOR: str(ctx.app.cache.get_emoji(927582595808657449)),
+        hikari.UserFlag.EARLY_SUPPORTER: str(ctx.app.cache.get_emoji(927582684123914301)),
+        hikari.UserFlag.EARLY_VERIFIED_DEVELOPER: str(ctx.app.cache.get_emoji(927582706974462002)),
+        hikari.UserFlag.HYPESQUAD_EVENTS: str(ctx.app.cache.get_emoji(927582724523450368)),
+        hikari.UserFlag.HYPESQUAD_BALANCE: str(ctx.app.cache.get_emoji(927582757587136582)),
+        hikari.UserFlag.HYPESQUAD_BRAVERY: str(ctx.app.cache.get_emoji(927582770329444434)),
+        hikari.UserFlag.HYPESQUAD_BRILLIANCE: str(ctx.app.cache.get_emoji(927582740977684491)),
+        hikari.UserFlag.PARTNERED_SERVER_OWNER: str(ctx.app.cache.get_emoji(927591117304778772)),
+        hikari.UserFlag.DISCORD_EMPLOYEE: str(ctx.app.cache.get_emoji(927591104902201385)),
+    }
+
+    badges = []
+
+    for flag, emoji in badge_emoji_mapping.items():
+        if flag & user.flags:
+            badges.append(emoji)
+
+    return badges
+
+
+async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embed:
+
+    db_user: User = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
+
+    member = ctx.app.cache.get_member(ctx.guild_id, user)
+
+    if member:
+        roles = [role.mention for role in sort_roles(member.get_roles())]
+        roles.remove(f"<@&{ctx.guild_id}>")
+        roles = ", ".join(roles) if roles else "`-`"
+
+        embed = hikari.Embed(
+            title=f"**User information:** {member.display_name}",
+            description=f"""**• Username:** `{member}`
+**• Nickname:** `{member.nickname or "-"}`
+**• User ID:** `{member.id}`
+**• Bot:** `{member.is_bot}`
+**• Account creation date:** {format_dt(member.created_at)} ({format_dt(member.created_at, style='R')})
+**• Join date:** {format_dt(member.joined_at)} ({format_dt(member.joined_at, style='R')})
+**• Badges:** {"   ".join(get_badges(ctx, member)) or "`-`"}
+**• Warns:** `{db_user.warns}`
+**• Timed out:** {f"Until: {format_dt(member.communication_disabled_until())}" if member.communication_disabled_until() else "`-`"}
+**• Flags:** `{",".join(list(db_user.flags.keys())) if db_user.flags and len(db_user.flags) > 0 else "-"}`
+**• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}`
+**• Roles:** {roles}""",
+            color=get_color(member),
+        )
+        user = await ctx.app.rest.fetch_user(user.id)
+        embed.set_thumbnail(member.display_avatar_url)
+        if user.banner_url:
+            embed.set_image(user.banner_url)
+
+    else:
+        embed = hikari.Embed(
+            title=f"**User information:** {user.username}",
+            description=f"""**• Username:** `{user}`
+**• Nickname:** `-`
+**• User ID:** `{user.id}`
+**• Bot:** `{user.is_bot}`
+**• Account creation date:** {format_dt(user.created_at)} ({format_dt(user.created_at, style='R')})
+**• Join date:** `-`
+**• Badges:** {"   ".join(get_badges(ctx, user)) or "`-`"}
+**• Warns:** `{db_user.warns}`
+**• Timed out:** `-`
+**• Flags:** `{",".join(list(db_user.flags.keys())) if db_user.flags and len(db_user.flags) > 0 else "-"}`
+**• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}`
+**• Roles:** `-`
+*Note: This user is not a member of this server*""",
+            color=ctx.app.embed_blue,
+        )
+        embed.set_thumbnail(user.display_avatar_url)
+        user = await ctx.app.rest.fetch_user(user.id)
+        if user.banner_url:
+            embed.set_image(user.banner_url)
+
+    if ctx.member.id in ctx.app.owner_ids:
+        records = await ctx.app.db_cache.get(table="blacklist", guild_id=0, user_id=user.id)
+        is_blacklisted = True if records and records[0]["user_id"] == user.id else False
+        embed.description = f"{embed.description}\n**• Blacklisted:** `{is_blacklisted}`"
+
+    embed = add_embed_footer(embed, ctx.member)
+    return embed
 
 
 def is_above(me: hikari.Member, member: hikari.Member) -> bool:
@@ -118,15 +214,31 @@ def get_jump_url(message: hikari.Message):
     return f"https://discord.com/channels/{guild_id}/{message.channel_id}/{message.id}"
 
 
-def is_url(string: str) -> bool:
+def is_url(string: str, *, fullmatch: bool = True) -> bool:
     """
     Returns True if the provided string is an URL, otherwise False.
     """
     url_regex = re.compile(
         r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)"
     )
-    if url_regex.fullmatch(string):
+    if fullmatch and url_regex.fullmatch(string):
         return True
+    elif not fullmatch and url_regex.match(string):
+        return True
+
+    return False
+
+
+def is_invite(string: str, *, fullmatch: bool = True) -> bool:
+    """
+    Returns True if the provided string is a Discord invite, otherwise False.
+    """
+    invite_regex = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
+    if fullmatch and invite_regex.fullmatch(string):
+        return True
+    elif not fullmatch and invite_regex.match(string):
+        return True
+
     return False
 
 

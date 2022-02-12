@@ -108,7 +108,7 @@ try:
                     guild_id bigint NOT NULL,
                     is_enabled bool NOT NULL DEFAULT false,
                     channel_id bigint,
-                    pinged_role_ids bigint[],
+                    pinged_role_ids bigint[] DEFAULT [],
                     PRIMARY KEY (guild_id),
                     FOREIGN KEY (guild_id)
                         REFERENCES global_config (guild_id)

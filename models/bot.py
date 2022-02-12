@@ -51,13 +51,12 @@ class SnedBot(lightbulb.BotApp):
             default_enabled_guilds = ()
             db_name = "sned"
 
-        activity = hikari.Activity(name="to @Sned", type=hikari.ActivityType.LISTENING)
-
         super().__init__(
             token=config["token"],
             cache_settings=cache_settings,
             default_enabled_guilds=default_enabled_guilds,
             intents=intents,
+            owner_ids=(163979124820541440,),
         )
 
         config.pop("token")
@@ -112,6 +111,8 @@ class SnedBot(lightbulb.BotApp):
         self.subscribe(hikari.MessageCreateEvent, self.on_message)
         self.subscribe(hikari.StoppingEvent, self.on_stopping)
         self.subscribe(hikari.StoppedEvent, self.on_stop)
+        self.subscribe(hikari.GuildJoinEvent, self.on_guild_join)
+        self.subscribe(hikari.GuildLeaveEvent, self.on_guild_leave)
 
     async def wait_until_started(self) -> None:
         """
@@ -131,6 +132,8 @@ class SnedBot(lightbulb.BotApp):
         self.perspective = perspective.Client(self.config["perspective_api_key"], do_not_store=True)
 
         logging.info(f"Startup complete, initialized as {user}")
+        activity = hikari.Activity(name="to @Sned", type=hikari.ActivityType.LISTENING)
+        await self.update_presence(activity=activity)
 
         if self.experimental:
             logging.warning("\n--------------\nExperimental mode is enabled!\n--------------")
@@ -165,3 +168,34 @@ class SnedBot(lightbulb.BotApp):
                 )
                 embed.set_thumbnail(self.get_me().avatar_url)
                 await event.message.respond(embed=embed)
+
+    async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
+        """Guild join behaviour"""
+        await self.pool.execute("INSERT INTO global_config (guild_id) VALUES ($1)", event.guild_id)
+
+        if event.guild.system_channel_id is None:
+            return
+
+        me = event.guild.get_my_member()
+        channel = event.guild.get_channel(event.guild.system_channel_id)
+
+        if not channel or not (hikari.Permissions.SEND_MESSAGES & lightbulb.utils.permissions_in(channel, me)):
+            return
+
+        try:
+            embed = hikari.Embed(
+                title="Beep Boop!",
+                description="I have been summoned to this server. Type `/` to see what I can do!",
+                color=0xFEC01D,
+            )
+            embed.set_thumbnail(me.avatar_url)
+            await channel.send(embed=embed)
+        except hikari.ForbiddenError:
+            pass
+        logging.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")
+
+    async def on_guild_leave(self, event: hikari.GuildLeaveEvent) -> None:
+        """Guild removal behaviour"""
+        await self.pool.execute("""DELETE FROM global_config WHERE guild_id = $1""", event.guild_id)
+        await self.db_cache.wipe(event.guild_id)
+        logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
