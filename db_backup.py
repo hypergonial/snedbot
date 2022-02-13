@@ -4,10 +4,10 @@ import os
 import platform
 from pathlib import Path
 
-import discord
+import hikari
 
 
-async def backup_database(dsn: str) -> discord.File:
+async def backup_database(dsn: str) -> hikari.File:
     """Attempts to back up the database via pg_dump into the db_backup directory"""
     logging.info("Performing daily database backup...")
 
@@ -44,4 +44,4 @@ async def backup_database(dsn: str) -> discord.File:
     os.system(f"pg_dump -c -U {username} -d {db_name} -h {hostname} -p {port} -w > {backup_path}")
 
     logging.info("Database backup complete!")
-    return discord.File(backup_path)
+    return hikari.File(backup_path)

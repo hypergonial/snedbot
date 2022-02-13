@@ -130,3 +130,6 @@ dmypy.json
 
 # Bot configuration files
 config.py
+
+# DB backup folder
+db_backup/

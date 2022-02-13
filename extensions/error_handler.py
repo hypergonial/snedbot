@@ -41,10 +41,9 @@ async def log_error_to_homeguild(
     for line in error_lines:
         paginator.add_line(line)
 
-    home_guild_id = ctx.app.config.get("home_guild")
     channel_id = ctx.app.config.get("error_logging_channel")
 
-    if not home_guild_id or not channel_id:
+    if not channel_id:
         return
 
     for page in paginator.build_pages():

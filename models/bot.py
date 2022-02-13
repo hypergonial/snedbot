@@ -4,16 +4,32 @@ import os
 import typing as t
 
 import asyncpg
+import db_backup
 import hikari
-from hikari.snowflakes import Snowflake
 import lightbulb
-from lightbulb.ext import tasks
 import miru
-
-from utils.config_handler import ConfigHandler
-from utils import cache, scheduler
-from .context import *
 import perspective
+from hikari.snowflakes import Snowflake
+from lightbulb.ext import tasks
+from utils import cache, helpers, scheduler
+from utils.config_handler import ConfigHandler
+from utils.tasks import IntervalLoop
+
+from .context import *
+
+
+async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[t.List[str], str]:
+    """
+    Get custom prefix for guild to show prefix command deprecation warn
+    """
+    if message.guild_id is None:
+        return "sn "
+
+    records = await bot.db_cache.get(table="global_config", guild_id=message.guild_id)
+    if records and records[0]["prefix"]:
+        return records[0]["prefix"]
+
+    return "sn "
 
 
 class SnedBot(lightbulb.BotApp):
@@ -75,7 +91,8 @@ class SnedBot(lightbulb.BotApp):
 
         # Some global variables
         self._base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-        self.skip_db_backup = True
+        self._db_backup_loop = IntervalLoop(self.backup_bot_db, hours=24.0)
+        self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
 
         # Color scheme
@@ -159,6 +176,7 @@ class SnedBot(lightbulb.BotApp):
         self._started.set()
 
         self.db_cache = cache.Caching(self)
+        self._db_backup_loop.start()
         self.global_config = ConfigHandler(self)
         self.scheduler = scheduler.Scheduler(self)
         self.perspective = perspective.Client(self.config["perspective_api_key"], do_not_store=True)
@@ -199,7 +217,15 @@ class SnedBot(lightbulb.BotApp):
                     color=0xFEC01D,
                 )
                 embed.set_thumbnail(self.get_me().avatar_url)
-                await event.message.respond(embed=embed)
+                return await event.message.respond(embed=embed)
+            elif event.content.startswith(await get_prefix(self, event.message)):
+                embed = hikari.Embed(
+                    title="Uh Oh!",
+                    description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!",
+                    color=self.error_color,
+                )
+                embed.set_thumbnail(self.get_me().avatar_url)
+                return await event.message.respond(embed=embed)
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
         """Guild join behaviour"""
@@ -231,3 +257,22 @@ class SnedBot(lightbulb.BotApp):
         await self.pool.execute("""DELETE FROM global_config WHERE guild_id = $1""", event.guild_id)
         await self.db_cache.wipe(event.guild_id)
         logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
+
+    async def backup_bot_db(self) -> None:
+        if self.skip_first_db_backup:
+            logging.info("Skipping databse backup for this day...")
+            self.skip_first_db_backup = False
+            return
+
+        file = await db_backup.backup_database(self.dsn)
+        await self.wait_until_started()
+
+        if self.config["db_backup_channel"]:
+            await self.rest.create_message(
+                self.config["db_backup_channel"],
+                f"Database Backup: {helpers.format_dt(helpers.utcnow())}",
+                attachment=file,
+            )
+            return logging.info("Daily database backup complete, database backed up to specified Discord channel.")
+
+        logging.info("Daily database backup complete.")
