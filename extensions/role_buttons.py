@@ -6,6 +6,7 @@ import lightbulb
 import miru
 from models import SnedBot
 import models
+from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 
@@ -128,14 +129,14 @@ async def start_rolebuttons(event: lightbulb.LightbulbStartedEvent) -> None:
 @role_buttons.command()
 @lightbulb.command("rolebutton", "Commands relating to rolebuttons.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
-async def rolebutton(ctx: lightbulb.SlashContext) -> None:
+async def rolebutton(ctx: SnedSlashContext) -> None:
     pass
 
 
 @rolebutton.child()
 @lightbulb.command("list", "List all registered rolebuttons on this server.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_list(ctx: lightbulb.SlashContext) -> None:
+async def rolebutton_list(ctx: SnedSlashContext) -> None:
     records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id)
 
     if not records:
@@ -177,7 +178,7 @@ async def rolebutton_list(ctx: lightbulb.SlashContext) -> None:
 )
 @lightbulb.command("delete", "Delete a rolebutton.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
+async def rolebutton_del(ctx: SnedSlashContext) -> None:
     records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, entry_id=ctx.options.button_id)
 
     if not records:
@@ -249,7 +250,7 @@ async def rolebutton_del(ctx: lightbulb.SlashContext) -> None:
     "Add a new rolebutton. For new users, it is recommended to use /rolebutton setup instead.",
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_add(ctx: lightbulb.SlashContext) -> None:
+async def rolebutton_add(ctx: SnedSlashContext) -> None:
     style = ctx.options.buttonstyle or "Grey"
 
     if style.capitalize() not in button_styles.keys():

@@ -265,7 +265,7 @@ async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str:
 
         perms_diff = f"{perms_diff}\n   {white}{get_perm_str(perm)}: {old_state} {gray}-> {new_state}"
 
-    return perms_diff + reset
+    return perms_diff.strip() + reset
 
 
 T = TypeVar("T")
@@ -302,7 +302,7 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: Dict[str, str
             )
         else:
             diff = f"{diff}\n{white}{attrs[attribute]}: {red}{old} {gray}-> {green}{new}" if old != new else diff
-    return diff + reset
+    return diff.strip() + reset
 
 
 def create_log_content(message: hikari.Message, max_length: Optional[int] = None) -> str:
@@ -453,9 +453,10 @@ async def role_update(plugin: lightbulb.Plugin, event: hikari.RoleUpdateEvent) -
         if not diff and not perms_diff:
             diff = "Changes could not be resolved."
 
+        perms_str = f"\nPermissions: {perms_diff}" if perms_diff else ""
         embed = hikari.Embed(
             title=f"🖊️ Role updated",
-            description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{moderator}`\n**Changes:**```ansi\n{diff}\n{f'Permissions: {perms_diff if perms_diff else ""}'}  ```""",
+            description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{moderator}`\n**Changes:**```ansi\n{diff}{perms_str}```""",
             color=plugin.app.embed_blue,
         )
         await log("roles", embed, event.guild_id)

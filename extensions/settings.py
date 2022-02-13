@@ -5,6 +5,7 @@ import hikari
 import lightbulb
 import miru
 from models.bot import SnedBot
+from models.context import SnedSlashContext
 from utils import helpers
 import models
 from typing import Optional, List, Any
@@ -23,7 +24,7 @@ def get_key(dictionary: dict, value: Any) -> Any:
     return list(dictionary.keys())[list(dictionary.values()).index(value)]
 
 
-class SettingsContext(lightbulb.SlashContext):
+class SettingsContext(SnedSlashContext):
     """Abuse subclassing to get custom data into other functions c:"""
 
     def __init__(
@@ -47,7 +48,7 @@ class BooleanButton(miru.Button):
 
         super().__init__(style=style, label=label, emoji=emoji, disabled=disabled, row=row)
 
-    async def callback(self, context: miru.Context) -> None:
+    async def callback(self, context: miru.ViewContext) -> None:
         self.state = not self.state
 
         self.style = hikari.ButtonStyle.SUCCESS if self.state else hikari.ButtonStyle.DANGER
@@ -60,7 +61,7 @@ class BooleanButton(miru.Button):
 class OptionButton(miru.Button):
     """Button that sets view value to label, stops view."""
 
-    async def callback(self, context: miru.Context) -> None:
+    async def callback(self, context: miru.ViewContext) -> None:
         if not isinstance(self.view, MenuBaseView):
             return
 
@@ -71,7 +72,7 @@ class OptionButton(miru.Button):
 class OptionsSelect(miru.Select):
     """Select that sets view value to first selected option's value."""
 
-    async def callback(self, context: miru.Context) -> None:
+    async def callback(self, context: miru.ViewContext) -> None:
         if not isinstance(self.view, MenuBaseView):
             return
 
@@ -173,7 +174,7 @@ async def error_view_handler(
     await menu_actions[view.value](ctx, message)
 
 
-async def settings_main(ctx: lightbulb.SlashContext, message: Optional[hikari.Message] = None) -> None:
+async def settings_main(ctx: SnedSlashContext, message: Optional[hikari.Message] = None) -> None:
     """Show and handle settings main menu."""
 
     embed = hikari.Embed(
@@ -206,7 +207,7 @@ async def settings_main(ctx: lightbulb.SlashContext, message: Optional[hikari.Me
     await menu_actions[view.value](ctx, message)
 
 
-async def settings_mod(ctx: lightbulb.SlashContext, message: hikari.Message) -> None:
+async def settings_mod(ctx: SnedSlashContext, message: hikari.Message) -> None:
     """Show and handle Moderation menu."""
 
     mod = ctx.app.get_plugin("Moderation")
@@ -248,12 +249,12 @@ async def settings_mod(ctx: lightbulb.SlashContext, message: hikari.Message) -> 
     await settings_mod(ctx, message)
 
 
-async def settings_automod(ctx: lightbulb.SlashContext, message: hikari.Message) -> None:
+async def settings_automod(ctx: SnedSlashContext, message: hikari.Message) -> None:
     """Show and handle Auto-Moderation menu."""
     pass  # TODO: Implement
 
 
-async def settings_logging(ctx: lightbulb.SlashContext, message: hikari.Message) -> None:
+async def settings_logging(ctx: SnedSlashContext, message: hikari.Message) -> None:
     """Show and handle Logging menu."""
 
     logging = ctx.app.get_plugin("Logging")
@@ -559,7 +560,7 @@ menu_actions = {
 @settings.command()
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def settings_cmd(ctx: lightbulb.SlashContext) -> None:
+async def settings_cmd(ctx: SnedSlashContext) -> None:
     ctx = SettingsContext(ctx.app, ctx.event, ctx.command)
     await settings_main(ctx)  # Start menu, with initial message
 

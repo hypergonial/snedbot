@@ -8,6 +8,7 @@ from miru.ext import nav
 from models.bot import SnedBot
 from utils import helpers
 import typing as t
+from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class ReportModal(miru.Modal):
         await ctx.defer(flags=hikari.MessageFlag.EPHEMERAL)
 
 
-async def report_error(ctx: lightbulb.Context) -> None:
+async def report_error(ctx: SnedSlashContext) -> None:
     guild = ctx.get_guild()
     embed = hikari.Embed(
         title="❌ Oops!",
@@ -60,7 +61,7 @@ async def report_error(ctx: lightbulb.Context) -> None:
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-async def report_perms_error(ctx: lightbulb.Context) -> None:
+async def report_perms_error(ctx: SnedSlashContext) -> None:
     guild = ctx.get_guild()
     embed = hikari.Embed(
         title="❌ Oops!",
@@ -70,7 +71,7 @@ async def report_perms_error(ctx: lightbulb.Context) -> None:
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-async def report(ctx: lightbulb.Context, member: hikari.Member, message: t.Optional[hikari.Message] = None) -> None:
+async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Optional[hikari.Message] = None) -> None:
 
     if member.id == ctx.member.id or member.is_bot:
         embed = hikari.Embed(

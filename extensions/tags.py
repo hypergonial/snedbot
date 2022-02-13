@@ -10,6 +10,7 @@ import miru
 from models import AuthorOnlyNavigator, Tag
 from models.bot import SnedBot
 from utils import TagHandler, helpers
+from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 
@@ -63,17 +64,10 @@ class TagEditorModal(miru.Modal):
 
 
 @tags.command()
-@lightbulb.command("tag", "All commands involving tags.")
-@lightbulb.implements(lightbulb.SlashCommandGroup)
-async def tag(ctx: lightbulb.SlashContext) -> None:
-    pass
-
-
-@tag.child()
 @lightbulb.option("name", "The name of the tag you want to call.")
-@lightbulb.command("call", "Call a tag and display it's contents.")
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_call(ctx: lightbulb.SlashContext) -> None:
+@lightbulb.command("tag", "Call a tag and display it's contents.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def tag_cmd(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
 
     if tag:
@@ -87,10 +81,17 @@ async def tag_call(ctx: lightbulb.SlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@tag.child()
+@tags.command()
+@lightbulb.command("tags", "All commands for managing tags.")
+@lightbulb.implements(lightbulb.SlashCommandGroup)
+async def tag_group(ctx: SnedSlashContext) -> None:
+    pass
+
+
+@tag_group.child()
 @lightbulb.command("create", "Create a new tag. Opens a modal to specify the details.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_create(ctx: lightbulb.SlashContext) -> None:
+async def tag_create(ctx: SnedSlashContext) -> None:
 
     modal = TagEditorModal()
     await modal.send(ctx.interaction)
@@ -123,11 +124,11 @@ async def tag_create(ctx: lightbulb.SlashContext) -> None:
     await mctx.respond(embed=embed)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("name", "The name of the tag to get information about.")
 @lightbulb.command("info", "Display information about the specified tag.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_info(ctx: lightbulb.SlashContext) -> None:
+async def tag_info(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
     if tag:
         owner = await ctx.app.rest.fetch_user(tag.owner_id)
@@ -153,12 +154,12 @@ async def tag_info(ctx: lightbulb.SlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("alias", "The alias to add to this tag.")
 @lightbulb.option("name", "The tag to add an alias for.")
 @lightbulb.command("alias", "Adds an alias to a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_alias(ctx: lightbulb.SlashContext) -> None:
+async def tag_alias(ctx: SnedSlashContext) -> None:
     alias_tag: Tag = await tags.d.tag_handler.get(ctx.options.alias.lower(), ctx.guild_id)
     if alias_tag:
         embed = hikari.Embed(
@@ -202,12 +203,12 @@ async def tag_alias(ctx: lightbulb.SlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("alias", "The name of the alias to remove.")
 @lightbulb.option("name", "The tag to remove the alias from.")
 @lightbulb.command("delalias", "Remove an alias from a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_delalias(ctx: lightbulb.SlashContext) -> None:
+async def tag_delalias(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
     if tag and tag.owner_id == ctx.author.id:
 
@@ -241,7 +242,7 @@ async def tag_delalias(ctx: lightbulb.SlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("receiver", "The user to receive the tag.", type=hikari.Member)
 @lightbulb.option("name", "The name of the tag to transfer.")
 @lightbulb.command(
@@ -249,7 +250,7 @@ async def tag_delalias(ctx: lightbulb.SlashContext) -> None:
     "Transfer ownership of a tag to another user, letting them modify or delete it.",
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_transfer(ctx: lightbulb.SlashContext) -> None:
+async def tag_transfer(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
     if tag and tag.owner_id == ctx.author.id:
         await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
@@ -272,14 +273,14 @@ async def tag_transfer(ctx: lightbulb.SlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("name", "The name of the tag to claim.")
 @lightbulb.command(
     "claim",
     "Claim a tag that has been created by a user that has since left the server.",
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_claim(ctx: lightbulb.SlashContext) -> None:
+async def tag_claim(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
 
     if tag:
@@ -313,11 +314,11 @@ async def tag_claim(ctx: lightbulb.SlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("name", "The name of the tag to edit.")
 @lightbulb.command("edit", "Edit the content of a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_edit(ctx: lightbulb.SlashContext) -> None:
+async def tag_edit(ctx: SnedSlashContext) -> None:
 
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
 
@@ -349,11 +350,11 @@ async def tag_edit(ctx: lightbulb.SlashContext) -> None:
     await mctx.respond(embed=embed)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("name", "The name of the tag to delete.")
 @lightbulb.command("delete", "Delete a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_delete(ctx: lightbulb.SlashContext) -> None:
+async def tag_delete(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
     if tag and tag.owner_id == ctx.author.id:
         await tags.d.tag_handler.delete(ctx.options.name.lower(), ctx.guild_id)
@@ -374,10 +375,10 @@ async def tag_delete(ctx: lightbulb.SlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.command("list", "List all tags this server has.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_list(ctx: lightbulb.SlashContext) -> None:
+async def tag_list(ctx: SnedSlashContext) -> None:
     tags_list: List[Tag] = await tags.d.tag_handler.get_all(ctx.guild_id)
 
     if tags_list:
@@ -409,11 +410,11 @@ async def tag_list(ctx: lightbulb.SlashContext) -> None:
         await ctx.respond(embed=embed)
 
 
-@tag.child()
+@tag_group.child()
 @lightbulb.option("query", "The tag name or alias to search for.")
 @lightbulb.command("search", "Search for a tag name or alias.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_search(ctx: lightbulb.SlashContext) -> None:
+async def tag_search(ctx: SnedSlashContext) -> None:
     tags_list = await tags.d.tag_handler.get_all(ctx.guild_id)
 
     if tags_list:

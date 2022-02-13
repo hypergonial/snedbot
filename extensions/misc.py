@@ -3,6 +3,8 @@ import logging
 import hikari
 import lightbulb
 import psutil
+import miru
+from models.context import SnedMessageContext, SnedSlashContext
 from utils import helpers
 from models import SnedBot
 
@@ -15,7 +17,7 @@ psutil.cpu_percent(interval=1)  # Call so subsequent calls for CPU % will not be
 @misc.command()
 @lightbulb.command("ping", "Check the bot's latency.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def ping(ctx: lightbulb.SlashContext) -> None:
+async def ping(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🏓 Pong!",
         description="Latency: `{latency}ms`".format(latency=round(ctx.app.heartbeat_latency * 1000)),
@@ -59,7 +61,7 @@ async def ping(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option("title", "The title of the embed. Required.")
 @lightbulb.command("embed", "Generates a new embed with the parameters specified.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def embed(ctx: lightbulb.SlashContext) -> None:
+async def embed(ctx: SnedSlashContext) -> None:
     url_options = [
         ctx.options.image_url,
         ctx.options.thumbnail_url,
@@ -110,7 +112,7 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
 @misc.command()
 @lightbulb.command("about", "Displays information about the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def about(ctx: lightbulb.SlashContext) -> None:
+async def about(ctx: SnedSlashContext) -> None:
     me = ctx.app.get_me()
     embed = hikari.Embed(
         title=f"ℹ️ About {me.username}",
@@ -145,7 +147,7 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
 @misc.command()
 @lightbulb.command("invite", "Invite the bot to your server!")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def invite(ctx: lightbulb.SlashContext) -> None:
+async def invite(ctx: SnedSlashContext) -> None:
     if not ctx.app.experimental:
         invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.get_me().id}&permissions=1643161053254&scope=applications.commands%20bot"
         embed = hikari.Embed(
@@ -168,21 +170,21 @@ async def invite(ctx: lightbulb.SlashContext) -> None:
 @misc.command()
 @lightbulb.command("support", "Provides a link to the support Discord.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def support(ctx: lightbulb.SlashContext) -> None:
+async def support(ctx: SnedSlashContext) -> None:
     await ctx.respond("https://discord.gg/KNKr8FPmJa")
 
 
 @misc.command()
 @lightbulb.command("source", "Provides a link to the source-code of the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def support(ctx: lightbulb.SlashContext) -> None:
+async def support(ctx: SnedSlashContext) -> None:
     await ctx.respond("<https://github.com/HyperGH/snedbot_v2>")
 
 
 @misc.command()
 @lightbulb.command("serverinfo", "Provides detailed information about this server.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def serverinfo(ctx: lightbulb.SlashContext) -> None:
+async def serverinfo(ctx: SnedSlashContext) -> None:
     guild = ctx.app.cache.get_available_guild(ctx.guild_id)
 
     embed = hikari.Embed(
@@ -212,6 +214,99 @@ async def serverinfo(ctx: lightbulb.SlashContext) -> None:
     embed.set_image(guild.banner_url)
 
     await ctx.respond(embed=embed)
+
+
+@misc.command()
+@lightbulb.add_checks(lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES))
+@lightbulb.option(
+    "channel",
+    "The channel to send the message to, defaults to the current channel.",
+    required=False,
+    type=hikari.TextableGuildChannel,
+    channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
+)
+@lightbulb.option("text", "The text to echo.")
+@lightbulb.command("echo", "Repeat the provided text as the bot.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def echo(ctx: SnedSlashContext) -> None:
+    # InteractionChannel has no overrides data
+    if ctx.options.channel:
+        channel = ctx.app.cache.get_guild_channel(ctx.options.channel.id) or ctx.get_channel()
+    else:
+        channel = ctx.get_channel()
+
+    perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
+    if not perms & hikari.Permissions.SEND_MESSAGES:
+        raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.SEND_MESSAGES)
+
+    await channel.send(ctx.options.text)
+
+    embed = hikari.Embed(title="✅ Message sent!", color=ctx.app.embed_green)
+    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+
+@misc.command()
+@lightbulb.add_checks(
+    lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
+)
+@lightbulb.option("message_id", "You can get this by enabling Developer Mode and right-clicking a message.", type=str)
+@lightbulb.option(
+    "channel",
+    "The channel the message is located in.",
+    type=hikari.TextableGuildChannel,
+    channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
+)
+@lightbulb.command("edit", "Edit a message that was sent by the bot.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def edit(ctx: SnedSlashContext) -> None:
+
+    channel = ctx.app.cache.get_guild_channel(ctx.options.channel.id) or ctx.get_channel()
+
+    perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
+    if not perms & hikari.Permissions.SEND_MESSAGES:
+        raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.SEND_MESSAGES)
+
+    message = await helpers.parse_message_id(ctx, channel, ctx.options.message_id)
+    if not message:
+        return
+
+    if message.author.id != ctx.app.user_id:
+        embed = hikari.Embed(
+            title="❌ Not Authored",
+            description="The bot did not author this message, thus it cannot edit it.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    modal = miru.Modal(f"Editing message in #{channel.name}")
+    modal.add_item(
+        miru.TextInput(
+            label="Content",
+            style=hikari.TextInputStyle.PARAGRAPH,
+            placeholder="Type the new content for this message...",
+            value=message.content,
+            required=True,
+            max_length=2000,
+        )
+    )
+    await modal.send(ctx.interaction)
+    await modal.wait()
+    if not modal.values:
+        return
+
+    content = list(modal.values.values())[0]
+    await message.edit(content=content)
+
+    embed = hikari.Embed(title="✅ Message edited!", color=ctx.app.embed_green)
+    await modal.get_response_context().respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+
+@misc.command()
+@lightbulb.add_checks(lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES))
+@lightbulb.command("Raw Content", "Show raw content for this message.")
+@lightbulb.implements(lightbulb.MessageCommand)
+async def raw(ctx: SnedMessageContext) -> None:
+    await ctx.respond(f"```{ctx.options.target.content}```", flags=hikari.MessageFlag.EPHEMERAL)
 
 
 def load(bot: SnedBot) -> None:

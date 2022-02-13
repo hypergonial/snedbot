@@ -25,6 +25,7 @@ if os.name != "nt":  # Lol imagine using Windows
         uvloop.install()
 
 initial_extensions = [
+    "extensions.error_handler",
     "extensions.userlog",
     "extensions.moderation",
     "extensions.settings",
@@ -35,6 +36,7 @@ initial_extensions = [
     "extensions.tags",
     "extensions.misc",
     "extensions.role_buttons",
+    "extensions.dev",
 ]
 
 bot = SnedBot(config)

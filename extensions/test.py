@@ -8,6 +8,7 @@ from miru.ext import nav
 from models.bot import SnedBot
 from utils import helpers
 import perspective
+from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +65,10 @@ class BasicModal(miru.Modal):
 @test.command()
 @lightbulb.command("mirutest", "Test miru views")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def viewtest(ctx: lightbulb.SlashContext) -> None:
+async def viewtest(ctx: SnedSlashContext) -> None:
+    assert 1 == 2
     view = BasicView()
+    view.add_item(miru.Button(label="Settings!", url="discord://-/settings/advanced"))
     resp = await ctx.respond("foo", components=view.build())
     view.start(await resp.message())
 
@@ -73,7 +76,7 @@ async def viewtest(ctx: lightbulb.SlashContext) -> None:
 @test.command()
 @lightbulb.command("modaltest", "Test miru modals")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def modaltest(ctx: lightbulb.SlashContext) -> None:
+async def modaltest(ctx: SnedSlashContext) -> None:
     modal = BasicModal()
     await modal.send(ctx.interaction)
 
@@ -82,7 +85,7 @@ async def modaltest(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option("text", "Text to analyze.")
 @lightbulb.command("perspectivetestmultiple", "aaa", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def testmultiple_cmd(ctx: lightbulb.SlashContext) -> None:
+async def testmultiple_cmd(ctx: SnedSlashContext) -> None:
     text = ctx.options.text
     attribs = perspective.Attribute(perspective.AttributeName.TOXICITY)
     resps = []
@@ -105,7 +108,7 @@ async def testmultiple_cmd(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option("text", "Text to analyze.")
 @lightbulb.command("perspectivetest", "aaa", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def test_cmd(ctx: lightbulb.SlashContext) -> None:
+async def test_cmd(ctx: SnedSlashContext) -> None:
     text = ctx.options.text
     attribs = [
         perspective.Attribute(perspective.AttributeName.TOXICITY),

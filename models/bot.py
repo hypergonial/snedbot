@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from typing import Dict, Any, Optional
+import typing as t
 
 import asyncpg
 import hikari
@@ -12,6 +12,7 @@ import miru
 
 from utils.config_handler import ConfigHandler
 from utils import cache, scheduler
+from .context import *
 import perspective
 
 
@@ -25,7 +26,7 @@ class SnedBot(lightbulb.BotApp):
         See the included config_example.py for formatting help.
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: t.Dict[str, t.Any]) -> None:
         self.loop = asyncio.get_event_loop()
         self._started = asyncio.Event()
 
@@ -57,6 +58,8 @@ class SnedBot(lightbulb.BotApp):
             default_enabled_guilds=default_enabled_guilds,
             intents=intents,
             owner_ids=(163979124820541440,),
+            prefix="dev",
+            help_class=None,
         )
 
         config.pop("token")
@@ -73,7 +76,7 @@ class SnedBot(lightbulb.BotApp):
         # Some global variables
         self._base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
         self.skip_db_backup = True
-        self._user_id: Optional[Snowflake] = None
+        self._user_id: t.Optional[Snowflake] = None
 
         # Color scheme
         self.error_color = 0xFF0000
@@ -119,6 +122,35 @@ class SnedBot(lightbulb.BotApp):
         Wait until the bot has started up
         """
         await asyncio.wait_for(self._started.wait(), timeout=None)
+
+    async def get_slash_context(
+        self,
+        event: hikari.InteractionCreateEvent,
+        command: lightbulb.SlashCommand,
+        cls: t.Type[lightbulb.SlashContext] = SnedSlashContext,
+    ) -> SnedSlashContext:
+        return await super().get_slash_context(event, command, cls)
+
+    async def get_user_context(
+        self,
+        event: hikari.InteractionCreateEvent,
+        command: lightbulb.UserCommand,
+        cls: t.Type[lightbulb.UserContext] = SnedUserContext,
+    ) -> SnedUserContext:
+        return await super().get_user_context(event, command, cls)
+
+    async def get_message_context(
+        self,
+        event: hikari.InteractionCreateEvent,
+        command: lightbulb.MessageCommand,
+        cls: t.Type[lightbulb.MessageContext] = SnedMessageContext,
+    ) -> SnedMessageContext:
+        return await super().get_message_context(event, command, cls)
+
+    async def get_prefix_context(
+        self, event: hikari.MessageCreateEvent, cls: t.Type[lightbulb.PrefixContext] = SnedPrefixContext
+    ) -> t.Optional[SnedPrefixContext]:
+        return await super().get_prefix_context(event, cls)
 
     async def on_startup(self, event: hikari.StartedEvent) -> None:
 

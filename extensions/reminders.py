@@ -11,6 +11,7 @@ from models import events
 from models import SnedBot
 from models import Timer
 from utils import helpers
+from models import SnedSlashContext
 
 reminders = lightbulb.Plugin(name="Reminders")
 
@@ -29,7 +30,7 @@ class ReminderView(miru.View):
         await self.message.edit(components=self.build())
 
     @miru.button(label="Remind me too!", emoji="✉️", style=hikari.ButtonStyle.PRIMARY)
-    async def add_recipient(self, button: miru.Button, ctx: miru.Context) -> None:
+    async def add_recipient(self, button: miru.Button, ctx: miru.ViewContext) -> None:
         try:
             timer: Timer = await self.app.scheduler.get_timer(self.timer_id, ctx.guild_id)
         except ValueError:
@@ -52,28 +53,27 @@ class ReminderView(miru.View):
 
             if ctx.user.id not in notes["additional_recipients"]:
 
-                if len(notes["additional_recipients"]) < 50:
-                    notes["additional_recipients"].append(ctx.user.id)
-                    await self.app.scheduler.update_timer(
-                        datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
-                        self.timer_id,
-                        ctx.guild_id,
-                        new_notes=json.dumps(notes),
-                    )
-                    embed = hikari.Embed(
-                        title="✅ Signed up to reminder",
-                        description="You will also be notified when this reminder is due!",
-                        color=self.app.embed_green,
-                    )
-                    return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-                else:
+                if len(notes["additional_recipients"]) > 50:
                     embed = hikari.Embed(
                         title="❌ Invalid interaction",
                         description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
                         color=self.app.error_color,
                     )
                     return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+                notes["additional_recipients"].append(ctx.user.id)
+                await self.app.scheduler.update_timer(
+                    datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
+                    self.timer_id,
+                    ctx.guild_id,
+                    new_notes=json.dumps(notes),
+                )
+                embed = hikari.Embed(
+                    title="✅ Signed up to reminder",
+                    description="You will also be notified when this reminder is due!",
+                    color=self.app.embed_green,
+                )
+                return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             else:
                 notes["additional_recipients"].remove(ctx.user.id)
                 await self.app.scheduler.update_timer(
@@ -93,7 +93,7 @@ class ReminderView(miru.View):
 @reminders.command()
 @lightbulb.command("reminder", "Manage reminders!")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
-async def reminder(ctx: lightbulb.Context) -> None:
+async def reminder(ctx: SnedSlashContext) -> None:
     pass
 
 
@@ -102,7 +102,7 @@ async def reminder(ctx: lightbulb.Context) -> None:
 @reminder.child()
 @lightbulb.command("create", "Create a new reminder.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_create(ctx: lightbulb.Context) -> None:
+async def reminder_create(ctx: SnedSlashContext) -> None:
     if len(ctx.options.message) >= 1000:
         embed = hikari.Embed(
             title="❌ Reminder too long",
@@ -166,7 +166,7 @@ async def reminder_create(ctx: lightbulb.Context) -> None:
 @lightbulb.option("id", "The ID of the timer to delete. You can get this via /reminder list", type=int)
 @lightbulb.command("delete", "Delete a currently pending reminder.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_del(ctx: lightbulb.Context) -> None:
+async def reminder_del(ctx: SnedSlashContext) -> None:
     try:
         await ctx.app.scheduler.cancel_timer(ctx.options.id, ctx.guild_id)
     except ValueError:
@@ -189,7 +189,7 @@ async def reminder_del(ctx: lightbulb.Context) -> None:
 @reminder.child()
 @lightbulb.command("list", "List your currently pending reminders.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_list(ctx: lightbulb.Context) -> None:
+async def reminder_list(ctx: SnedSlashContext) -> None:
     results = await ctx.app.pool.fetch(
         """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = 'reminder' ORDER BY expires LIMIT 10""",
         ctx.guild_id,

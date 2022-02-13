@@ -2,7 +2,7 @@
 
 mod_settings_strings = {
     "dm_users_on_punish": "DM users after punishment",
-    "clean_up_mod_commands": "Clean up mod commands",
+    "is_ephemeral": "Send mod commands ephemerally",
 }
 
 default_automod_policies = {

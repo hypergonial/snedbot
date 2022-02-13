@@ -93,7 +93,7 @@ try:
                 (
                     guild_id bigint NOT NULL,
                     dm_users_on_punish bool NOT NULL DEFAULT true,
-                    clean_up_mod_commands bool NOT NULL DEFAULT false,
+                    is_ephemeral bool NOT NULL DEFAULT false,
                     automod_policies json NOT NULL DEFAULT '{}',
                     PRIMARY KEY (guild_id),
                     FOREIGN KEY (guild_id)

@@ -10,6 +10,7 @@ import lightbulb
 import miru
 from utils import helpers
 from models import SnedBot
+from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class NitroView(miru.View):
         await self.message.edit(embed=embed, components=self.build())
 
     @miru.button(style=hikari.ButtonStyle.SUCCESS, label="          Accept          ")
-    async def nitro_button(self, button: miru.Button, ctx: miru.Context) -> None:
+    async def nitro_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
         await ctx.respond(
             "https://images-ext-1.discordapp.net/external/AoV9l5YhsWBj92gcKGkzyJAAXoYpGiN6BdtfzM-00SU/https/i.imgur.com/NQinKJB.mp4",
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -251,7 +252,7 @@ class TicTacToeView(miru.View):
 @lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
 @lightbulb.command("tictactoe", "Play tic tac toe with someone!")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def tictactoe(ctx: lightbulb.SlashContext) -> None:
+async def tictactoe(ctx: SnedSlashContext) -> None:
     size: int = ctx.options.size or 3
 
     if size not in (3, 4, 5):
@@ -301,7 +302,7 @@ async def tictactoe(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option("user", "The user to show the avatar for.", hikari.Member, required=False)
 @lightbulb.command("avatar", "Displays a user's avatar for your viewing pleasure.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def avatar(ctx: lightbulb.SlashContext) -> None:
+async def avatar(ctx: SnedSlashContext) -> None:
     member = ctx.options.user or ctx.member
     if ctx.options.show_global == True:
         avatar_url = helpers.get_avatar(member)
@@ -317,7 +318,7 @@ async def avatar(ctx: lightbulb.SlashContext) -> None:
 @fun.command
 @lightbulb.command("funfact", "Shows a random fun fact.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def funfact(ctx: lightbulb.SlashContext) -> None:
+async def funfact(ctx: SnedSlashContext) -> None:
     fun_path = Path(ctx.app.base_dir, "etc", "funfacts.txt")
     fun_facts = open(fun_path, "r").readlines()
     embed = hikari.Embed(
@@ -332,7 +333,7 @@ async def funfact(ctx: lightbulb.SlashContext) -> None:
 @fun.command
 @lightbulb.command("penguinfact", "Shows a fact about penguins.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def funfact(ctx: lightbulb.SlashContext) -> None:
+async def funfact(ctx: SnedSlashContext) -> None:
     penguin_path = Path(ctx.app.base_dir, "etc", "penguinfacts.txt")
     penguin_facts = open(penguin_path, "r").readlines()
     embed = hikari.Embed(
@@ -347,7 +348,7 @@ async def funfact(ctx: lightbulb.SlashContext) -> None:
 @fun.command
 @lightbulb.command("randomcat", "Searches the interwebz™️ for a random cat picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def randomcat(ctx: lightbulb.SlashContext) -> None:
+async def randomcat(ctx: SnedSlashContext) -> None:
     async with aiohttp.ClientSession() as session:
         async with session.get("https://api.thecatapi.com/v1/images/search") as response:
             if response.status == 200:
@@ -369,7 +370,7 @@ async def randomcat(ctx: lightbulb.SlashContext) -> None:
 @fun.command
 @lightbulb.command("randomdog", "Searches the interwebz™️ for a random dog picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def randomdog(ctx: lightbulb.SlashContext) -> None:
+async def randomdog(ctx: SnedSlashContext) -> None:
     async with aiohttp.ClientSession() as session:
         async with session.get("https://api.thedogapi.com/v1/images/search") as response:
             if response.status == 200:
@@ -391,7 +392,7 @@ async def randomdog(ctx: lightbulb.SlashContext) -> None:
 @fun.command
 @lightbulb.command("randomfox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def randomfox(ctx: lightbulb.SlashContext) -> None:
+async def randomfox(ctx: SnedSlashContext) -> None:
     async with aiohttp.ClientSession() as session:
         async with session.get("https://foxapi.dev/foxes/") as response:
             if response.status == 200:
@@ -413,14 +414,14 @@ async def randomfox(ctx: lightbulb.SlashContext) -> None:
 @fun.command
 @lightbulb.command("nitro", 'Gives you "free" nitro.')
 @lightbulb.implements(lightbulb.SlashCommand)
-async def nitro(ctx: lightbulb.SlashContext) -> None:
+async def nitro(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="You've been gifted a subscription!",
         description="You've been gifted Nitro for **1 month!**",
         color=0x2F3136,
     )
     embed.set_thumbnail("https://i.imgur.com/w9aiD6F.png")
-    view = NitroView(ctx.app)
+    view = NitroView()
     proxy = await ctx.respond(embed=embed, components=view.build())
     view.start(await proxy.message())
 
@@ -429,7 +430,7 @@ async def nitro(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option("question", "The question you want to ask of the mighty 8ball.")
 @lightbulb.command("8ball", "Ask a question, and the answers shall reveal themselves.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def eightball(ctx: lightbulb.SlashContext) -> None:
+async def eightball(ctx: SnedSlashContext) -> None:
     ball_path = Path(ctx.app.base_dir, "etc", "8ball.txt")
     answers = open(ball_path, "r").readlines()
     embed = hikari.Embed(
@@ -445,7 +446,7 @@ async def eightball(ctx: lightbulb.SlashContext) -> None:
 @lightbulb.option("query", "The query you want to search for on Wikipedia.")
 @lightbulb.command("wiki", "Search Wikipedia for articles!", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def wiki(ctx: lightbulb.SlashContext) -> None:
+async def wiki(ctx: SnedSlashContext) -> None:
     link = "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5"
 
     async with aiohttp.ClientSession() as session:

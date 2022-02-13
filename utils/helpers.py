@@ -264,6 +264,40 @@ async def resolve_response(response: Union[lightbulb.ResponseProxy, hikari.Messa
 T = TypeVar("T")
 
 
+async def parse_message_id(
+    ctx: lightbulb.SlashContext, channel: hikari.TextableChannel, message_id: str
+) -> Optional[hikari.Message]:
+    """Parse a message_id string into a message object."""
+
+    perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
+    if not (perms & hikari.Permissions.READ_MESSAGE_HISTORY):
+        raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)
+
+    try:
+        message_id = int(ctx.options.message_id)
+    except TypeError:
+        embed = hikari.Embed(
+            title="❌ Invalid ID",
+            description="Please enter a valid integer for parameter `message_id`",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return None
+
+    try:
+        message = await ctx.app.rest.fetch_message(channel, message_id)
+    except (hikari.NotFoundError, hikari.ForbiddenError):
+        embed = hikari.Embed(
+            title="❌ Unknown message",
+            description="Could not find message with this ID. Ensure the ID is valid, and that the bot has permissions to view the channel.",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return None
+
+    return message
+
+
 async def ask(
     ctx: lightbulb.Context,
     *,
@@ -375,14 +409,14 @@ async def ask(
 async def maybe_delete(message: hikari.Message) -> None:
     try:
         await message.delete()
-    except:
+    except (hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         pass
 
 
 async def maybe_edit(message: hikari.Message, *args, **kwargs) -> None:
     try:
         return await message.edit(*args, **kwargs)
-    except:
+    except (hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         pass
 
 
