@@ -70,15 +70,15 @@ class TagEditorModal(miru.Modal):
 async def tag_cmd(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
 
-    if tag:
-        await ctx.respond(content=tag.content)
-    else:
+    if not tag:
         embed = hikari.Embed(
             title="❌ Unknown tag",
             description="Cannot find tag by that name.",
             color=ctx.app.error_color,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    await ctx.respond(content=tag.content)
 
 
 @tags.command()
@@ -102,7 +102,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     if tag:
         embed = hikari.Embed(
             title="❌ Tag exists",
-            description=f"This tag already exists. If the owner of this tag is no longer in the server, you can try doing `/tag claim {modal.tag_name.lower()}`",
+            description=f"This tag already exists. If the owner of this tag is no longer in the server, you can try doing `/tags claim {modal.tag_name.lower()}`",
             color=ctx.app.error_color,
         )
         return await mctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -117,7 +117,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     await tags.d.tag_handler.create(new_tag)
     embed = hikari.Embed(
         title="✅ Tag created!",
-        description=f"You can now call it with `/tag call {modal.tag_name.lower()}`",
+        description=f"You can now call it with `/tag {modal.tag_name.lower()}`",
         color=ctx.app.embed_green,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
@@ -285,7 +285,10 @@ async def tag_claim(ctx: SnedSlashContext) -> None:
 
     if tag:
         members = ctx.app.cache.get_members_view_for_guild(ctx.guild_id)
-        if tag.owner_id not in members.keys():
+        if tag.owner_id not in members.keys() or (
+            lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_MESSAGES
+            and tag.owner_id != ctx.member.id
+        ):
             await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
             tag.owner_id = ctx.author.id
             await tags.d.tag_handler.create(tag)
@@ -356,7 +359,10 @@ async def tag_edit(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_delete(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
-    if tag and tag.owner_id == ctx.author.id:
+    if tag and (
+        (tag.owner_id == ctx.author.id)
+        or (lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_MESSAGES)
+    ):
         await tags.d.tag_handler.delete(ctx.options.name.lower(), ctx.guild_id)
         embed = hikari.Embed(
             title="✅ Tag deleted",
@@ -403,7 +409,7 @@ async def tag_list(ctx: SnedSlashContext) -> None:
     else:
         embed = hikari.Embed(
             title="💬 Available tags for this server:",
-            description="There are no tags on this server yet! You can create one via `/tag create`",
+            description="There are no tags on this server yet! You can create one via `/tags create`",
             color=ctx.app.embed_blue,
         )
         helpers.add_embed_footer(embed, ctx.member)
@@ -456,7 +462,7 @@ async def tag_search(ctx: SnedSlashContext) -> None:
     else:
         embed = hikari.Embed(
             title="🔎 Search failed",
-            description="There are no tags on this server yet! You can create one via `/tag create`",
+            description="There are no tags on this server yet! You can create one via `/tags create`",
             color=ctx.app.warn_color,
         )
         helpers.add_embed_footer(embed, ctx.member)

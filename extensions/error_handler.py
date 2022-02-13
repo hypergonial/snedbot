@@ -144,9 +144,11 @@ async def prefix_error_handler(event: lightbulb.PrefixCommandErrorEvent) -> None
     if isinstance(event.exception, lightbulb.CheckFailure):
         return
 
+    error = event.exception.original if hasattr(event.exception, "original") else event.exception
+
     embed = hikari.Embed(
         title="❌ Exception encountered",
-        description=f"```{event.exception}```",
+        description=f"```{error}```",
         color=event.context.app.error_color,
     )
     await event.context.respond(embed=embed)
