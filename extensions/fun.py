@@ -28,7 +28,7 @@ class NitroView(miru.View):
         for item in self.children:
             item.disabled = True
             item.style = hikari.ButtonStyle.SECONDARY
-            item.label = "          Accept          "
+            item.label = "              Accept              "
 
         embed = hikari.Embed(
             title="You've been gifted a subscription!",

@@ -207,6 +207,9 @@ class SnedBot(lightbulb.BotApp):
         logging.info("Closed database connection.")
 
     async def on_message(self, event: hikari.MessageCreateEvent) -> None:
+        if not event.content:
+            return
+
         if self.is_ready and self.db_cache.is_ready and event.is_human:
             mentions = [f"<@{self.user_id}>", f"<@!{self.user_id}>"]
 

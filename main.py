@@ -25,7 +25,7 @@ if os.name != "nt":  # Lol imagine using Windows
         uvloop.install()
 
 initial_extensions = [
-    "extensions.error_handler",
+    "extensions.command_handler",
     "extensions.userlog",
     "extensions.moderation",
     "extensions.settings",

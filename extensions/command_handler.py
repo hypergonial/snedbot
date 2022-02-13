@@ -9,7 +9,7 @@ import lightbulb
 from etc.perms_str import get_perm_str
 import datetime
 from models import SnedContext
-from models.errors import RoleHierarchyError
+from models.errors import BotRoleHierarchyError, RoleHierarchyError
 from utils import helpers
 import typing as t
 
@@ -18,7 +18,7 @@ if t.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-eh = lightbulb.Plugin("Error-Handler")
+ch = lightbulb.Plugin("Command Handler")
 
 
 async def log_error_to_homeguild(
@@ -54,7 +54,9 @@ async def log_error_to_homeguild(
 
 
 async def application_error_handler(ctx: SnedContext, error: lightbulb.LightbulbError) -> None:
+    print(error.__class__.__name__)
     if isinstance(error, lightbulb.CheckFailure):
+        print("check")
 
         if isinstance(error, lightbulb.MissingRequiredPermission):
             embed = hikari.Embed(
@@ -70,6 +72,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
                 color=ctx.app.error_color,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
     elif isinstance(error, lightbulb.CommandIsOnCooldown):
         embed = hikari.Embed(
             title="🕘 Cooldown Pending",
@@ -77,6 +80,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             color=ctx.app.error_color,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
     elif isinstance(error, lightbulb.CommandInvocationError):
 
         if isinstance(error.original, asyncio.TimeoutError):
@@ -99,13 +103,23 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
                 description=f"This action has failed due to a lack of permissions.\n**Error:** {error}",
                 color=ctx.app.error_color,
             )
-        elif isinstance(error.original, RoleHierarchyError):
-            embed = hikari.Embed(
-                title="❌ Role Hiearchy Error",
-                description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
-                color=ctx.app.error_color,
-            )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    elif isinstance(error, RoleHierarchyError):
+        print("aa")
+        embed = hikari.Embed(
+            title="❌ Role Hiearchy Error",
+            description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    elif isinstance(error, BotRoleHierarchyError):
+        embed = hikari.Embed(
+            title="❌ Role Hiearchy Error",
+            description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     logging.error("Ignoring exception in command {}:".format(ctx.command.name))
     exception_msg = "\n".join(traceback.format_exception(type(error), error, error.__traceback__))
@@ -123,22 +137,23 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@eh.listener(lightbulb.SlashCommandErrorEvent)
-async def slash_error_handler(event: lightbulb.SlashCommandErrorEvent) -> None:
+@ch.listener(lightbulb.UserCommandErrorEvent)
+@ch.listener(lightbulb.MessageCommandErrorEvent)
+@ch.listener(lightbulb.SlashCommandErrorEvent)
+async def slash_error_handler(event: lightbulb.CommandErrorEvent) -> None:
     await application_error_handler(event.context, event.exception)
 
 
-@eh.listener(lightbulb.MessageCommandErrorEvent)
-async def message_error_handler(event: lightbulb.MessageCommandErrorEvent) -> None:
-    await application_error_handler(event.context, event.exception)
+@ch.listener(lightbulb.UserCommandCompletionEvent)
+@ch.listener(lightbulb.SlashCommandCompletionEvent)
+@ch.listener(lightbulb.MessageCommandCompletionEvent)
+async def application_command_completion_handler(event: lightbulb.events.CommandCompletionEvent):
+    if event.context.author.id in event.context.app.owner_ids:
+        if cm := event.command.cooldown_manager:
+            await cm.reset_cooldown(event.context)
 
 
-@eh.listener(lightbulb.UserCommandErrorEvent)
-async def user_error_handler(event: lightbulb.UserCommandErrorEvent) -> None:
-    await application_error_handler(event.context, event.exception)
-
-
-@eh.listener(lightbulb.PrefixCommandErrorEvent)
+@ch.listener(lightbulb.PrefixCommandErrorEvent)
 async def prefix_error_handler(event: lightbulb.PrefixCommandErrorEvent) -> None:
     if isinstance(event.exception, lightbulb.CheckFailure):
         return
@@ -154,9 +169,16 @@ async def prefix_error_handler(event: lightbulb.PrefixCommandErrorEvent) -> None
     raise event.exception
 
 
+@ch.listener(lightbulb.events.CommandInvocationEvent)
+async def command_invoke_listener(event: lightbulb.events.CommandInvocationEvent) -> None:
+    logger.info(
+        f"Command {event.command.name} was invoked by {event.context.author} in guild {event.context.guild_id}."
+    )
+
+
 def load(bot: SnedBot) -> None:
-    bot.add_plugin(eh)
+    bot.add_plugin(ch)
 
 
 def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(eh)
+    bot.remove_plugin(ch)

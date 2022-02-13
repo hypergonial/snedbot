@@ -558,6 +558,10 @@ menu_actions = {
 
 
 @settings.command()
+@lightbulb.add_checks(
+    lightbulb.bot_has_guild_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
+)
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_GUILD))
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def settings_cmd(ctx: SnedSlashContext) -> None:

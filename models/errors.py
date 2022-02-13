@@ -1,4 +1,5 @@
 import hikari
+import lightbulb
 
 
 class TagAlreadyExists(Exception):
@@ -13,19 +14,13 @@ class TagNotFound(Exception):
     """
 
 
-class UserInputError(Exception):
-    """
-    Triggered when a user entered a wrong value.
-    """
-
-
-class PunishFailed(Exception):
-    """
-    Raised when punishing the user failed.
-    """
-
-
-class RoleHierarchyError(Exception):
+class RoleHierarchyError(lightbulb.CheckFailure):
     """
     Raised when an action fails due to role hierarchy.
+    """
+
+
+class BotRoleHierarchyError(lightbulb.CheckFailure):
+    """
+    Raised when an action fails due to the bot's role hierarchy.
     """

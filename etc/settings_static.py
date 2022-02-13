@@ -11,6 +11,7 @@ default_automod_policies = {
         "temp_dur": 15,
         "delete": True,
         "excluded_channels": [],
+        "excluded_roles": [],
     },
     "spam": {"state": "disabled", "temp_dur": 15, "excluded_channels": []},
     "mass_mentions": {
@@ -19,36 +20,42 @@ default_automod_policies = {
         "delete": True,
         "count": 10,
         "excluded_channels": [],
+        "excluded_roles": [],
     },
     "zalgo": {
         "state": "disabled",
         "temp_dur": 15,
         "delete": True,
         "excluded_channels": [],
+        "excluded_roles": [],
     },
     "attach_spam": {
         "state": "disabled",
         "temp_dur": 15,
         "delete": True,
         "excluded_channels": [],
+        "excluded_roles": [],
     },
     "link_spam": {
         "state": "disabled",
         "temp_dur": 15,
         "delete": True,
         "excluded_channels": [],
+        "excluded_roles": [],
     },
     "caps": {
         "state": "disabled",
         "temp_dur": 15,
         "delete": True,
         "excluded_channels": [],
+        "excluded_roles": [],
     },
     "bad_words": {
         "state": "disabled",
         "temp_dur": 15,
         "delete": True,
         "excluded_channels": [],
+        "excluded_roles": [],
         "words_list": [
             "motherfucker",
             "cock",
@@ -89,6 +96,16 @@ policy_states = {
     "softban": {"name": "Softban", "excludes": []},
     "tempban": {"name": "Tempban", "excludes": []},
     "permaban": {"name": "Ban", "excludes": []},
+}
+
+notices = {
+    "invites": "posting discord invites",
+    "mass_mentions": "mass mentioning users",
+    "zalgo": "using zalgo in your messages",
+    "attach_spam": "spamming attachments",
+    "link_spam": "posting links too fast",
+    "caps": "using excessive caps in your message",
+    "bad_words": "using bad words in your message",
 }
 
 # Strings for the automod config menu

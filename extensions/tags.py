@@ -34,7 +34,7 @@ class TagEditorModal(miru.Modal):
                     placeholder="Enter a tag name...",
                     required=True,
                     min_length=3,
-                    max_length=200,
+                    max_length=100,
                     value=name,
                 )
             )

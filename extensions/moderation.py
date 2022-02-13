@@ -9,7 +9,7 @@ import lightbulb
 from models.bot import SnedBot
 import models
 from models.db_user import User
-from models.errors import RoleHierarchyError
+from models.errors import BotRoleHierarchyError, RoleHierarchyError
 from models.timer import Timer
 from models import SnedSlashContext
 from utils import helpers
@@ -59,7 +59,7 @@ async def is_above_target(ctx: lightbulb.Context) -> bool:
     if helpers.is_above(me, member):
         return True
 
-    return False
+    raise BotRoleHierarchyError("Target user top role is higher than bot.")
 
 
 @lightbulb.Check
@@ -80,7 +80,7 @@ async def is_invoker_above_target(ctx: lightbulb.Context) -> bool:
     if helpers.is_above(ctx.member, member):
         return True
 
-    return False
+    raise RoleHierarchyError("Target user top role is higher than author.")
 
 
 async def get_settings(guild_id: int) -> Dict[str, bool]:
@@ -635,13 +635,11 @@ async def purge(ctx: SnedSlashContext) -> None:
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    messages = []
-
-    async for message in ctx.app.rest.fetch_messages(channel):
-        if all(predicate(message) for predicate in predicates):
-            messages.append(message)
-        if len(messages) >= ctx.options.count:
-            break
+    messages = (
+        await ctx.app.rest.fetch_messages(channel, after=helpers.utcnow() - datetime.timedelta(days=14))
+        .filter(*predicates)
+        .limit(ctx.options.count)
+    )
 
     if messages:
         try:
@@ -658,6 +656,7 @@ async def purge(ctx: SnedSlashContext) -> None:
                 description=f"Only **{len(error.messages_deleted)}/{len(messages)}** messages have been deleted due to an error.",
                 color=ctx.app.warn_color,
             )
+            raise error
     else:
         embed = hikari.Embed(
             title="🗑️ Not found",
@@ -700,10 +699,11 @@ async def journal_get(ctx: SnedSlashContext) -> None:
                 color=ctx.app.embed_blue,
             )
             embeds.append(embed)
-        ephemeral = get_settings(ctx.guild_id)["is_ephemeral"]
-        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds, ephemeral=ephemeral)
 
-        await navigator.send(ctx.interaction)
+        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)
+
+        ephemeral = (await get_settings(ctx.guild_id))["is_ephemeral"]
+        await navigator.send(ctx.interaction, ephemeral=ephemeral)
 
     else:
         embed = hikari.Embed(
@@ -1145,7 +1145,7 @@ async def massban(ctx: SnedSlashContext) -> None:
         color=ctx.app.error_color,
     )
 
-    is_ephemeral = get_settings(ctx.guild_id)["is_ephemeral"]
+    is_ephemeral = (await get_settings(ctx.guild_id))["is_ephemeral"]
     flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.UNDEFINED
     confirmed = await ctx.confirm(
         embed=embed,

@@ -185,7 +185,7 @@ userlog.d.actions["unfreeze_logging"] = unfreeze_logging
 
 
 async def find_auditlog_data(
-    event: hikari.GuildEvent, *, type: hikari.AuditLogEventType, user_id: Optional[int] = hikari.UNDEFINED
+    event: hikari.GuildEvent, *, event_type: hikari.AuditLogEventType, user_id: Optional[int] = hikari.UNDEFINED
 ) -> Optional[hikari.AuditLogEntry]:
     """Find a recently sent audit log entry that matches criteria.
 
@@ -209,8 +209,12 @@ async def find_auditlog_data(
         The passed event has no guild attached to it, or was not found in cache.
     """
 
+    # Stuff that is observed to just take too goddamn long to appear in AuditLogs
+    takes_an_obscene_amount_of_time = [hikari.AuditLogEventType.MESSAGE_BULK_DELETE]
+
     guild = userlog.app.cache.get_guild(event.guild_id)
-    await asyncio.sleep(2.0)  # Wait for auditlog to hopefully fill in
+    sleep_time = 5.0 if event_type not in takes_an_obscene_amount_of_time else 15.0
+    await asyncio.sleep(sleep_time)  # Wait for auditlog to hopefully fill in
 
     if not guild:
         raise ValueError("Cannot find guild to parse auditlogs for.")
@@ -222,10 +226,10 @@ async def find_auditlog_data(
 
     try:
         return_next = False
-        async for log in userlog.app.rest.fetch_audit_log(guild, event_type=type):
+        async for log in userlog.app.rest.fetch_audit_log(guild, event_type=event_type):
             for entry in log.entries.values():
                 # We do not want to return entries older than 15 seconds
-                if (helpers.utcnow() - entry.id.created_at).total_seconds() > 15 or return_next:
+                if (helpers.utcnow() - entry.id.created_at).total_seconds() > 30 or return_next:
                     return
 
                 if user_id and user_id == entry.target_id:
@@ -342,7 +346,7 @@ async def message_delete(plugin: lightbulb.Plugin, event: hikari.GuildMessageDel
     contents = create_log_content(event.old_message)
 
     entry = await find_auditlog_data(
-        event, type=hikari.AuditLogEventType.MESSAGE_DELETE, user_id=event.old_message.author.id
+        event, event_type=hikari.AuditLogEventType.MESSAGE_DELETE, user_id=event.old_message.author.id
     )
     if entry:
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
@@ -390,7 +394,7 @@ async def message_update(plugin: lightbulb.Plugin, event: hikari.GuildMessageUpd
 async def bulk_message_delete(plugin: lightbulb.Plugin, event: hikari.GuildBulkMessageDeleteEvent) -> None:
 
     moderator = "Discord"
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MESSAGE_BULK_DELETE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MESSAGE_BULK_DELETE)
     if entry:
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
 
@@ -407,7 +411,7 @@ async def bulk_message_delete(plugin: lightbulb.Plugin, event: hikari.GuildBulkM
 @userlog.listener(hikari.RoleDeleteEvent, bind=True)
 async def role_delete(plugin: lightbulb.Plugin, event: hikari.RoleDeleteEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.ROLE_DELETE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_DELETE)
     if entry and event.old_role:
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
@@ -421,7 +425,7 @@ async def role_delete(plugin: lightbulb.Plugin, event: hikari.RoleDeleteEvent) -
 @userlog.listener(hikari.RoleCreateEvent, bind=True)
 async def role_create(plugin: lightbulb.Plugin, event: hikari.RoleCreateEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.ROLE_CREATE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_CREATE)
     if entry and event.role:
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
@@ -435,7 +439,7 @@ async def role_create(plugin: lightbulb.Plugin, event: hikari.RoleCreateEvent) -
 @userlog.listener(hikari.RoleUpdateEvent, bind=True)
 async def role_update(plugin: lightbulb.Plugin, event: hikari.RoleUpdateEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.ROLE_UPDATE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_UPDATE)
     if entry and event.old_role:
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
 
@@ -465,7 +469,7 @@ async def role_update(plugin: lightbulb.Plugin, event: hikari.RoleUpdateEvent) -
 @userlog.listener(hikari.GuildChannelDeleteEvent, bind=True)
 async def channel_delete(plugin: lightbulb.Plugin, event: hikari.GuildChannelDeleteEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.CHANNEL_DELETE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_DELETE)
     if entry and event.channel:
         moderator: hikari.Member = plugin.app.cache.get_member(entry.user_id)
         embed = hikari.Embed(
@@ -479,7 +483,7 @@ async def channel_delete(plugin: lightbulb.Plugin, event: hikari.GuildChannelDel
 @userlog.listener(hikari.GuildChannelCreateEvent, bind=True)
 async def channel_create(plugin: lightbulb.Plugin, event: hikari.GuildChannelCreateEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.CHANNEL_CREATE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_CREATE)
     if entry and event.channel:
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
@@ -493,7 +497,7 @@ async def channel_create(plugin: lightbulb.Plugin, event: hikari.GuildChannelCre
 @userlog.listener(hikari.GuildChannelUpdateEvent, bind=True)
 async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpdateEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.CHANNEL_UPDATE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_UPDATE)
 
     if entry and event.old_channel:
         event.channel
@@ -531,7 +535,7 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
 @userlog.listener(hikari.GuildUpdateEvent, bind=True)
 async def guild_update(plugin: lightbulb.Plugin, event: hikari.GuildUpdateEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.GUILD_UPDATE)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.GUILD_UPDATE)
 
     if event.old_guild:
         if entry:
@@ -590,7 +594,9 @@ async def guild_update(plugin: lightbulb.Plugin, event: hikari.GuildUpdateEvent)
 @userlog.listener(hikari.BanDeleteEvent, bind=True)
 async def member_ban_remove(plugin: lightbulb.Plugin, event: hikari.BanDeleteEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_BAN_REMOVE, user_id=event.user.id)
+    entry = await find_auditlog_data(
+        event, event_type=hikari.AuditLogEventType.MEMBER_BAN_REMOVE, user_id=event.user.id
+    )
     if entry:
         moderator: Union[hikari.Member, str] = (
             plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
@@ -614,7 +620,7 @@ async def member_ban_remove(plugin: lightbulb.Plugin, event: hikari.BanDeleteEve
 @userlog.listener(hikari.BanCreateEvent, bind=True)
 async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_BAN_ADD, user_id=event.user.id)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MEMBER_BAN_ADD, user_id=event.user.id)
     if entry:
         moderator: Union[hikari.Member, str] = (
             plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
@@ -638,7 +644,7 @@ async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent)
 @userlog.listener(hikari.MemberDeleteEvent, bind=True)
 async def member_delete(plugin: lightbulb.Plugin, event: hikari.MemberDeleteEvent) -> None:
 
-    entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_KICK, user_id=event.user.id)
+    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MEMBER_KICK, user_id=event.user.id)
 
     if entry:  # This is a kick
         moderator: Union[hikari.Member, str] = (
@@ -692,7 +698,9 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 
     if old_member.communication_disabled_until() != member.communication_disabled_until():
         """Timeout logging"""
-        entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id)
+        entry = await find_auditlog_data(
+            event, event_type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id
+        )
 
         if not entry:
             return
@@ -741,7 +749,9 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             # No idea why this is needed, but otherwise I get empty role updates
             return
 
-        entry = await find_auditlog_data(event, type=hikari.AuditLogEventType.MEMBER_ROLE_UPDATE, user_id=event.user.id)
+        entry = await find_auditlog_data(
+            event, event_type=hikari.AuditLogEventType.MEMBER_ROLE_UPDATE, user_id=event.user.id
+        )
 
         moderator: Union[hikari.Member, str] = (
             plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
