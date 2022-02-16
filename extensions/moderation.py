@@ -584,7 +584,6 @@ async def whois(ctx: SnedSlashContext) -> None:
 @lightbulb.command("purge", "Purge multiple messages in this channel.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def purge(ctx: SnedSlashContext) -> None:
-    pass
 
     channel = ctx.get_channel()
     predicates = [

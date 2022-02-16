@@ -6,6 +6,7 @@ import logging
 import typing as t
 
 import hikari
+import re
 import lightbulb
 import miru
 import perspective
@@ -19,20 +20,20 @@ from utils.ratelimiter import BucketType
 
 logger = logging.getLogger(__name__)
 
-automod = lightbulb.Plugin("AutoModeration")
+automod = lightbulb.Plugin("Auto-Moderation", include_datastore=True)
+automod.d.actions = lightbulb.utils.DataStore()
 
 
 class AutomodActionType(enum.Enum):
     INVITES = "invites"
     SPAM = "spam"
     MASS_MENTIONS = "mass_mentions"
-    ZALGO = "zalgo"
     ATTACH_SPAM = "attach_spam"
     LINK_SPAM = "link_spam"
     CAPS = "caps"
     BAD_WORDS = "bad_words"
     ESCALATE = "escalate"
-    PERSPECTIVE = ("perspective",)
+    PERSPECTIVE = "perspective"
 
 
 spam_ratelimiter = utils.RateLimiter(10, 8, bucket=BucketType.MEMBER, wait=False)
@@ -46,7 +47,7 @@ escalate_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=F
 async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> None:
     guild_id = hikari.Snowflake(guild)
 
-    records = automod.app.db_cache.get(table="mod_config", guild_id=guild_id)
+    records = await automod.app.db_cache.get(table="mod_config", guild_id=guild_id)
 
     policies = json.loads(records[0]["automod_policies"]) if records else default_automod_policies
 
@@ -67,6 +68,9 @@ async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> None:
         policies.pop(key)
 
     return policies
+
+
+automod.d.actions.get_policies = get_policies
 
 
 async def punish(
@@ -131,7 +135,7 @@ async def punish(
         return await mod.d.actions.warn(offender, me, f"Warned by auto-moderator for {reason}.")
 
     elif state == "escalate":
-        escalate_prewarn_ratelimiter.acquire(message)
+        await escalate_prewarn_ratelimiter.acquire(message)
 
         if not escalate_prewarn_ratelimiter.is_rate_limited(message):
             embed = hikari.Embed(
@@ -150,7 +154,7 @@ async def punish(
             return await message.respond(embed=embed)
 
         else:
-            escalate_ratelimiter.acquire(message)
+            await escalate_ratelimiter.acquire(message)
             if escalate_ratelimiter.is_rate_limited(message):
                 return await punish(
                     message=message,
@@ -193,8 +197,11 @@ async def punish(
         return await message.respond(embed=embed)
 
 
-async def scan_message(message: hikari.Message) -> None:
-    """Scan a message for all possible offences."""
+@automod.listener(hikari.GuildMessageCreateEvent)
+async def scan_messages(event: hikari.GuildMessageCreateEvent) -> None:
+    """Scan messages for all possible offences."""
+
+    message = event.message
 
     if not automod.app.is_alive or not automod.app.db_cache.is_ready:
         return
@@ -210,7 +217,84 @@ async def scan_message(message: hikari.Message) -> None:
     mentions = sum(user.id != message.author.id and not user.is_bot for user in message.mentions.users)
 
     if mentions >= policies["mass_mentions"]["count"]:
-        await punish()
+        return await punish(
+            message,
+            policies,
+            AutomodActionType.MASS_MENTIONS,
+            reason=f"spamming {mentions} mentions in a single message",
+        )
+
+    await spam_ratelimiter.acquire(message)
+    if spam_ratelimiter.is_rate_limited(message):
+        return await punish(message, policies, AutomodActionType.SPAM, reason="spam")
+
+    if message.content and len(message.content) > 15:
+        chars = [char for char in message.content if char.isalnum()]
+        uppers = [char for char in chars if char.isupper()]
+        if len(uppers) / len(chars) > 0.6:
+            return await punish(
+                message,
+                policies,
+                AutomodActionType.CAPS,
+                reason="use of excessive caps",
+            )
+
+    if message.content:
+        words = message.content.lower().split(" ")
+
+        for word in words:
+            if word in policies["bad_words"]["words_list"]:
+                return await punish(message, policies, AutomodActionType.BAD_WORDS, "usage of bad words")
+
+        for bad_word in policies["bad_words"]["words_list"]:
+            if " " in bad_word and bad_word.lower() in message.content.lower():
+                return await punish(message, policies, AutomodActionType.BAD_WORDS, "usage of bad words (expression)")
+
+        for word in policies["bad_words"]["words_list_wildcard"]:
+            if word.lower() in message.content.lower():
+                return await punish(
+                    message, policies, AutomodActionType.BAD_WORDS, reason="usage of bad words (wildcard)"
+                )
+
+    invite_regex = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
+
+    if invite_regex.findall(message.content):
+        return await punish(
+            message,
+            policies,
+            AutomodActionType.INVITES,
+            reason="posting Discord invites",
+        )
+
+    link_regex = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
+    link_matches = link_regex.findall(message.content)
+    if len(link_matches) > 7:
+        return await punish(
+            message,
+            policies,
+            AutomodActionType.LINK_SPAM,
+            reason="having too many links in a single message",
+        )
+
+    await link_spam_ratelimiter.acquire(message)
+
+    if link_spam_ratelimiter.is_rate_limited(message):
+        return await punish(
+            message,
+            policies,
+            AutomodActionType.LINK_SPAM,
+            reason="posting links too quickly",
+        )
+
+    if message.attachments and len(message.attachments) > 0:
+        await attach_spam_ratelimiter.acquire(message)
+
+        if attach_spam_ratelimiter.is_rate_limited(message):
+            await punish(
+                message, policies, AutomodActionType.ATTACH_SPAM, reason="posting images/attachments too quickly"
+            )
+
+    # TODO: Zalgo, Perspective
 
 
 def load(bot: SnedBot) -> None:

@@ -1,3 +1,5 @@
+import miru
+
 # Static values for the settings extension
 
 mod_settings_strings = {
@@ -13,19 +15,17 @@ default_automod_policies = {
         "excluded_channels": [],
         "excluded_roles": [],
     },
-    "spam": {"state": "disabled", "temp_dur": 15, "excluded_channels": []},
+    "spam": {
+        "state": "disabled",
+        "temp_dur": 15,
+        "excluded_channels": [],
+        "excluded_roles": [],
+    },
     "mass_mentions": {
         "state": "disabled",
         "temp_dur": 15,
         "delete": True,
         "count": 10,
-        "excluded_channels": [],
-        "excluded_roles": [],
-    },
-    "zalgo": {
-        "state": "disabled",
-        "temp_dur": 15,
-        "delete": True,
         "excluded_channels": [],
         "excluded_roles": [],
     },
@@ -82,7 +82,12 @@ default_automod_policies = {
             "d1ck",
         ],
     },
-    "escalate": {"state": "disabled"},
+    "escalate": {
+        "state": "disabled",
+        "step1": "disabled",
+        "step2": "disabled",
+        "step3": "disabled",
+    },
 }
 
 # Policy state configuration
@@ -90,7 +95,7 @@ policy_states = {
     "disabled": {"name": "Disabled", "excludes": []},
     "notice": {"name": "Notice", "excludes": ["spam"]},
     "warn": {"name": "Warn", "excludes": ["spam"]},
-    "escalate": {"name": "Smart", "excludes": ["spam", "escalate"]},
+    "escalate": {"name": "Escalation", "excludes": ["spam", "escalate"]},
     "timeout": {"name": "Timeout", "excludes": []},
     "kick": {"name": "Kick", "excludes": []},
     "softban": {"name": "Softban", "excludes": []},
@@ -106,6 +111,42 @@ notices = {
     "link_spam": "posting links too fast",
     "caps": "using excessive caps in your message",
     "bad_words": "using bad words in your message",
+}
+
+policy_fields = {
+    "temp_dur": {"name": "Temporary punishment duration:", "value": "{value} minute(s)", "label": "Duration"},
+    "delete": {"name": "Delete offending messages:", "value": "{value}", "label": "Deletion"},
+    "count": {"name": "Count:", "value": "{value}", "label": "Count"},
+    "words_list": {"name": "Blacklisted Words (Exact):", "value": "||{value}||", "label": "Blacklisted Words (Exact)"},
+    "words_list_wildcard": {
+        "name": "Blacklisted Words (Wildcard):",
+        "value": "||{value}||",
+        "label": "Blacklisted Words (Wildcard)",
+    },
+    "excluded_channels": {"name": "Excluded Channels:", "value": "{value}", "label": "Excluded Channels"},
+    "excluded_roles": {"name": "Excluded Roles:", "value": "{value}", "label": "Excluded Roles"},
+}
+
+policy_text_inputs = {
+    "temp_dur": miru.TextInput(
+        label="Temporary Punishment Duration",
+        placeholder="Enter a positive integer number as the temporary punishment duration in minute(s)...",
+        max_length=6,
+        required=True,
+    ),
+    "count": miru.TextInput(
+        label="Count", placeholder="Enter a positive integer number as the count.", max_length=3, required=True
+    ),
+    "words_list": miru.TextInput(
+        label="Blacklisted Words",
+        placeholder="Enter a comma-separated list of bad words that will be filtered from chat.",
+        required=True,
+    ),
+    "words_list_wildcard": miru.TextInput(
+        label="Blacklisted Words (Wildcard)",
+        placeholder="Enter a comma-separated list of bad words that will be filtered from chat.",
+        required=True,
+    ),
 }
 
 # Strings for the automod config menu

@@ -60,7 +60,7 @@ class RateLimiter:
             BucketType.GLOBAL: 0,
             BucketType.GUILD: ctx_or_message.guild_id,
             BucketType.CHANNEL: ctx_or_message.channel_id,
-            BucketType.USER: ctx_or_message.user.id,
+            BucketType.USER: ctx_or_message.author.id,
             BucketType.MEMBER: int(str(ctx_or_message.guild_id) + str(ctx_or_message.member.id)),
             BucketType.TOP_ROLE: ctx_or_message.member.get_top_role().id,
         }

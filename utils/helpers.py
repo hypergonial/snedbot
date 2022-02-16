@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import datetime
 import re
-from typing import Optional, TypeVar, Union, List, Any
+from typing import TYPE_CHECKING, Optional, TypeVar, Union, List, Any
 
 import hikari
 import lightbulb
@@ -11,6 +13,10 @@ import miru
 import models
 from models import errors
 from models.db_user import User
+from models.components import *
+
+if TYPE_CHECKING:
+    from extensions.settings_new import SettingsView
 
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
@@ -299,7 +305,7 @@ async def parse_message_id(
 
 
 async def ask(
-    ctx: lightbulb.Context,
+    ctx: Union[lightbulb.Context, miru.Context],
     *,
     options: List[miru.SelectOption],
     return_type: T,

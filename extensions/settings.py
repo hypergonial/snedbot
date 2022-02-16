@@ -1,27 +1,34 @@
 import asyncio
+import copy
+import json
 import logging
+import typing as t
 
 import hikari
 import lightbulb
 import miru
-from models.bot import SnedBot
-from models.context import SnedSlashContext
-from utils import helpers
 import models
-from typing import Optional, List, Any
-
 from etc.settings_static import *
+from models.bot import SnedBot
+from models.context import SnedContext, SnedSlashContext
+from utils import helpers
 
 logger = logging.getLogger(__name__)
 
 settings = lightbulb.Plugin("Settings")
 
 
-def get_key(dictionary: dict, value: Any) -> Any:
+def get_key(dictionary: dict, value: t.Any) -> t.Any:
     """
     Get key from value in dict, too lazy to copy this garbage
     """
     return list(dictionary.keys())[list(dictionary.values()).index(value)]
+
+
+class SettingsView(models.AuthorOnlyView):
+    def __init__(self, lctx: lightbulb.Context, *, timeout: t.Optional[float] = 120, autodefer: bool = False) -> None:
+        super().__init__(lctx, timeout=timeout, autodefer=autodefer)
+        self.last_ctx: t.Optional[t.Union[miru.Context, SnedContext]] = lctx
 
 
 class SettingsContext(SnedSlashContext):
@@ -31,7 +38,10 @@ class SettingsContext(SnedSlashContext):
         self, app: lightbulb.BotApp, event: hikari.InteractionCreateEvent, command: lightbulb.SlashCommand
     ) -> None:
         super().__init__(app, event, command)
-        self.parent = None
+        self.parent: t.Optional[str] = None
+        self.last_inter: t.Optional[
+            t.Union[miru.ComponentInteraction, miru.ModalInteraction]
+        ] = None  # Last inter received
 
 
 # Settings Menu Views
@@ -40,7 +50,7 @@ class SettingsContext(SnedSlashContext):
 class BooleanButton(miru.Button):
     """A boolean toggle button."""
 
-    def __init__(self, *, state: bool, label: str = None, disabled: bool = False, row: Optional[int] = None) -> None:
+    def __init__(self, *, state: bool, label: str = None, disabled: bool = False, row: t.Optional[int] = None) -> None:
         style = hikari.ButtonStyle.SUCCESS if state else hikari.ButtonStyle.DANGER
         emoji = "✔️" if state else "✖️"
 
@@ -54,6 +64,7 @@ class BooleanButton(miru.Button):
         self.style = hikari.ButtonStyle.SUCCESS if self.state else hikari.ButtonStyle.DANGER
         self.emoji = "✔️" if self.state else "✖️"
         self.view.value = (self.label, self.state)
+        self.view.lctx.last_inter = context.interaction
 
         self.view.stop()
 
@@ -66,6 +77,7 @@ class OptionButton(miru.Button):
             return
 
         self.view.value = self.label
+        self.view.lctx.last_inter = context.interaction
         self.view.stop()
 
 
@@ -77,6 +89,7 @@ class OptionsSelect(miru.Select):
             return
 
         self.view.value = self.values[0]
+        self.view.lctx.last_inter = context.interaction
         self.view.stop()
 
 
@@ -102,7 +115,7 @@ class MenuBaseView(models.AuthorOnlyView):
         lctx: lightbulb.Context,
         is_nested: bool = False,
         *,
-        timeout: Optional[float] = 120,
+        timeout: t.Optional[float] = 120,
         autodefer: bool = True,
     ) -> None:
         super().__init__(lctx, timeout=timeout, autodefer=autodefer)
@@ -119,10 +132,10 @@ class ButtonMenuView(MenuBaseView):
     def __init__(
         self,
         lctx: lightbulb.Context,
-        buttons: Optional[List[OptionButton]] = None,
+        buttons: t.Optional[t.List[OptionButton]] = None,
         is_nested: bool = False,
         *,
-        timeout: Optional[float] = 120,
+        timeout: t.Optional[float] = 120,
         autodefer: bool = True,
     ) -> None:
         super().__init__(lctx, timeout=timeout, autodefer=autodefer)
@@ -143,11 +156,11 @@ class SelectMenuView(MenuBaseView):
     def __init__(
         self,
         lctx: lightbulb.Context,
-        options: List[miru.SelectOption],
+        options: t.List[miru.SelectOption],
         placeholder: str,
         is_nested: bool = False,
         *,
-        timeout: Optional[float] = 120,
+        timeout: t.Optional[float] = 120,
         autodefer: bool = True,
     ) -> None:
         super().__init__(lctx, timeout=timeout, autodefer=autodefer)
@@ -174,7 +187,7 @@ async def error_view_handler(
     await menu_actions[view.value](ctx, message)
 
 
-async def settings_main(ctx: SnedSlashContext, message: Optional[hikari.Message] = None) -> None:
+async def settings_main(ctx: SnedSlashContext, message: t.Optional[hikari.Message] = None) -> None:
     """Show and handle settings main menu."""
 
     embed = hikari.Embed(
@@ -247,11 +260,6 @@ async def settings_mod(ctx: SnedSlashContext, message: hikari.Message) -> None:
     await ctx.app.db_cache.refresh(table="mod_config", guild_id=ctx.guild_id)
 
     await settings_mod(ctx, message)
-
-
-async def settings_automod(ctx: SnedSlashContext, message: hikari.Message) -> None:
-    """Show and handle Auto-Moderation menu."""
-    pass  # TODO: Implement
 
 
 async def settings_logging(ctx: SnedSlashContext, message: hikari.Message) -> None:
@@ -346,6 +354,218 @@ async def settings_logging(ctx: SnedSlashContext, message: hikari.Message) -> No
         await logging.d.actions.set_log_channel(log_event, ctx.guild_id, channel_id)
 
         await settings_logging(ctx, message)
+
+
+async def settings_automod(ctx: SettingsContext, message: hikari.Message) -> None:
+
+    automod = ctx.app.get_plugin("Auto-Moderation")
+
+    assert automod is not None
+
+    policies = await automod.d.actions.get_policies(ctx.guild_id)
+    embed = hikari.Embed(
+        title="Automoderation Settings",
+        description="Below you can see a summary of the current automoderation settings. To see more details about a specific entry or change their settings, select it below!",
+        color=ctx.app.embed_blue,
+    )
+
+    options = []
+    for key in policies.keys():
+        embed.add_field(
+            name=policy_strings[key]["name"],
+            value=policies[key]["state"].capitalize(),
+            inline=True,
+        )
+        # TODO: Add emojies maybe?
+        options.append(miru.SelectOption(label=policy_strings[key]["name"], value=key))
+
+    ctx.parent = "Main"
+    view = SelectMenuView(ctx, options=options, placeholder="Select a policy...", is_nested=True)
+    message = await helpers.maybe_edit(message, embed=embed, components=view.build())
+    view.start(message)
+    await view.wait()
+
+    if view.value in menu_actions:
+        return await menu_actions[view.value](ctx, message)
+
+    await settings_automod_policy(ctx, message, view.value)
+
+
+async def settings_automod_policy(
+    ctx: SettingsContext, message: hikari.Message, policy: t.Optional[str] = None
+) -> None:
+
+    if not policy:
+        return await settings_automod(ctx, message)
+
+    automod = ctx.app.get_plugin("Auto-Moderation")
+
+    assert automod is not None
+
+    policies: t.Dict[str, t.Any] = await automod.d.actions.get_policies(ctx.guild_id)
+    policy_data = policies[policy]
+    embed = hikari.Embed(
+        title=f"Options for: {policy_strings[policy]['name']}",
+        description=policy_strings[policy]["description"],
+        color=ctx.app.embed_blue,
+    )
+
+    state = policy_data["state"]
+    options = []
+
+    if state == "disabled":
+        embed.add_field(
+            name="ℹ️ Disclaimer:",
+            value="More configuration options will appear if you enable/change the state of this entry!",
+            inline=False,
+        )
+
+    embed.add_field(name="State:", value=state.capitalize(), inline=False)
+    options.append(miru.SelectOption(label="State", value="state"))
+
+    # Conditions for certain attributes to appear
+    predicates = {
+        "temp_dur": lambda s: s in ["timeout", "tempban"],
+    }
+
+    if state != "disabled":
+        for key in policy_data:
+            if key == "state" or predicates.get(key) and not predicates[key](state):
+                continue
+
+            embed.add_field(
+                name=policy_fields[key]["name"],
+                value=policy_fields[key]["value"].format(value=policy_data[key]),
+                inline=False,
+            )
+            options.append(miru.SelectOption(label=policy_fields[key]["label"], value=key))
+
+    ctx.parent = "Auto-Moderation"
+    view = SelectMenuView(
+        ctx, options=options, placeholder="Select an entry to change...", is_nested=True, autodefer=False
+    )
+    message = await helpers.maybe_edit(message, embed=embed, components=view.build())
+    view.start(message)
+    await view.wait()
+
+    if view.value in menu_actions:
+        await ctx.last_inter.create_initial_response(hikari.ResponseType.DEFERRED_MESSAGE_UPDATE)
+        return await menu_actions[view.value](ctx, message)
+
+    sql = """
+    INSERT INTO mod_config (automod_policies, guild_id)
+    VALUES ($1, $2) 
+    ON CONFLICT (guild_id) DO
+    UPDATE SET automod_policies = $1"""
+
+    # The option that is to be changed
+    opt = view.value
+
+    # Question types
+    actions = {
+        "boolean": ["delete"],
+        "text_input": ["temp_dur", "words_list", "words_list_wildcard", "count"],
+        "ask": ["excluded_channels", "excluded_roles"],
+        "select": ["state"],
+    }
+
+    # Expected return type for a question
+    expected_types = {
+        "temp_dur": int,
+        "words_list": str,
+        "words_list_wildcard": str,
+        "count": int,
+        "excluded_channels": str,
+        "excluded_roles": str,
+    }
+
+    responded = False
+    action = [key for key in actions if opt in actions[key]][0]
+
+    if opt == "state":  # State changing is a special case
+
+        if not responded:
+            await ctx.last_inter.create_initial_response(hikari.ResponseType.DEFERRED_MESSAGE_UPDATE)
+            responded = True
+
+        options = [
+            miru.SelectOption(value=state, label=policy_states[state]["name"])
+            for state in policy_states.keys()
+            if policy not in policy_states[state]["excludes"]
+        ]
+        ctx.parent = "Auto-Moderation"
+        view = SelectMenuView(ctx, options=options, placeholder="Select the state of this policy...", is_nested=True)
+        embed = hikari.Embed(
+            title="Select state...", description="Select a new state for this policy...", color=ctx.app.embed_blue
+        )
+        message = await helpers.maybe_edit(message, embed=embed, components=view.build())
+        view.start(message)
+        await view.wait()
+
+        if view.value in menu_actions:
+            return await menu_actions[view.value](ctx, message)
+
+        policies[policy]["state"] = view.value
+        await ctx.app.pool.execute(sql, json.dumps(policies), ctx.guild_id)
+        await ctx.app.db_cache.refresh(table="mod_config", guild_id=ctx.guild_id)
+
+    elif action == "boolean":
+        policies[policy][opt] = not policies[policy][opt]
+        await ctx.app.pool.execute(sql, json.dumps(policies), ctx.guild_id)
+        await ctx.app.db_cache.refresh(table="mod_config", guild_id=ctx.guild_id)
+
+    elif action == "text_input":
+        embed = hikari.Embed(
+            title=f"Editing {policy_fields[opt]['label']}...",
+            description="A modal should have appeared for text input...\n\n*If you cancelled the modal, please re-execute the command!*",
+            color=ctx.app.embed_blue,
+        )
+
+        modal = miru.Modal(f"Changing {policy_fields[opt]['label']}...")
+        # Deepcopy because we store instances for convenience
+        text_input = copy.deepcopy(policy_text_inputs[opt])
+        # Prefill only bad words
+        if opt in ["words_list", "words_list_wildcard"]:
+            text_input.value = policies[policy][opt]
+        modal.add_item(text_input)
+
+        await modal.send(ctx.last_inter)
+        responded = True
+        await helpers.maybe_edit(message, embed=embed, components=[])
+        await modal.wait()
+        value = list(modal.values.values())[0]
+
+        try:
+            value = expected_types[opt](value)
+            if isinstance(value, int):
+                value = abs(value)
+
+        except (TypeError, ValueError):  # String conversion shouldn't fail... right??
+            embed = hikari.Embed(
+                title="❌ Invalid Type",
+                description=f"Expected a **number** for option `{policy_fields[opt]['label']}`.",
+                color=ctx.app.error_color,
+            )
+            return await error_view_handler(ctx, message, embed, "Auto-Moderation")
+
+        policies[policy][opt] = value
+        await ctx.app.pool.execute(sql, json.dumps(policies), ctx.guild_id)
+        await ctx.app.db_cache.refresh(table="mod_config", guild_id=ctx.guild_id)
+
+    elif action == "ask":
+        embed = hikari.Embed(
+            title="❌ Not Implemented",
+            description=f"Blame Hyper",
+            color=ctx.app.error_color,
+        )
+        return await error_view_handler(ctx, message, embed, "Auto-Moderation")
+
+    if not responded:
+        # Only text inputs need the inter to create the modal, the rest can be safely deferred
+        await ctx.last_inter.create_initial_response(hikari.ResponseType.DEFERRED_MESSAGE_UPDATE)
+        responded = True
+
+    await settings_automod_policy(ctx, message, policy)
 
 
 async def settings_report(ctx: SettingsContext, message: hikari.Message) -> None:
@@ -506,6 +726,7 @@ async def settings_report(ctx: SettingsContext, message: hikari.Message) -> None
                 pinged_roles.remove(role)
             else:
                 raise TypeError
+
         except TypeError:
             embed = hikari.Embed(
                 title="❌ Role not found.",
@@ -529,7 +750,7 @@ async def settings_report(ctx: SettingsContext, message: hikari.Message) -> None
     await settings_report(ctx, message)
 
 
-async def timeout_or_quit(ctx: SettingsContext, message: Optional[hikari.Message] = None) -> None:
+async def timeout_or_quit(ctx: SettingsContext, message: t.Optional[hikari.Message] = None) -> None:
     """
     Handle a timeout or quit request.
     """
@@ -549,6 +770,7 @@ menu_actions = {
     "Main": settings_main,
     "Moderation": settings_mod,
     "Auto-Moderation": settings_automod,
+    "Auto-Moderation Policy View": settings_automod_policy,
     "Logging": settings_logging,
     "Reports": settings_report,
     "Timeout": timeout_or_quit,
