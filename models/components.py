@@ -43,7 +43,7 @@ class OptionsModal(miru.Modal):
         *,
         custom_id: t.Optional[str] = None,
         timeout: t.Optional[float] = 300,
-        autodefer: bool = False
+        autodefer: bool = False,
     ) -> None:
         super().__init__(title, custom_id=custom_id, timeout=timeout, autodefer=autodefer)
         self.view = view

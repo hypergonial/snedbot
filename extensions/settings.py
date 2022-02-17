@@ -83,7 +83,7 @@ class SettingsView(models.AuthorOnlyView):
             self.add_item(BackButton(parent))
         else:
             self.add_item(QuitButton())
-    
+
     async def error_screen(self, embed: hikari.Embed, parent: str) -> None:
         """
         Show an error screen with only a back button, and wait for input on it.
@@ -505,7 +505,6 @@ class SettingsView(models.AuthorOnlyView):
 
         await self.settings_automod_policy(self.value)
 
-
     async def settings_automod_policy(self, policy: t.Optional[str] = None) -> None:
         """Settings for an automoderation policy"""
 
@@ -542,8 +541,12 @@ class SettingsView(models.AuthorOnlyView):
             "temp_dur": lambda s: s in ["timeout", "tempban"],
         }
 
-        excluded_channels: t.List[hikari.TextableGuildChannel] = [self.app.cache.get_guild_channel(channel_id) for channel_id in policy_data["excluded_channels"]]
-        excluded_roles: t.List[hikari.Role] = [self.app.cache.get_role(role_id) for role_id in policy_data["excluded_roles"]]
+        excluded_channels: t.List[hikari.TextableGuildChannel] = [
+            self.app.cache.get_guild_channel(channel_id) for channel_id in policy_data["excluded_channels"]
+        ]
+        excluded_roles: t.List[hikari.Role] = [
+            self.app.cache.get_role(role_id) for role_id in policy_data["excluded_roles"]
+        ]
         excluded_channels = list(filter(None, excluded_channels))
         excluded_roles = list(filter(None, excluded_roles))
 
@@ -562,24 +565,40 @@ class SettingsView(models.AuthorOnlyView):
                     value=policy_fields[key]["value"].format(value=value),
                     inline=False,
                 )
-                buttons.append(OptionButton(label=policy_fields[key]["label"], custom_id=key, style=hikari.ButtonStyle.SECONDARY))
+                buttons.append(
+                    OptionButton(label=policy_fields[key]["label"], custom_id=key, style=hikari.ButtonStyle.SECONDARY)
+                )
 
             embed.add_field(
                 name=policy_fields["excluded_channels"]["name"],
-                value=", ".join([channel.mention for channel in excluded_channels]) if excluded_channels else "*None set*",
-                inline=False
+                value=", ".join([channel.mention for channel in excluded_channels])
+                if excluded_channels
+                else "*None set*",
+                inline=False,
             )
 
             embed.add_field(
                 name=policy_fields["excluded_roles"]["name"],
                 value=", ".join([role.mention for role in excluded_roles]) if excluded_roles else "*None set*",
-                inline=False
+                inline=False,
             )
 
-            buttons.append(OptionButton(label="Channel", emoji="➕", custom_id="add_channel", style=hikari.ButtonStyle.SUCCESS, row=4))
-            buttons.append(OptionButton(label="Role", emoji="➕", custom_id="add_role", style=hikari.ButtonStyle.SUCCESS, row=4))
-            buttons.append(OptionButton(label="Channel", emoji="➖", custom_id="del_channel", style=hikari.ButtonStyle.DANGER, row=4))
-            buttons.append(OptionButton(label="Role", emoji="➖", custom_id="del_role", style=hikari.ButtonStyle.DANGER, row=4))
+            buttons.append(
+                OptionButton(
+                    label="Channel", emoji="➕", custom_id="add_channel", style=hikari.ButtonStyle.SUCCESS, row=4
+                )
+            )
+            buttons.append(
+                OptionButton(label="Role", emoji="➕", custom_id="add_role", style=hikari.ButtonStyle.SUCCESS, row=4)
+            )
+            buttons.append(
+                OptionButton(
+                    label="Channel", emoji="➖", custom_id="del_channel", style=hikari.ButtonStyle.DANGER, row=4
+                )
+            )
+            buttons.append(
+                OptionButton(label="Role", emoji="➖", custom_id="del_role", style=hikari.ButtonStyle.DANGER, row=4)
+            )
 
         self.add_buttons(buttons, parent="Auto-Moderation")
         await self.last_ctx.edit_response(embed=embed, components=self.build())
@@ -628,7 +647,10 @@ class SettingsView(models.AuthorOnlyView):
                 for state in policy_states.keys()
                 if policy not in policy_states[state]["excludes"]
             ]
-            self.select_screen(OptionsSelect(options=options, placeholder="Select the state of this policy..."), parent="Auto-Moderation")
+            self.select_screen(
+                OptionsSelect(options=options, placeholder="Select the state of this policy..."),
+                parent="Auto-Moderation",
+            )
             embed = hikari.Embed(
                 title="Select state...", description="Select a new state for this policy...", color=self.app.embed_blue
             )
@@ -663,12 +685,12 @@ class SettingsView(models.AuthorOnlyView):
 
             if not self.value:
                 return
-            
+
             value = list(self.value.values())[0]
 
             if opt in list_inputs:
                 value = [list_item.strip().lower() for list_item in value.split(",")]
-                value = list(filter(None, value)) # Remove empty values
+                value = list(filter(None, value))  # Remove empty values
 
             try:
                 value = expected_types[opt](value)
@@ -692,22 +714,57 @@ class SettingsView(models.AuthorOnlyView):
             if opt in ["add_channel", "add_role", "del_channel", "del_role"]:
                 match opt:
                     case "add_channel":
-                        all_channels = [channel for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values() if isinstance(channel, hikari.TextableGuildChannel)]
-                        options = [miru.SelectOption(label=f"#{channel.name}", value=channel.id) for channel in list(set(all_channels) - set(excluded_channels))]
-                        embed = hikari.Embed(title="Auto-Moderation Settings", description="Choose a channel to add to excluded channels!", color=self.app.embed_blue)
+                        all_channels = [
+                            channel
+                            for channel in self.app.cache.get_guild_channels_view_for_guild(
+                                self.last_ctx.guild_id
+                            ).values()
+                            if isinstance(channel, hikari.TextableGuildChannel)
+                        ]
+                        options = [
+                            miru.SelectOption(label=f"#{channel.name}", value=channel.id)
+                            for channel in list(set(all_channels) - set(excluded_channels))
+                        ]
+                        embed = hikari.Embed(
+                            title="Auto-Moderation Settings",
+                            description="Choose a channel to add to excluded channels!",
+                            color=self.app.embed_blue,
+                        )
                         return_type = hikari.TextableGuildChannel
                     case "del_channel":
-                        options = [miru.SelectOption(label=f"#{channel.name}", value=channel.id) for channel in excluded_channels]
-                        embed = hikari.Embed(title="Auto-Moderation Settings", description="Choose a channel to remove from excluded channels!", color=self.app.embed_blue)
+                        options = [
+                            miru.SelectOption(label=f"#{channel.name}", value=channel.id)
+                            for channel in excluded_channels
+                        ]
+                        embed = hikari.Embed(
+                            title="Auto-Moderation Settings",
+                            description="Choose a channel to remove from excluded channels!",
+                            color=self.app.embed_blue,
+                        )
                         return_type = hikari.TextableGuildChannel
                     case "add_role":
-                        all_roles = [role for role in self.app.cache.get_roles_view_for_guild(self.last_ctx.guild_id).values() if role.id != self.last_ctx.guild_id]
-                        options = [miru.SelectOption(label=f"@{role.name}", value=role.id) for role in list(set(all_roles) - set(excluded_roles))]
-                        embed = hikari.Embed(title="Auto-Moderation Settings", description="Choose a role to add to excluded roles!", color=self.app.embed_blue)
+                        all_roles = [
+                            role
+                            for role in self.app.cache.get_roles_view_for_guild(self.last_ctx.guild_id).values()
+                            if role.id != self.last_ctx.guild_id
+                        ]
+                        options = [
+                            miru.SelectOption(label=f"@{role.name}", value=role.id)
+                            for role in list(set(all_roles) - set(excluded_roles))
+                        ]
+                        embed = hikari.Embed(
+                            title="Auto-Moderation Settings",
+                            description="Choose a role to add to excluded roles!",
+                            color=self.app.embed_blue,
+                        )
                         return_type = hikari.Role
                     case "del_role":
                         options = [miru.SelectOption(label=f"@{role.name}", value=role.id) for role in excluded_roles]
-                        embed = hikari.Embed(title="Auto-Moderation Settings", description="Choose a role to remove from excluded roles!", color=self.app.embed_blue)
+                        embed = hikari.Embed(
+                            title="Auto-Moderation Settings",
+                            description="Choose a role to remove from excluded roles!",
+                            color=self.app.embed_blue,
+                        )
                         return_type = hikari.Role
 
                 try:
@@ -718,7 +775,7 @@ class SettingsView(models.AuthorOnlyView):
                         embed_or_content=embed,
                         return_type=return_type,
                         placeholder="Select a value...",
-                        ephemeral=self.ephemeral
+                        ephemeral=self.ephemeral,
                     )
                     if opt.startswith("add_"):
                         policies[policy][f"excluded_{opt.split('_')[1]}s"].append(value.id)

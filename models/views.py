@@ -47,7 +47,7 @@ class AuthorOnlyNavigator(nav.NavigatorView):
         pages: List[Union[str, hikari.Embed]],
         buttons: Optional[List[nav.NavButton[nav.NavigatorView]]] = None,
         timeout: Optional[float] = 120,
-        autodefer: bool = True
+        autodefer: bool = True,
     ) -> None:
         self.lctx = lctx
         super().__init__(pages=pages, buttons=buttons, timeout=timeout, autodefer=autodefer)
