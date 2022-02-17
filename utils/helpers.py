@@ -17,7 +17,7 @@ from models.db_user import User
 from models.components import *
 
 if TYPE_CHECKING:
-    from extensions.settings_new import SettingsView
+    from extensions.settings import SettingsView
 
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
