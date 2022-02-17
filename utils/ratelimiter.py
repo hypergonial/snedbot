@@ -77,7 +77,6 @@ class RateLimiter:
                 bucket_item["remaining"] = self.limit
                 bucket_item["reset_at"] = now + self.period
                 return False
-
             return bucket_item["remaining"] <= 0
 
         self._bucket_data[key] = {"reset_at": now + self.period, "remaining": self.limit}
@@ -103,8 +102,9 @@ class RateLimiter:
 
             if self.is_rate_limited(ctx):
                 # Sleep until ratelimit expires
-                sleep_time = self._reset_at - time.monotonic()
-                _logger.warning(f"Ratelimited, waiting {round(sleep_time)} seconds.")
+                key = self._get_key(ctx)
+                bucket_item = self._bucket_data.get(key)
+                sleep_time = bucket_item["reset_at"] - time.monotonic()
                 await asyncio.sleep(sleep_time)
 
             # Set events while not ratelimited

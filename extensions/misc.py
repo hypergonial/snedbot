@@ -217,7 +217,9 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 
 
 @misc.command()
-@lightbulb.add_checks(lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES))
+@lightbulb.add_checks(
+    lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL)
+)
 @lightbulb.option(
     "channel",
     "The channel to send the message to, defaults to the current channel.",
@@ -236,8 +238,10 @@ async def echo(ctx: SnedSlashContext) -> None:
         channel = ctx.get_channel()
 
     perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
-    if not perms & hikari.Permissions.SEND_MESSAGES:
-        raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.SEND_MESSAGES)
+    if not helpers.includes_permissions(perms, hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL):
+        raise lightbulb.BotMissingRequiredPermission(
+            perms=hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
+        )
 
     await channel.send(ctx.options.text)
 
@@ -247,7 +251,9 @@ async def echo(ctx: SnedSlashContext) -> None:
 
 @misc.command()
 @lightbulb.add_checks(
-    lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
+    lightbulb.bot_has_role_permissions(
+        hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
+    )
 )
 @lightbulb.option("message_id", "You can get this by enabling Developer Mode and right-clicking a message.", type=str)
 @lightbulb.option(
@@ -263,8 +269,15 @@ async def edit(ctx: SnedSlashContext) -> None:
     channel = ctx.app.cache.get_guild_channel(ctx.options.channel.id) or ctx.get_channel()
 
     perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
-    if not perms & hikari.Permissions.SEND_MESSAGES:
-        raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.SEND_MESSAGES)
+    if not helpers.includes_permissions(
+        perms,
+        hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
+    ):
+        raise lightbulb.BotMissingRequiredPermission(
+            perms=hikari.Permissions.SEND_MESSAGES
+            | hikari.Permissions.VIEW_CHANNEL
+            | hikari.Permissions.READ_MESSAGE_HISTORY
+        )
 
     message = await helpers.parse_message_id(ctx, channel, ctx.options.message_id)
     if not message:
@@ -302,7 +315,11 @@ async def edit(ctx: SnedSlashContext) -> None:
 
 
 @misc.command()
-@lightbulb.add_checks(lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES))
+@lightbulb.add_checks(
+    lightbulb.bot_has_role_permissions(
+        hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY
+    )
+)
 @lightbulb.command("Raw Content", "Show raw content for this message.")
 @lightbulb.implements(lightbulb.MessageCommand)
 async def raw(ctx: SnedMessageContext) -> None:

@@ -96,16 +96,28 @@ async def punish(
     if not helpers.can_harm(me, offender, permission=required_perms):
         return
 
+    # Check if channel is excluded
     if not original_action and message.channel_id in policies[action.value]["excluded_channels"]:
         return
 
-    if not original_action and message.member.get_top_role().id in policies[action.value]["excluded_roles"]:
+    # Check if member has excluded role
+    role_ids = [role_id for role_id in message.member.role_ids if role_id in policies[action.value]["excluded_roles"]]
+    if not original_action and role_ids:
         return
 
     state = policies[action.value]["state"]
 
     if state == "disabled":
         return
+
+    # States that silence the user and their repetition is undesirable
+    # TODO: Compute escalate in if it has a silencing state in any stage
+    silencers = ["timeout", "kick", "tempban", "softban", "permaban", "escalate"]
+
+    if state in silencers:
+        await punish_ratelimiter.acquire(message)
+        if punish_ratelimiter.is_rate_limited(message):
+            return
 
     if not original_action:
         temp_dur = policies[action.value]["temp_dur"]
@@ -124,7 +136,7 @@ async def punish(
             description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
             color=automod.app.warn_color,
         )
-        return await message.respond(embed=embed)
+        return await message.respond(content=offender.mention, embed=embed, user_mentions=True)
 
     mod = automod.app.get_plugin("Moderation")
 
@@ -132,7 +144,8 @@ async def punish(
         return
 
     if state == "warn":
-        return await mod.d.actions.warn(offender, me, f"Warned by auto-moderator for {reason}.")
+        embed = await mod.d.actions.warn(offender, me, f"Warned by auto-moderator for {reason}.")
+        return await message.respond(embed=embed)
 
     elif state == "escalate":
         await escalate_prewarn_ratelimiter.acquire(message)
@@ -143,7 +156,7 @@ async def punish(
                 description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
                 color=automod.app.warn_color,
             )
-            return await message.respond(embed=embed)
+            return await message.respond(content=offender.mention, embed=embed, user_mentions=True)
 
         elif escalate_prewarn_ratelimiter.is_rate_limited(message):
             embed = await mod.d.actions.warn(
@@ -214,7 +227,7 @@ async def scan_messages(event: hikari.GuildMessageCreateEvent) -> None:
 
     policies = await get_policies(message.guild_id)
 
-    mentions = sum(user.id != message.author.id and not user.is_bot for user in message.mentions.users)
+    mentions = sum(user.id != message.author.id and not user.is_bot for user in message.mentions.users.values())
 
     if mentions >= policies["mass_mentions"]["count"]:
         return await punish(
@@ -240,18 +253,22 @@ async def scan_messages(event: hikari.GuildMessageCreateEvent) -> None:
             )
 
     if message.content:
-        words = message.content.lower().split(" ")
 
-        for word in words:
+        for word in message.content.lower().split(" "):
             if word in policies["bad_words"]["words_list"]:
+                print(word)
+                print(isinstance(policies["bad_words"]["words_list"], str))
+                print(policies["bad_words"]["words_list"])
                 return await punish(message, policies, AutomodActionType.BAD_WORDS, "usage of bad words")
 
         for bad_word in policies["bad_words"]["words_list"]:
             if " " in bad_word and bad_word.lower() in message.content.lower():
+                print(bad_word, "expression")
                 return await punish(message, policies, AutomodActionType.BAD_WORDS, "usage of bad words (expression)")
 
-        for word in policies["bad_words"]["words_list_wildcard"]:
-            if word.lower() in message.content.lower():
+        for bad_word in policies["bad_words"]["words_list_wildcard"]:
+            if bad_word.lower() in message.content.lower():
+                print(bad_word, "wildcard")
                 return await punish(
                     message, policies, AutomodActionType.BAD_WORDS, reason="usage of bad words (wildcard)"
                 )
@@ -276,15 +293,16 @@ async def scan_messages(event: hikari.GuildMessageCreateEvent) -> None:
             reason="having too many links in a single message",
         )
 
-    await link_spam_ratelimiter.acquire(message)
+    if link_matches:
+        await link_spam_ratelimiter.acquire(message)
 
-    if link_spam_ratelimiter.is_rate_limited(message):
-        return await punish(
-            message,
-            policies,
-            AutomodActionType.LINK_SPAM,
-            reason="posting links too quickly",
-        )
+        if link_spam_ratelimiter.is_rate_limited(message):
+            return await punish(
+                message,
+                policies,
+                AutomodActionType.LINK_SPAM,
+                reason="posting links too quickly",
+            )
 
     if message.attachments and len(message.attachments) > 0:
         await attach_spam_ratelimiter.acquire(message)

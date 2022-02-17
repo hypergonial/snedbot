@@ -373,7 +373,7 @@ async def message_delete(plugin: lightbulb.Plugin, event: hikari.GuildMessageDel
 
 @userlog.listener(hikari.GuildMessageUpdateEvent, bind=True)
 async def message_update(plugin: lightbulb.Plugin, event: hikari.GuildMessageUpdateEvent) -> None:
-    if not event.old_message or event.old_message.author.is_bot:
+    if not event.old_message or event.old_message.author.is_bot or not event.author_id:
         return
 
     old_content = create_log_content(event.old_message, max_length=1800)
@@ -381,7 +381,7 @@ async def message_update(plugin: lightbulb.Plugin, event: hikari.GuildMessageUpd
 
     embed = hikari.Embed(
         title=f"🖊️ Message edited",
-        description=f"""**Message author:** `{event.author} ({event.author.id})`
+        description=f"""**Message author:** `{event.author} ({event.author_id})`
 **Channel:** {event.get_channel().mention}
 **Before:** ```{old_content}``` \n**After:** ```{new_content}```
 [Jump!]({event.message.make_link(event.guild_id)})""",

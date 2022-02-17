@@ -191,7 +191,7 @@ async def eval_py(ctx: SnedPrefixContext) -> None:
         code[-1] = f"return {code[-1]}"
         code = "\n".join(code)
 
-    code_func = f"async def _container():" + textwrap.indent(code, "   ")
+    code_func = f"async def _container():\n" + textwrap.indent(code, "   ")
 
     async with ctx.app.rest.trigger_typing(ctx.channel_id):
         try:

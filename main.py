@@ -29,7 +29,7 @@ initial_extensions = [
     "extensions.userlog",
     "extensions.moderation",
     "extensions.automod",
-    "extensions.settings_new",
+    "extensions.settings",
     "extensions.reports",
     "extensions.reminders",
     "extensions.fun",

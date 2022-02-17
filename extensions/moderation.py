@@ -31,12 +31,12 @@ default_mod_settings = {
 class ActionType(enum.Enum):
     """Enum containing all possible moderation actions."""
 
-    BAN = ("Ban",)
-    SOFTBAN = ("Softban",)
-    TEMPBAN = ("Tempban",)
-    KICK = ("Kick",)
-    TIMEOUT = ("Timeout",)
-    WARN = ("Warn",)
+    BAN = "Ban"
+    SOFTBAN = "Softban"
+    TEMPBAN = "Tempban"
+    KICK = "Kick"
+    TIMEOUT = "Timeout"
+    WARN = "Warn"
 
 
 @lightbulb.Check
@@ -152,6 +152,9 @@ async def get_notes(user_id: Snowflakeish, guild_id: Snowflakeish) -> List[str]:
     return db_user.notes
 
 
+mod.d.actions.get_notes = get_notes
+
+
 async def add_note(user_id: Snowflakeish, guild_id: Snowflakeish, note: str) -> None:
     """Add a new journal entry to this user."""
     note = helpers.format_reason(note, max_length=256)
@@ -165,12 +168,18 @@ async def add_note(user_id: Snowflakeish, guild_id: Snowflakeish, note: str) -> 
     await mod.app.global_config.update_user(db_user)
 
 
+mod.d.actions.add_note = add_note
+
+
 async def clear_notes(user_id: Snowflakeish, guild_id: Snowflakeish) -> None:
     """Clear all notes a user has."""
 
     db_user = await mod.app.global_config.get_user(user_id, guild_id)
     db_user.notes = []
     await mod.app.global_config.update_user(db_user)
+
+
+mod.d.actions.clear_notes = clear_notes
 
 
 async def warn(member: hikari.Member, moderator: hikari.Member, reason: Optional[str] = None) -> hikari.Embed:
@@ -196,6 +205,9 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: Optional
     return embed
 
     # TODO: Add note
+
+
+mod.d.actions.warn = warn
 
 
 @mod.listener(models.TimerCompleteEvent)
@@ -344,6 +356,16 @@ async def timeout(
 
     await post_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
 
+    embed = hikari.Embed(
+        title="🔇 " + "User timed out",
+        description=f"**{member}** has been timed out until {helpers.format_dt(duration)}.\n**Reason:** ```{raw_reason}```",
+        color=mod.app.error_color,
+    )
+    return embed
+
+
+mod.d.actions.timeout = timeout
+
 
 async def remove_timeout(member: hikari.Member, moderator: hikari.Member, reason: Optional[str] = None) -> None:
     """
@@ -353,6 +375,9 @@ async def remove_timeout(member: hikari.Member, moderator: hikari.Member, reason
     reason = helpers.format_reason(reason, moderator)
 
     await member.edit(communication_disabled_until=None, reason=reason)
+
+
+mod.d.actions.remove_timeout = remove_timeout
 
 
 async def ban(
@@ -404,7 +429,7 @@ async def ban(
 
     perms = lightbulb.utils.permissions_for(me)
 
-    if not (perms & hikari.Permissions.BAN_MEMBERS):
+    if not helpers.includes_permissions(perms, hikari.Permissions.BAN_MEMBERS):
         raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.BAN_MEMBERS)
 
     if isinstance(user, hikari.Member) and not helpers.is_above(me, user):
@@ -448,6 +473,9 @@ async def ban(
         return embed
 
 
+mod.d.actions.ban = ban
+
+
 @mod.listener(models.TimerCompleteEvent)
 async def tempban_expire(event: models.TimerCompleteEvent) -> None:
     """Handle tempban timer expiry"""
@@ -477,7 +505,7 @@ async def unban(user: hikari.User, moderator: hikari.Member, reason: Optional[st
     guild: hikari.GatewayGuild = await mod.app.cache.get_guild(moderator.guild_id)
     await mod.app.rest.fetch_guild
 
-    if not (perms & hikari.Permissions.BAN_MEMBERS):
+    if not helpers.includes_permissions(perms, hikari.Permissions.BAN_MEMBERS):
         raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.BAN_MEMBERS)
 
     if isinstance(user, hikari.Member) and not helpers.is_above(me, user):
@@ -505,6 +533,9 @@ async def unban(user: hikari.User, moderator: hikari.Member, reason: Optional[st
                 color=mod.app.error_color,
             )
         return embed
+
+
+mod.d.actions.unban = unban
 
 
 async def kick(
@@ -558,6 +589,9 @@ async def kick(
         return embed
 
 
+mod.d.actions.kick = kick
+
+
 @mod.command()
 @lightbulb.option("user", "The user to show information about.", type=hikari.User, required=True)
 @lightbulb.command("whois", "Show user information about the specified user.")
@@ -572,14 +606,15 @@ async def whois(ctx: SnedSlashContext) -> None:
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
 )
-@lightbulb.option("regex", "Delete messages that match with the regular expression.", required=False)
-@lightbulb.option("embeds", "Delete messages that contain embeds.", type=bool, required=False)
-@lightbulb.option("links", "Delete messages that contain links.", type=bool, required=False)
-@lightbulb.option("invites", "Delete messages that contain Discord invites.", type=bool, required=False)
-@lightbulb.option("attachments", "Delete messages that contain files & images.", type=bool, required=False)
-@lightbulb.option("notext", "Delete messages that do not contain text.", type=bool, required=False)
-@lightbulb.option("endswith", "Delete messages that end with the specified text.", required=False)
-@lightbulb.option("startswith", "Delete messages that start with the specified text.", required=False)
+@lightbulb.option("user", "Only delete messages authored by this user.", type=hikari.User, required=False)
+@lightbulb.option("regex", "Only delete messages that match with the regular expression.", required=False)
+@lightbulb.option("embeds", "Only delete messages that contain embeds.", type=bool, required=False)
+@lightbulb.option("links", "Only delete messages that contain links.", type=bool, required=False)
+@lightbulb.option("invites", "Only delete messages that contain Discord invites.", type=bool, required=False)
+@lightbulb.option("attachments", "Only delete messages that contain files & images.", type=bool, required=False)
+@lightbulb.option("notext", "Only delete messages that do not contain text.", type=bool, required=False)
+@lightbulb.option("endswith", "Only delete messages that end with the specified text.", required=False)
+@lightbulb.option("startswith", "Only delete messages that start with the specified text.", required=False)
 @lightbulb.option("count", "The amount of messages to delete.", type=int, min_value=1, max_value=100)
 @lightbulb.command("purge", "Purge multiple messages in this channel.")
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -632,10 +667,14 @@ async def purge(ctx: SnedSlashContext) -> None:
     if ctx.options.embeds:
         predicates.append(lambda message: bool(message.embeds))
 
+    if ctx.options.user:
+        predicates.append(lambda message: message.author.id == ctx.options.user.id)
+
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
     messages = (
-        await ctx.app.rest.fetch_messages(channel, after=helpers.utcnow() - datetime.timedelta(days=14))
+        await ctx.app.rest.fetch_messages(channel)
+        .take_until(lambda m: (helpers.utcnow() - datetime.timedelta(days=14)) > m.created_at)
         .filter(*predicates)
         .limit(ctx.options.count)
     )
@@ -1145,7 +1184,7 @@ async def massban(ctx: SnedSlashContext) -> None:
     )
 
     is_ephemeral = (await get_settings(ctx.guild_id))["is_ephemeral"]
-    flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.UNDEFINED
+    flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
     confirmed = await ctx.confirm(
         embed=embed,
         flags=flags,

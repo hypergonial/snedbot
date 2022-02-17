@@ -54,21 +54,21 @@ async def log_error_to_homeguild(
 
 
 async def application_error_handler(ctx: SnedContext, error: lightbulb.LightbulbError) -> None:
-    print(error.__class__.__name__)
+
     if isinstance(error, lightbulb.CheckFailure):
         print("check")
 
         if isinstance(error, lightbulb.MissingRequiredPermission):
             embed = hikari.Embed(
                 title="❌ Missing Permissions",
-                description=f"You require `{get_perm_str(error.missing_perms)}` permissions to execute this command.",
+                description=f"You require `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
                 color=ctx.app.error_color,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         elif isinstance(error, lightbulb.BotMissingRequiredPermission):
             embed = hikari.Embed(
                 title="❌ Bot Missing Permissions",
-                description=f"The bot requires `{get_perm_str(error.missing_perms)}` permissions to execute this command.",
+                description=f"The bot requires `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
                 color=ctx.app.error_color,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -100,7 +100,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         elif isinstance(error.original, hikari.ForbiddenError):
             embed = hikari.Embed(
                 title="❌ Forbidden",
-                description=f"This action has failed due to a lack of permissions.\n**Error:** {error}",
+                description=f"This action has failed due to a lack of permissions.\n**Error:** ```{error.original}```",
                 color=ctx.app.error_color,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)

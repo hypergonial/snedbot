@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import inspect
 import re
-from typing import TYPE_CHECKING, Optional, TypeVar, Union, List, Any
+from typing import TYPE_CHECKING, Optional, Sequence, TypeVar, Union, List, Any
 
 import hikari
 import lightbulb
@@ -181,6 +182,15 @@ async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embe
     return embed
 
 
+def includes_permissions(permissions: hikari.Permissions, should_include: hikari.Permissions) -> bool:
+    """Check if permissions includes should_includes."""
+
+    missing_perms = ~permissions & should_include
+    if missing_perms is not hikari.Permissions.NONE:
+        return False
+    return True
+
+
 def is_above(me: hikari.Member, member: hikari.Member) -> bool:
     """
     Returns True if me's top role's position is higher than the specified member's.
@@ -199,7 +209,7 @@ def can_harm(
 
     perms = lightbulb.utils.permissions_for(me)
 
-    if not (perms & permission):
+    if not includes_permissions(perms, permission):
         if raise_error:
             raise lightbulb.BotMissingRequiredPermission(perms=permission)
         return False
