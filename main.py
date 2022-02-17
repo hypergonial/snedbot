@@ -2,9 +2,14 @@
 
 import logging
 import os
+import platform
 
 from config import config
 from models import SnedBot
+
+if int(platform.python_version_tuple()[1]) < 10:
+    logging.fatal("Python version must be 3.10 or greater! Exiting...")
+    raise RuntimeError("Python version is not 3.10 or greater.")
 
 try:
     from config import config
