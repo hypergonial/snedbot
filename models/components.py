@@ -63,7 +63,6 @@ class OptionsSelect(miru.Select):
     """Select that sets view value to first selected option's value."""
 
     async def callback(self, context: miru.ViewContext) -> None:
-        print("AAAA")
         self.view.value = self.values[0]
         self.view.last_item = self
         self.view.last_ctx = context

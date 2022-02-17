@@ -550,6 +550,20 @@ class SettingsView(models.AuthorOnlyView):
         excluded_channels = list(filter(None, excluded_channels))
         excluded_roles = list(filter(None, excluded_roles))
 
+        all_channels = [
+            channel
+            for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
+            if isinstance(channel, hikari.TextableGuildChannel)
+        ]
+        included_channels = list(set(all_channels) - set(excluded_channels))
+
+        all_roles = [
+            role
+            for role in self.app.cache.get_roles_view_for_guild(self.last_ctx.guild_id).values()
+            if role.id != self.last_ctx.guild_id
+        ]
+        included_roles = list(set(all_roles) - set(excluded_roles))
+
         if state != "disabled":
             for key in policy_data:
                 if key == "state" or predicates.get(key) and not predicates[key](state):
@@ -585,19 +599,43 @@ class SettingsView(models.AuthorOnlyView):
 
             buttons.append(
                 OptionButton(
-                    label="Channel", emoji="➕", custom_id="add_channel", style=hikari.ButtonStyle.SUCCESS, row=4
+                    label="Channel",
+                    emoji="➕",
+                    custom_id="add_channel",
+                    style=hikari.ButtonStyle.SUCCESS,
+                    row=4,
+                    disabled=not included_channels,
                 )
-            )
-            buttons.append(
-                OptionButton(label="Role", emoji="➕", custom_id="add_role", style=hikari.ButtonStyle.SUCCESS, row=4)
             )
             buttons.append(
                 OptionButton(
-                    label="Channel", emoji="➖", custom_id="del_channel", style=hikari.ButtonStyle.DANGER, row=4
+                    label="Role",
+                    emoji="➕",
+                    custom_id="add_role",
+                    style=hikari.ButtonStyle.SUCCESS,
+                    row=4,
+                    disabled=not included_roles,
                 )
             )
             buttons.append(
-                OptionButton(label="Role", emoji="➖", custom_id="del_role", style=hikari.ButtonStyle.DANGER, row=4)
+                OptionButton(
+                    label="Channel",
+                    emoji="➖",
+                    custom_id="del_channel",
+                    style=hikari.ButtonStyle.DANGER,
+                    row=4,
+                    disabled=not excluded_channels,
+                )
+            )
+            buttons.append(
+                OptionButton(
+                    label="Role",
+                    emoji="➖",
+                    custom_id="del_role",
+                    style=hikari.ButtonStyle.DANGER,
+                    row=4,
+                    disabled=not excluded_roles,
+                )
             )
 
         self.add_buttons(buttons, parent="Auto-Moderation")
@@ -714,16 +752,9 @@ class SettingsView(models.AuthorOnlyView):
             if opt in ["add_channel", "add_role", "del_channel", "del_role"]:
                 match opt:
                     case "add_channel":
-                        all_channels = [
-                            channel
-                            for channel in self.app.cache.get_guild_channels_view_for_guild(
-                                self.last_ctx.guild_id
-                            ).values()
-                            if isinstance(channel, hikari.TextableGuildChannel)
-                        ]
                         options = [
                             miru.SelectOption(label=f"#{channel.name}", value=channel.id)
-                            for channel in list(set(all_channels) - set(excluded_channels))
+                            for channel in included_channels
                         ]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
@@ -743,15 +774,7 @@ class SettingsView(models.AuthorOnlyView):
                         )
                         return_type = hikari.TextableGuildChannel
                     case "add_role":
-                        all_roles = [
-                            role
-                            for role in self.app.cache.get_roles_view_for_guild(self.last_ctx.guild_id).values()
-                            if role.id != self.last_ctx.guild_id
-                        ]
-                        options = [
-                            miru.SelectOption(label=f"@{role.name}", value=role.id)
-                            for role in list(set(all_roles) - set(excluded_roles))
-                        ]
+                        options = [miru.SelectOption(label=f"@{role.name}", value=role.id) for role in included_roles]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
                             description="Choose a role to add to excluded roles!",
