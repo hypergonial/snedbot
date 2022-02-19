@@ -184,8 +184,7 @@ async def tag_alias(ctx: SnedSlashContext) -> None:
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-        await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
-        await tags.d.tag_handler.create(tag)  # TODO: Add an update method to tag handler
+        await tags.d.tag_handler.update(tag)
         embed = hikari.Embed(
             title="✅ Alias created",
             description=f"You can now call it with `/tag {ctx.options.alias.lower()}`",
@@ -223,8 +222,7 @@ async def tag_delalias(ctx: SnedSlashContext) -> None:
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-        await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
-        await tags.d.tag_handler.create(tag)
+        await tags.d.tag_handler.update(tag)
         embed = hikari.Embed(
             title="✅ Alias removed",
             description=f"Alias {ctx.options.alias.lower()} for tag {tag.name} has been deleted.",
@@ -255,9 +253,8 @@ async def tag_transfer(ctx: SnedSlashContext) -> None:
 
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
     if tag and tag.owner_id == ctx.author.id:
-        await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
         tag.owner_id = ctx.options.receiver.id
-        await tags.d.tag_handler.create(tag)
+        await tags.d.tag_handler.update(tag)
         embed = hikari.Embed(
             title="✅ Tag transferred",
             description=f"Tag `{tag.name}`'s ownership was successfully transferred to {ctx.options.receiver.mention}",
@@ -291,9 +288,9 @@ async def tag_claim(ctx: SnedSlashContext) -> None:
             lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_MESSAGES
             and tag.owner_id != ctx.member.id
         ):
-            await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
             tag.owner_id = ctx.author.id
-            await tags.d.tag_handler.create(tag)
+            await tags.d.tag_handler.update(tag)
+
             embed = hikari.Embed(
                 title="✅ Tag claimed",
                 description=f"Tag `{tag.name}` now belongs to you.",
@@ -340,11 +337,9 @@ async def tag_edit(ctx: SnedSlashContext) -> None:
     await modal.wait()
     mctx = modal.get_response_context()
 
-    await tags.d.tag_handler.delete(tag.name, ctx.guild_id)
-
     tag.content = modal.tag_content
 
-    await tags.d.tag_handler.create(tag)
+    await tags.d.tag_handler.update(tag)
 
     embed = hikari.Embed(
         title="✅ Tag edited",

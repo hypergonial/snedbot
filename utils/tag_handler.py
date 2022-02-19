@@ -81,10 +81,25 @@ class TagHandler:
             return tags
 
     async def delete(self, name: str, guild_id: int):
+        """Delete a tag from the database."""
         await self.bot.pool.execute(
             """DELETE FROM tags WHERE tag_name = $1 AND guild_id = $2""",
             name,
             guild_id,
+        )
+
+    async def update(self, tag: Tag) -> None:
+        """Update a tag with new data. If the tag already exists, only the aliases & content will be updated."""
+
+        await self.bot.pool.execute(
+            """INSERT INTO tags (guild_id, tag_name, tag_owner_id, tag_aliases, tag_content)
+        VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, tag_name) DO
+        UPDATE SET tag_aliases = $4, tag_content = $5""",
+            tag.guild_id,
+            tag.name,
+            tag.owner_id,
+            tag.aliases,
+            tag.content,
         )
 
     async def migrate(self, origin_id: int, destination_id: int, invoker_id: int, name: str) -> None:
