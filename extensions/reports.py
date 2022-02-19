@@ -150,6 +150,7 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
 @lightbulb.command("report", "Report a user to the moderation team of this server.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def report_cmd(ctx: lightbulb.SlashContext) -> None:
+    helpers.is_member(ctx.options.user)
     await report(ctx, ctx.options.user)
 
 

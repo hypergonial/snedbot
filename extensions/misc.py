@@ -171,13 +171,13 @@ async def invite(ctx: SnedSlashContext) -> None:
 @lightbulb.command("support", "Provides a link to the support Discord.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def support(ctx: SnedSlashContext) -> None:
-    await ctx.respond("https://discord.gg/KNKr8FPmJa")
+    await ctx.respond("https://discord.gg/KNKr8FPmJa", flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @misc.command()
 @lightbulb.command("source", "Provides a link to the source-code of the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def support(ctx: SnedSlashContext) -> None:
+async def source(ctx: SnedSlashContext) -> None:
     await ctx.respond("<https://github.com/HyperGH/snedbot_v2>")
 
 

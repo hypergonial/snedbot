@@ -24,3 +24,9 @@ class BotRoleHierarchyError(lightbulb.CheckFailure):
     """
     Raised when an action fails due to the bot's role hierarchy.
     """
+
+
+class MemberExpectedError(Exception):
+    """
+    Raised when a command expected a member and received a user instead.
+    """

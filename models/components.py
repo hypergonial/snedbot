@@ -59,6 +59,81 @@ class OptionsModal(miru.Modal):
         self.view.input_event.set()
 
 
+class PerspectiveBoundsModal(miru.Modal):
+    def __init__(
+        self,
+        view: miru.View,
+        values: t.Dict[str, float],
+        title: str,
+        *,
+        custom_id: t.Optional[str] = None,
+        timeout: t.Optional[float] = 300,
+        autodefer: bool = False,
+    ) -> None:
+        super().__init__(title, custom_id=custom_id, timeout=timeout, autodefer=autodefer)
+        self.add_item(
+            miru.TextInput(
+                label="Toxicity",
+                placeholder="Enter a floating point value...",
+                custom_id="TOXICITY",
+                value=str(values["TOXICITY"]),
+                min_length=3,
+                max_length=7,
+            )
+        )
+        self.add_item(
+            miru.TextInput(
+                label="Severe Toxicity",
+                placeholder="Enter a floating point value...",
+                custom_id="SEVERE_TOXICITY",
+                value=str(values["SEVERE_TOXICITY"]),
+                min_length=3,
+                max_length=7,
+            )
+        )
+        self.add_item(
+            miru.TextInput(
+                label="Threat",
+                placeholder="Enter a floating point value...",
+                custom_id="THREAT",
+                value=str(values["THREAT"]),
+                min_length=3,
+                max_length=7,
+            )
+        )
+        self.add_item(
+            miru.TextInput(
+                label="Profanity",
+                placeholder="Enter a floating point value...",
+                custom_id="PROFANITY",
+                value=str(values["PROFANITY"]),
+                min_length=3,
+                max_length=7,
+            )
+        )
+        self.add_item(
+            miru.TextInput(
+                label="Insult",
+                placeholder="Enter a floating point value...",
+                custom_id="INSULT",
+                value=str(values["INSULT"]),
+                min_length=3,
+                max_length=7,
+            )
+        )
+        self.view = view
+
+    async def callback(self, context: miru.ModalContext) -> None:
+        self.view.last_ctx = context
+        self.last_item = None
+        self.view.value = {item.custom_id: value for item, value in context.values.items()}
+        self.view.input_event.set()
+
+    async def on_timeout(self) -> None:
+        self.view.value = None
+        self.view.input_event.set()
+
+
 class OptionsSelect(miru.Select):
     """Select that sets view value to first selected option's value."""
 
@@ -72,15 +147,16 @@ class OptionsSelect(miru.Select):
 class BackButton(OptionButton):
     """Go back to page that ctx.parent is set to."""
 
-    def __init__(self, parent: str) -> None:
+    def __init__(self, parent: str, **kwargs) -> None:
         super().__init__(style=hikari.ButtonStyle.PRIMARY, custom_id=parent, label="Back", emoji="⬅️")
+        self.kwargs = kwargs
 
     async def callback(self, context: miru.ViewContext) -> None:
         self.view.last_ctx = context
         self.view.last_item = self
         self.view.value = None
         self.view.input_event.set()
-        await self.view.menu_actions[self.custom_id]()
+        await self.view.menu_actions[self.custom_id](**self.kwargs)
 
 
 class QuitButton(OptionButton):

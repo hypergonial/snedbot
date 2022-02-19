@@ -24,7 +24,7 @@ userlog.d.valid_log_events = [
     "message_delete_mod",
     "message_edit",
     "bulk_delete",
-    "invites",
+    "flags",
     "roles",
     "channels",
     "member_join",
@@ -47,7 +47,7 @@ async def get_log_channel_id(log_event: str, guild_id: int) -> Optional[int]:
 
     log_channels = json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else None
 
-    return log_channels[log_event] if log_channels and log_event in log_channels.keys() else None
+    return log_channels.get(log_event) if log_channels else None
 
 
 userlog.d.actions["get_log_channel_id"] = get_log_channel_id
@@ -97,7 +97,7 @@ userlog.d.actions["set_log_channel"] = set_log_channel
 async def is_color_enabled(guild_id: int) -> bool:
 
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id)
-    return records[0]["color"]
+    return records[0]["color"] if records else True
 
 
 userlog.d.actions["is_color_enabled"] = is_color_enabled
@@ -471,10 +471,10 @@ async def channel_delete(plugin: lightbulb.Plugin, event: hikari.GuildChannelDel
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_DELETE)
     if entry and event.channel:
-        moderator: hikari.Member = plugin.app.cache.get_member(entry.user_id)
+        moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title=f"#️⃣ Channel deleted",
-            description=f"**Channel:** `{event.channel.name}` ({event.channel.type})\n**Moderator:** `{moderator} ({moderator})`",
+            description=f"**Channel:** `{event.channel.name}` `({event.channel.type.name})`\n**Moderator:** `{moderator} ({moderator})`",
             color=plugin.app.error_color,
         )
         await log("channels", embed, event.guild_id)
@@ -488,7 +488,7 @@ async def channel_create(plugin: lightbulb.Plugin, event: hikari.GuildChannelCre
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title=f"#️⃣ Channel created",
-            description=f"**Channel:** {event.channel.mention} ({event.channel.type})\n**Moderator:** `{moderator} ({moderator})`",
+            description=f"**Channel:** {event.channel.mention} `({event.channel.type.name})`\n**Moderator:** `{moderator} ({moderator})`",
             color=plugin.app.embed_green,
         )
         await log("channels", embed, event.guild_id)
@@ -615,6 +615,9 @@ async def member_ban_remove(plugin: lightbulb.Plugin, event: hikari.BanDeleteEve
         color=plugin.app.embed_green,
     )
     await log("ban", embed, event.guild_id)
+    mod = userlog.app.get_plugin("Moderation")
+    if mod:
+        await mod.d.actions.add_note(event.user, event.guild_id, f"🔨 **Unbanned by {moderator}:** {reason}")
 
 
 @userlog.listener(hikari.BanCreateEvent, bind=True)
@@ -639,6 +642,9 @@ async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent)
         color=plugin.app.error_color,
     )
     await log("ban", embed, event.guild_id)
+    mod = userlog.app.get_plugin("Moderation")
+    if mod:
+        await mod.d.actions.add_note(event.user, event.guild_id, f"🔨 **Banned by {moderator}:** {reason}")
 
 
 @userlog.listener(hikari.MemberDeleteEvent, bind=True)
@@ -660,7 +666,11 @@ async def member_delete(plugin: lightbulb.Plugin, event: hikari.MemberDeleteEven
             description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:**```{reason}```",
             color=plugin.app.error_color,
         )
-        return await log("kick", embed, event.guild_id)
+        await log("kick", embed, event.guild_id)
+        mod = userlog.app.get_plugin("Moderation")
+        if mod:
+            await mod.d.actions.add_note(event.user, event.guild_id, f"🚪👈 **Kicked by {moderator}:** {reason}")
+        return
 
     embed = hikari.Embed(
         title=f"🚪 User left",
@@ -701,7 +711,6 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         entry = await find_auditlog_data(
             event, event_type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id
         )
-
         if not entry:
             return
 
@@ -714,12 +723,19 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         if entry.user_id == plugin.app.get_me().id:
             reason, moderator = strip_bot_reason(reason)
 
+        mod = userlog.app.get_plugin("Moderation")
+
         if member.communication_disabled_until() is None:
             embed = hikari.Embed(
                 title=f"🔉 User timeout removed",
                 description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
                 color=plugin.app.embed_green,
             )
+            if mod:
+                await mod.d.actions.add_note(
+                    event.user, event.guild_id, f"🔉 **Timeout removed by {moderator}:** {reason}"
+                )
+
         else:
             embed = hikari.Embed(
                 title=f"🔇 User timed out",
@@ -729,6 +745,13 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 **Reason:** ```{reason}```""",
                 color=plugin.app.error_color,
             )
+            if mod:
+                await mod.d.actions.add_note(
+                    event.user,
+                    event.guild_id,
+                    f"🔇 **Timed out by {moderator} until {helpers.format_dt(member.communication_disabled_until())}:** {reason}",
+                )
+
         await log("timeout", embed, event.guild_id)
 
     elif old_member.nickname != member.nickname:
@@ -752,7 +775,6 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         entry = await find_auditlog_data(
             event, event_type=hikari.AuditLogEventType.MEMBER_ROLE_UPDATE, user_id=event.user.id
         )
-
         moderator: Union[hikari.Member, str] = (
             plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
         )

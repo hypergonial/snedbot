@@ -36,6 +36,19 @@ class AutomodActionType(enum.Enum):
     PERSPECTIVE = "perspective"
 
 
+class AutoModState(enum.Enum):
+    DISABLED = "disabled"
+    FLAG = "flag"
+    NOTICE = "notice"
+    WARN = "warn"
+    ESCALATE = "escalate"
+    TIMEOUT = "timeout"
+    KICK = "kick"
+    SOFTBAN = "softban"
+    TEMPBAN = "tempban"
+    PERMABAN = "permaban"
+
+
 spam_ratelimiter = utils.RateLimiter(10, 8, bucket=BucketType.MEMBER, wait=False)
 punish_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
 attach_spam_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
@@ -130,18 +143,26 @@ async def punish(
     if should_delete:
         await helpers.maybe_delete(message)
 
+    mod = automod.app.get_plugin("Moderation")
+
+    if not mod:
+        return
+
+    if state == "flag":
+        await mod.d.actions.flag_user(
+            offender.id, message.guild_id, message, reason=f"Message flagged by auto-moderator for {reason}."
+        )
+
     if state == "notice":
         embed = hikari.Embed(
             title="💬 Auto-Moderation Notice",
             description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
             color=automod.app.warn_color,
         )
-        return await message.respond(content=offender.mention, embed=embed, user_mentions=True)
-
-    mod = automod.app.get_plugin("Moderation")
-
-    if not mod:
-        return
+        await message.respond(content=offender.mention, embed=embed, user_mentions=True)
+        await mod.d.actions.flag_user(
+            offender.id, message.guild_id, message, reason=f"Message flagged by auto-moderator for {reason}."
+        )
 
     if state == "warn":
         embed = await mod.d.actions.warn(offender, me, f"Warned by auto-moderator for {reason}.")
@@ -156,7 +177,13 @@ async def punish(
                 description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
                 color=automod.app.warn_color,
             )
-            return await message.respond(content=offender.mention, embed=embed, user_mentions=True)
+            await message.respond(content=offender.mention, embed=embed, user_mentions=True)
+            return await mod.d.actions.flag_user(
+                offender.id,
+                message.guild_id,
+                message,
+                reason=f"Message flagged by auto-moderator for {reason} ({action.name}).",
+            )
 
         elif escalate_prewarn_ratelimiter.is_rate_limited(message):
             embed = await mod.d.actions.warn(
@@ -193,7 +220,9 @@ async def punish(
         return await message.respond(embed=embed)
 
     elif state == "softban":
-        embed = await mod.d.actions.ban(offender, me, soft=True, reason=f"Soft-banned by auto-moderator for {reason}.")
+        embed = await mod.d.actions.ban(
+            offender, me, soft=True, reason=f"Soft-banned by auto-moderator for {reason}.", days_to_delete=1
+        )
         return await message.respond(embed=embed)
 
     elif state == "tempban":
@@ -210,13 +239,13 @@ async def punish(
         return await message.respond(embed=embed)
 
 
-@automod.listener(hikari.GuildMessageCreateEvent)
-async def scan_messages(event: hikari.GuildMessageCreateEvent) -> None:
+@automod.listener(hikari.GuildMessageCreateEvent, bind=True)
+async def scan_messages(plugin: lightbulb.Plugin, event: hikari.GuildMessageCreateEvent) -> None:
     """Scan messages for all possible offences."""
 
     message = event.message
 
-    if not automod.app.is_alive or not automod.app.db_cache.is_ready:
+    if not plugin.app.is_alive or not plugin.app.db_cache.is_ready:
         return
 
     if message.guild_id is None:
@@ -227,21 +256,34 @@ async def scan_messages(event: hikari.GuildMessageCreateEvent) -> None:
 
     policies = await get_policies(message.guild_id)
 
-    mentions = sum(user.id != message.author.id and not user.is_bot for user in message.mentions.users.values())
+    if policies["mass_mentions"]["state"] != AutoModState.DISABLED.value:
+        mentions = sum(user.id != message.author.id and not user.is_bot for user in message.mentions.users.values())
 
-    if mentions >= policies["mass_mentions"]["count"]:
-        return await punish(
-            message,
-            policies,
-            AutomodActionType.MASS_MENTIONS,
-            reason=f"spamming {mentions} mentions in a single message",
-        )
+        if mentions >= policies["mass_mentions"]["count"]:
+            return await punish(
+                message,
+                policies,
+                AutomodActionType.MASS_MENTIONS,
+                reason=f"spamming {mentions}/{policies['mass_mentions']['count']} mentions in a single message",
+            )
 
     await spam_ratelimiter.acquire(message)
-    if spam_ratelimiter.is_rate_limited(message):
+    if policies["spam"]["state"] != AutoModState.DISABLED.value and spam_ratelimiter.is_rate_limited(message):
         return await punish(message, policies, AutomodActionType.SPAM, reason="spam")
 
-    if message.content and len(message.content) > 15:
+    if policies["attach_spam"]["state"] != AutoModState.DISABLED.value and message.attachments:
+        await attach_spam_ratelimiter.acquire(message)
+
+        if attach_spam_ratelimiter.is_rate_limited(message):
+            await punish(
+                message, policies, AutomodActionType.ATTACH_SPAM, reason="posting images/attachments too quickly"
+            )
+
+    # Everything that requires message content follows below
+    if not message.content:
+        return
+
+    if policies["caps"]["state"] != AutoModState.DISABLED.value and len(message.content) > 15:
         chars = [char for char in message.content if char.isalnum()]
         uppers = [char for char in chars if char.isupper()]
         if len(uppers) / len(chars) > 0.6:
@@ -252,67 +294,76 @@ async def scan_messages(event: hikari.GuildMessageCreateEvent) -> None:
                 reason="use of excessive caps",
             )
 
-    if message.content:
-
+    if policies["bad_words"]["state"] != AutoModState.DISABLED.value:
         for word in message.content.lower().split(" "):
             if word in policies["bad_words"]["words_list"]:
-                print(word)
-                print(isinstance(policies["bad_words"]["words_list"], str))
-                print(policies["bad_words"]["words_list"])
                 return await punish(message, policies, AutomodActionType.BAD_WORDS, "usage of bad words")
 
         for bad_word in policies["bad_words"]["words_list"]:
             if " " in bad_word and bad_word.lower() in message.content.lower():
-                print(bad_word, "expression")
                 return await punish(message, policies, AutomodActionType.BAD_WORDS, "usage of bad words (expression)")
 
         for bad_word in policies["bad_words"]["words_list_wildcard"]:
             if bad_word.lower() in message.content.lower():
-                print(bad_word, "wildcard")
                 return await punish(
                     message, policies, AutomodActionType.BAD_WORDS, reason="usage of bad words (wildcard)"
                 )
 
-    invite_regex = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
+    if policies["invites"]["state"] != AutoModState.DISABLED.value:
+        invite_regex = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
 
-    if invite_regex.findall(message.content):
-        return await punish(
-            message,
-            policies,
-            AutomodActionType.INVITES,
-            reason="posting Discord invites",
-        )
+        if invite_regex.findall(message.content):
+            return await punish(
+                message,
+                policies,
+                AutomodActionType.INVITES,
+                reason="posting Discord invites",
+            )
 
-    link_regex = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
-    link_matches = link_regex.findall(message.content)
-    if len(link_matches) > 7:
-        return await punish(
-            message,
-            policies,
-            AutomodActionType.LINK_SPAM,
-            reason="having too many links in a single message",
-        )
-
-    if link_matches:
-        await link_spam_ratelimiter.acquire(message)
-
-        if link_spam_ratelimiter.is_rate_limited(message):
+    if policies["link_spam"]["state"] != AutoModState.DISABLED.value:
+        link_regex = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
+        link_matches = link_regex.findall(message.content)
+        if len(link_matches) > 7:
             return await punish(
                 message,
                 policies,
                 AutomodActionType.LINK_SPAM,
-                reason="posting links too quickly",
+                reason="having too many links in a single message",
             )
 
-    if message.attachments and len(message.attachments) > 0:
-        await attach_spam_ratelimiter.acquire(message)
+        if link_matches:
+            await link_spam_ratelimiter.acquire(message)
 
-        if attach_spam_ratelimiter.is_rate_limited(message):
-            await punish(
-                message, policies, AutomodActionType.ATTACH_SPAM, reason="posting images/attachments too quickly"
-            )
+            if link_spam_ratelimiter.is_rate_limited(message):
+                return await punish(
+                    message,
+                    policies,
+                    AutomodActionType.LINK_SPAM,
+                    reason="posting links too quickly",
+                )
 
-    # TODO: Zalgo, Perspective
+    if policies["perspective"]["state"] != AutoModState.DISABLED.value:
+        persp_attribs = [
+            perspective.Attribute(perspective.AttributeName.TOXICITY),
+            perspective.Attribute(perspective.AttributeName.SEVERE_TOXICITY),
+            perspective.Attribute(perspective.AttributeName.PROFANITY),
+            perspective.Attribute(perspective.AttributeName.INSULT),
+            perspective.Attribute(perspective.AttributeName.THREAT),
+        ]
+        try:
+            resp: perspective.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
+        except perspective.wrapper.PerspectiveException:
+            return
+        scores = {score.name.name: score.summary.value for score in resp.attribute_scores}
+
+        for score, value in scores.items():
+            if value > policies["perspective"]["persp_bounds"][score]:
+                return await punish(
+                    message,
+                    policies,
+                    AutomodActionType.PERSPECTIVE,
+                    reason=f"toxic content detected by Perspective ({score.replace('_', ' ').lower()}: {round(value*100)}%)",
+                )
 
 
 def load(bot: SnedBot) -> None:

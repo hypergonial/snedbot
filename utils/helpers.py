@@ -265,6 +265,13 @@ def get_or_fetch_user(bot: hikari.GatewayBot, user_id: int):
     return user
 
 
+def is_member(user: hikari.PartialUser) -> bool:
+    if isinstance(user, hikari.Member):
+        return True
+
+    raise errors.MemberExpectedError(f"Expected an instance of hikari.Member, not {user.__class__.__name__}!")
+
+
 async def resolve_response(response: Union[lightbulb.ResponseProxy, hikari.Message]) -> hikari.Message:
     """
     Resolve a potential ResponseProxy into a hikari message object. If a hikari.Message is passed, it is returned directly.

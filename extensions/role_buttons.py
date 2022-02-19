@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+import asyncpg
 
 import hikari
 import lightbulb
@@ -7,8 +7,13 @@ import miru
 from models import SnedBot
 import models
 from models import SnedSlashContext
+from utils import helpers
+import typing as t
 
 logger = logging.getLogger(__name__)
+
+# Set to true to migrate old stateful rolebuttons
+MIGRATE = False
 
 role_buttons = lightbulb.Plugin("Role-Buttons")
 
@@ -21,7 +26,7 @@ button_styles = {
 
 
 class PersistentRoleView(miru.View):
-    def __init__(self, buttons: List[miru.Button]) -> None:
+    def __init__(self, buttons: t.List[miru.Button]) -> None:
         super().__init__(timeout=None)
         for button in buttons:
             self.add_item(button)
@@ -34,96 +39,110 @@ class RoleButton(miru.Button):
         entry_id: int,
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
-        label: Optional[str] = None,
-        role: Optional[hikari.Role] = None,
+        label: t.Optional[str] = None,
+        role: hikari.SnowflakeishOr[hikari.Role],
     ):
-        if not role:
-            self.orphaned = True
-        else:
-            self.orphaned = False
-
-        super().__init__(style=style, label=label, emoji=emoji, custom_id=f"{entry_id}:{role.id}")
-        self.entry_id: int = entry_id
-        self.role: hikari.Role = role
-
-    async def callback(self, ctx: miru.Context) -> None:
-        """
-        Add or remove the role this button was instantiated with.
-        """
-        if not ctx.guild_id:
-            return
-
-        if self.orphaned:
-            embed = hikari.Embed(
-                title="❌ Orphaned",
-                description="The role this button was pointing to was deleted! Please notify an administrator!",
-                color=0xFF0000,
-            )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-        try:
-            if self.role.id in ctx.member.role_ids:
-                await ctx.member.remove_role(self.role, reason=f"Removed by role-button (ID: {self.entry_id})")
-                embed = hikari.Embed(
-                    title="✅ Role removed",
-                    description=f"Removed role: {self.role.mention}",
-                    color=0x77B255,
-                )
-                await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-            else:
-                await ctx.member.add_role(self.role, reason=f"Granted by role-button (ID: {self.entry_id})")
-                embed = hikari.Embed(
-                    title="✅ Role added",
-                    description=f"Added role: {self.role.mention}",
-                    color=0x77B255,
-                )
-                embed.set_footer(text="If you would like it removed, click the button again!")
-                await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-        except (hikari.ForbiddenError, hikari.HTTPError):
-            embed = hikari.Embed(
-                title="❌ Insufficient permissions",
-                description="Failed adding role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
-                color=0xFF0000,
-            )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        role_id = hikari.Snowflake(role)
+        super().__init__(style=style, label=label, emoji=emoji, custom_id=f"RB:{entry_id}:{role_id}")
 
 
-@role_buttons.listener(lightbulb.LightbulbStartedEvent)
-async def start_rolebuttons(event: lightbulb.LightbulbStartedEvent) -> None:
-    """
-    Start up listeners for all role-buttons after application restart
-    """
-    app: SnedBot = event.app
-    logger.info("Starting up listeners for persistent role-buttons...")
-    records = await app.pool.fetch("""SELECT * FROM button_roles""")
+@role_buttons.listener(lightbulb.LightbulbStartedEvent, bind=True)
+async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.LightbulbStartedEvent) -> None:
+    if not MIGRATE:
+        return
 
-    add_to_persistent_views = {}
-    count = 0
+    records: asyncpg.Record = await plugin.app.pool.fetch("""SELECT * FROM button_roles""")
+
+    msg_button_mapping: t.Dict[str, t.List[RoleButton]] = {}
 
     for record in records:
-        role = app.cache.get_role(record.get("role_id"))
-        emoji = hikari.Emoji.parse(record.get("emoji"))
         button = RoleButton(
             entry_id=record.get("entry_id"),
-            role=role,
+            role=record.get("role_id"),
             label=record.get("buttonlabel"),
-            style=button_styles[record.get("buttonstyle") or "Grey"],
-            emoji=emoji,
+            style=button_styles[record.get("buttonstyle")],
+            emoji=hikari.Emoji.parse(record.get("emoji")),
         )
-        if record.get("msg_id") not in add_to_persistent_views.keys():
-            add_to_persistent_views[record.get("msg_id")] = [button]
+
+        if f"{record.get('channel_id')}:{record.get('msg_id')}" not in msg_button_mapping:
+            msg_button_mapping[f"{record.get('channel_id')}:{record.get('msg_id')}"] = [button]
         else:
-            add_to_persistent_views[record.get("msg_id")].append(button)
-        count += 1
+            msg_button_mapping[f"{record.get('channel_id')}:{record.get('msg_id')}"].append(button)
 
-    for msg_id, buttons in add_to_persistent_views.items():
-        # Use message_id optionally for improved accuracy
+    count = 0
+    for compound_id, buttons in msg_button_mapping.items():
+        channel_id = int(compound_id.split(":")[0])
+        msg_id = int(compound_id.split(":")[1])
+
         view = PersistentRoleView(buttons)
-        view.start_listener(message=msg_id)
+        await plugin.app.rest.edit_message(channel_id, msg_id, components=view.build())
+        count += 1
+    logger.info(f"Migrated {count} role-buttons to stateless handling.")
 
-    logger.info(f"Started listeners for {count} role-buttons!")
+
+@role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
+async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInteractionCreateEvent) -> None:
+    """Statelessly listen for rolebutton interactions"""
+
+    if not event.interaction.custom_id.startswith("RB:"):
+        return
+
+    entry_id = event.interaction.custom_id.split(":")[1]
+    role_id = event.interaction.custom_id.split(":")[2]
+
+    if not event.context.guild_id:
+        return
+
+    role = plugin.app.cache.get_role(role_id)
+
+    if not role:
+        embed = hikari.Embed(
+            title="❌ Orphaned",
+            description="The role this button was pointing to was deleted! Please notify an administrator!",
+            color=0xFF0000,
+        )
+        return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    me = plugin.app.cache.get_member(event.context.guild_id, plugin.app.user_id)
+    if not helpers.includes_permissions(lightbulb.utils.permissions_for(me), hikari.Permissions.MANAGE_ROLES):
+        embed = hikari.Embed(
+            title="❌ Missing Permissions",
+            description="Bot does not have `Manage Roles` permissions! Contact an administrator!",
+            color=0xFF0000,
+        )
+        return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    await event.interaction.create_initial_response(
+        hikari.ResponseType.DEFERRED_MESSAGE_CREATE, flags=hikari.MessageFlag.EPHEMERAL
+    )
+
+    try:
+        if role.id in event.context.member.role_ids:
+            await event.context.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
+            embed = hikari.Embed(
+                title="✅ Role removed",
+                description=f"Removed role: {role.mention}",
+                color=0x77B255,
+            )
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+        else:
+            await event.context.member.add_role(role, reason=f"Granted by role-button (ID: {entry_id})")
+            embed = hikari.Embed(
+                title="✅ Role added",
+                description=f"Added role: {role.mention}",
+                color=0x77B255,
+            )
+            embed.set_footer(text="If you would like it removed, click the button again!")
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    except (hikari.ForbiddenError, hikari.HTTPError):
+        embed = hikari.Embed(
+            title="❌ Insufficient permissions",
+            description="Failed adding role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
+            color=0xFF0000,
+        )
+        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @role_buttons.command()
@@ -223,15 +242,10 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
         view = PersistentRoleView(buttons)
         components = view.build() if len(buttons) > 0 else []
         message = await message.edit(components=components)
-        view.start(message)
 
 
 @rolebutton.child()
-@lightbulb.option(
-    "buttonstyle",
-    "The style of the button. Options: Blurple, Grey, Red, Green",
-    required=False,
-)
+@lightbulb.option("buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"])
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
 @lightbulb.option("emoji", "The emoji that should appear in the button.", type=hikari.Emoji)
 @lightbulb.option("role", "The role that should be handed out by the button.", type=hikari.Role)
@@ -247,21 +261,14 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.command(
     "add",
-    "Add a new rolebutton. For new users, it is recommended to use /rolebutton setup instead.",
+    "Add a new rolebutton.",
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_add(ctx: SnedSlashContext) -> None:
-    style = ctx.options.buttonstyle or "Grey"
 
-    if style.capitalize() not in button_styles.keys():
-        embed = hikari.Embed(
-            title="❌ Invalid button style",
-            description=f"Button style must be one of the following: `{', '.join(button_styles.keys())}`.",
-            color=ctx.app.error_color,
-        )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    ctx.options.buttonstyle = ctx.options.buttonstyle or "Grey"
 
-    if ctx.options.role.name == "@everyone" or ctx.options.role.is_managed:
+    if ctx.options.role.id == ctx.guild_id or ctx.options.role.is_managed:
         embed = hikari.Embed(
             title="❌ Invalid role",
             description="The specified role cannot be manually assigned.",
@@ -293,13 +300,15 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
 
     records = await ctx.app.pool.fetch("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC LIMIT 1""")
     entry_id = records[0].get("entry_id") + 1 if records else 1
+    emoji = hikari.Emoji.parse(ctx.options.emoji) if ctx.options.emoji else None
+    button_style = button_styles[ctx.options.buttonstyle.capitalize()]
 
     button = RoleButton(
         entry_id=entry_id,
         role=ctx.options.role,
-        emoji=hikari.Emoji.parse(ctx.options.emoji),
+        emoji=emoji,
         label=ctx.options.label,
-        style=button_styles[style.capitalize() or "Grey"],
+        style=button_style,
     )
 
     buttons = []
@@ -308,7 +317,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     if records:
         # Account for other rolebuttons on the same message
         for record in records:
-            emoji = hikari.Emoji.parse(record.get("emoji"))
+            old_emoji = hikari.Emoji.parse(record.get("emoji"))
             role = ctx.app.cache.get_role(record.get("role_id"))
             if not role:
                 continue
@@ -318,14 +327,13 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
                     role=role,
                     label=record.get("buttonlabel"),
                     style=button_styles[record.get("buttonstyle") or "Grey"],
-                    emoji=emoji,
+                    emoji=old_emoji,
                 )
             )
 
     buttons.append(button)
-    view = PersistentRoleView(ctx.app, buttons=buttons)
+    view = PersistentRoleView(buttons=buttons)
     message = await message.edit(components=view.build())
-    view.start(message)
 
     await ctx.app.pool.execute(
         """
@@ -336,7 +344,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         ctx.guild_id,
         ctx.options.channel.id,
         message_id,
-        str(ctx.options.emoji),
+        str(emoji),
         ctx.options.label,
         ctx.options.buttonstyle,
         ctx.options.role.id,
@@ -349,6 +357,16 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         color=ctx.app.embed_green,
     )
     await ctx.respond(embed=embed)
+
+    embed = hikari.Embed(
+        title="❇️ Role-Button was added",
+        description=f"A role-button for role {ctx.options.role.mention} has been created by {ctx.author.mention} in channel {ctx.options.channel.mention}.\n\n__Note:__ Anyone who can see this channel can now obtain this role!",
+        color=ctx.app.embed_green,
+    )
+    try:
+        await ctx.app.get_plugin("Logging").d.actions.log("roles", embed, ctx.guild.id)
+    except AttributeError:
+        pass
 
 
 def load(bot: SnedBot) -> None:

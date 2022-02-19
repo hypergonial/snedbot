@@ -83,25 +83,56 @@ default_automod_policies = {
             "d1ck",
         ],
     },
+    "perspective": {
+        "state": "disabled",
+        "temp_dur": 15,
+        "delete": True,
+        "excluded_channels": [],
+        "excluded_roles": [],
+        "persp_bounds": {"TOXICITY": 0.90, "SEVERE_TOXICITY": 0.90, "THREAT": 0.90, "PROFANITY": 0.90, "INSULT": 0.90},
+    },
     "escalate": {
         "state": "disabled",
-        "step1": "disabled",
-        "step2": "disabled",
-        "step3": "disabled",
     },
 }
 
 # Policy state configuration
 policy_states = {
-    "disabled": {"name": "Disabled", "excludes": []},
-    "notice": {"name": "Notice", "excludes": ["spam"]},
-    "warn": {"name": "Warn", "excludes": ["spam"]},
-    "escalate": {"name": "Escalation", "excludes": ["spam", "escalate"]},
-    "timeout": {"name": "Timeout", "excludes": []},
-    "kick": {"name": "Kick", "excludes": []},
-    "softban": {"name": "Softban", "excludes": []},
-    "tempban": {"name": "Tempban", "excludes": []},
-    "permaban": {"name": "Ban", "excludes": []},
+    "disabled": {"name": "Disabled", "excludes": [], "description": "Disable this policy.", "emoji": "🚫"},
+    "flag": {"name": "Flag", "excludes": ["spam"], "description": "Log message to 'Auto-Mod Flagging'.", "emoji": "🚩"},
+    "notice": {
+        "name": "Notice",
+        "excludes": ["spam"],
+        "description": "Flag the message and prompt the user to stop.",
+        "emoji": "💬",
+    },
+    "warn": {
+        "name": "Warn",
+        "excludes": ["spam"],
+        "description": "Warn user. Increases warn counter. Logs under 'Warns'.",
+        "emoji": "⚠️",
+    },
+    "escalate": {
+        "name": "Escalation",
+        "excludes": ["spam", "escalate"],
+        "description": "Execute the policy defined in 'Escalation'.",
+        "emoji": "⏫",
+    },
+    "timeout": {
+        "name": "Timeout",
+        "excludes": [],
+        "description": "Time out the user for the specified temporary duration.",
+        "emoji": "🔇",
+    },
+    "kick": {"name": "Kick", "excludes": [], "description": "Kick the user.", "emoji": "🚪"},
+    "softban": {
+        "name": "Softban",
+        "excludes": [],
+        "description": "Ban and unban the user, deleting their messages.",
+        "emoji": "🔨",
+    },
+    "tempban": {"name": "Tempban", "excludes": [], "description": "Temporarily ban the user.", "emoji": "🔨"},
+    "permaban": {"name": "Permaban", "excludes": [], "description": "Permanently ban the user.", "emoji": "🔨"},
 }
 
 notices = {
@@ -126,6 +157,7 @@ policy_fields = {
     },
     "excluded_channels": {"name": "Excluded Channels:", "value": "{value}", "label": "Excluded Channels"},
     "excluded_roles": {"name": "Excluded Roles:", "value": "{value}", "label": "Excluded Roles"},
+    "persp_bounds": {"name": "Perspective Bounds:", "value": "{value}", "label": "Set Bounds"},
 }
 
 policy_text_inputs = {
@@ -187,9 +219,46 @@ policy_strings = {
         "description": "This event is triggered when a message includes any of the bad words configured below.",
     },
     "escalate": {
-        "name": "Smart",
-        "description": "This event is triggered when any other event's punishment is set to smart, when the bot deemes that warning the user is not enough. Other parameters such as the duration of temporary punishment (if temporary), the deletion of message etc.. are inherited from the original event.",
+        "name": "Escalation",
+        "description": """This event is triggered when any other policy's punishment is set to escalation, and escalates measures, culminating in the punishment specified below. 
+        
+**The flow is the following:**
+**1.** The user is given a notice
+**2.** If ignored, the user is warned
+**3.** If also ignored, the action below is executed on the user
+
+Other parameters such as the duration of temporary punishment (if temporary), the deletion of message, excluded roles/channels, etc.. **are inherited from the original policy.**\n""",
     },
+    "perspective": {
+        "name": "Perspective",
+        "description": """Uses advanced machine learning algorithms to detect and filter out potentially toxic messages. Learn more about Perspective [here](https://www.perspectiveapi.com/).
+        
+Below you can set the percentages after which action will be taken based on the Perspective action-types. It is recommended to set at least a `0.85` (85%) confidence rate or higher for all values.
+​
+Staff members are encouraged to play around with the percentages with only the `Flag` state selected, to test the sensitiveness of the system. Perspective is not a replacement for human moderators, and should not be treated as such.
+​
+Currently supported languages: **English**, **German**, **Italian**, **Portuguese**, **Russian**""",
+    },
+}
+
+settings_help = {
+    "policies": {
+        "perspective": hikari.Embed(
+            title="Help for: Perspective",
+            color=0x009DFF,
+            description="""[Perspective](https://www.perspectiveapi.com/) is an API that uses machine learning to identify toxic comments.
+​
+**How does it work?**
+After enabling the policy, you can set different bounds for the different attributes (see below), these specify the percentage of confidence above which the bot should take action. If you would like to **disable an attribute**, simply set it to `1.0`, as no the probability will ever hit 100%.
+​
+**Available Attributes:**
+`Toxicity` - A rude, disrespectful, or unreasonable comment that is likely to make people leave a discussion.
+`Severe Toxicity` - A very hateful, aggressive, disrespectful comment or otherwise very likely to make a user leave a discussion or give up on sharing their perspective. This attribute is much less sensitive to more mild forms of toxicity, such as comments that include positive uses of curse words.
+`Insult` - Insulting, inflammatory, or negative comment towards a person or a group of people.
+`Profanity` - Swear words, curse words, or other obscene or profane language.
+`Threat` - Describes an intention to inflict pain, injury, or violence against an individual or group.""",
+        )
+    }
 }
 
 log_event_strings = {
@@ -200,7 +269,7 @@ log_event_strings = {
     "message_delete_mod": "Message Deletion by Mod",
     "message_edit": "Message Edits",
     "bulk_delete": "Message Purging",
-    "invites": "Invites",
+    "flags": "Auto-Mod Flagging",
     "roles": "Roles",
     "channels": "Channels",
     "member_join": "Member join",

@@ -62,12 +62,8 @@ class ReminderView(miru.View):
                     return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
                 notes["additional_recipients"].append(ctx.user.id)
-                await self.app.scheduler.update_timer(
-                    datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
-                    self.timer_id,
-                    ctx.guild_id,
-                    new_notes=json.dumps(notes),
-                )
+                timer.notes = json.dumps(notes)
+                await self.app.scheduler.update_timer(timer)
                 embed = hikari.Embed(
                     title="✅ Signed up to reminder",
                     description="You will also be notified when this reminder is due!",
@@ -76,12 +72,8 @@ class ReminderView(miru.View):
                 return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             else:
                 notes["additional_recipients"].remove(ctx.user.id)
-                await self.app.scheduler.update_timer(
-                    datetime.datetime.fromtimestamp(timer.expires, tz=datetime.timezone.utc),
-                    self.timer_id,
-                    self.guild_id,
-                    new_notes=json.dumps(notes),
-                )
+                timer.notes = json.dumps(notes)
+                await self.app.scheduler.update_timer(timer)
                 embed = hikari.Embed(
                     title="✅ Removed from reminder",
                     description="Removed you from the list of recipients!",

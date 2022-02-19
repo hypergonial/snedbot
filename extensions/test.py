@@ -87,12 +87,13 @@ async def modaltest(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def testmultiple_cmd(ctx: SnedSlashContext) -> None:
     text = ctx.options.text
-    attribs = perspective.Attribute(perspective.AttributeName.TOXICITY)
     resps = []
     for i in range(1, 80):
         try:
             print(f"REQUEST {i}")
-            resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(text, ["en"], [attribs])
+            resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(
+                text, perspective.Attribute(perspective.AttributeName.TOXICITY)
+            )
             resps.append(resp)
         except:
             raise
@@ -119,7 +120,7 @@ async def test_cmd(ctx: SnedSlashContext) -> None:
         perspective.Attribute(perspective.AttributeName.THREAT),
     ]
 
-    resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(text, ["en"], attribs)
+    resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(text, attribs)
 
     content = "```"
     for score in resp.attribute_scores:

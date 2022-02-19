@@ -197,30 +197,21 @@ class Scheduler:
 
     async def update_timer(
         self,
-        expires: datetime.datetime,
-        entry_id: int,
-        guild_id: int,
-        new_notes: str = None,
-    ):
-        """Update a timer's expiry and/or notes field."""
+        timer: Timer,
+    ) -> None:
+        """Update a currently running timer, replacing it with the specified timer object."""
 
-        expires = round(expires.timestamp())
-        if new_notes:
-            await self.bot.pool.execute(
-                """UPDATE timers SET expires = $1, notes = $2 WHERE id = $3 AND guild_id = $4""",
-                expires,
-                new_notes,
-                entry_id,
-                guild_id,
-            )
-        else:
-            await self.bot.pool.execute(
-                """UPDATE timers SET expires = $1 WHERE id = $2 AND guild_id = $3""",
-                expires,
-                entry_id,
-                guild_id,
-            )
-        if self.current_timer and self.current_timer.id == entry_id:
+        await self.bot.pool.execute(
+            """UPDATE timers SET user_id = $1, channel_id = $2, event = $3, expires = $4, notes = $5 WHERE id = $6 AND guild_id = $7""",
+            timer.user_id,
+            timer.channel_id,
+            timer.event,
+            timer.expires,
+            timer.notes,
+            timer.id,
+            timer.guild_id,
+        )
+        if self.current_timer and self.current_timer.id == timer.id:
             logger.debug("Updating timers resulted in reshuffling.")
             self.current_task.cancel()
             self.current_task = asyncio.create_task(self.dispatch_timers())

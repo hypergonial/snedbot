@@ -8,6 +8,7 @@ import aiohttp
 import hikari
 import lightbulb
 import miru
+from models.context import SnedUserContext
 from utils import helpers
 from models import SnedBot
 from models import SnedSlashContext
@@ -248,20 +249,13 @@ class TicTacToeView(miru.View):
 
 
 @fun.command()
-@lightbulb.option("size", "The size of the board. Default is 3.", type=int, required=False)
+@lightbulb.option("size", "The size of the board. Default is 3.", required=False, choices=["3", "4", "5"])
 @lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
 @lightbulb.command("tictactoe", "Play tic tac toe with someone!")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def tictactoe(ctx: SnedSlashContext) -> None:
-    size: int = ctx.options.size or 3
-
-    if size not in (3, 4, 5):
-        embed = hikari.Embed(
-            title="❌ Invalid size",
-            description=f"Size must be one of the following: `3`, `4`, `5`.",
-            color=ctx.app.error_color,
-        )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    size: int = int(ctx.options.size or 3)
+    helpers.is_member(ctx.options.user)
 
     if ctx.options.user.id == ctx.author.id:
         embed = hikari.Embed(
@@ -305,14 +299,24 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
 async def avatar(ctx: SnedSlashContext) -> None:
     member = ctx.options.user or ctx.member
     if ctx.options.show_global == True:
-        avatar_url = helpers.get_avatar(member)
+        avatar_url = member.avatar_url
     else:
-        avatar_url = helpers.get_display_avatar(member)
+        avatar_url = member.display_avatar_url
 
     embed = hikari.Embed(title=f"{member.display_name}'s avatar:", color=helpers.get_color(member))
     embed.set_image(avatar_url)
     embed = helpers.add_embed_footer(embed, member)
     await ctx.respond(embed=embed)
+
+
+@fun.command
+@lightbulb.command("Show Avatar", "Displays the target's avatar for your viewing pleasure.")
+@lightbulb.implements(lightbulb.UserCommand)
+async def avatar_context(ctx: SnedUserContext) -> None:
+    member: hikari.Member = ctx.options.target
+    embed = hikari.Embed(title=f"{member.display_name}'s avatar:", color=helpers.get_color(member))
+    embed.set_image(member.display_avatar_url)
+    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @fun.command

@@ -9,7 +9,7 @@ import lightbulb
 from etc.perms_str import get_perm_str
 import datetime
 from models import SnedContext
-from models.errors import BotRoleHierarchyError, RoleHierarchyError
+from models.errors import BotRoleHierarchyError, MemberExpectedError, RoleHierarchyError
 from utils import helpers
 import typing as t
 
@@ -56,7 +56,6 @@ async def log_error_to_homeguild(
 async def application_error_handler(ctx: SnedContext, error: lightbulb.LightbulbError) -> None:
 
     if isinstance(error, lightbulb.CheckFailure):
-        print("check")
 
         if isinstance(error, lightbulb.MissingRequiredPermission):
             embed = hikari.Embed(
@@ -105,21 +104,28 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    elif isinstance(error, RoleHierarchyError):
-        print("aa")
-        embed = hikari.Embed(
-            title="❌ Role Hiearchy Error",
-            description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
-            color=ctx.app.error_color,
-        )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-    elif isinstance(error, BotRoleHierarchyError):
-        embed = hikari.Embed(
-            title="❌ Role Hiearchy Error",
-            description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
-            color=ctx.app.error_color,
-        )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        elif isinstance(error.original, RoleHierarchyError):
+            embed = hikari.Embed(
+                title="❌ Role Hiearchy Error",
+                description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
+                color=ctx.app.error_color,
+            )
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        elif isinstance(error.original, BotRoleHierarchyError):
+            embed = hikari.Embed(
+                title="❌ Role Hiearchy Error",
+                description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
+                color=ctx.app.error_color,
+            )
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+        elif isinstance(error.original, MemberExpectedError):
+            embed = hikari.Embed(
+                title="❌ Member Expected",
+                description=f"Expected a user who is a member of this server.",
+                color=ctx.app.error_color,
+            )
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     logging.error("Ignoring exception in command {}:".format(ctx.command.name))
     exception_msg = "\n".join(traceback.format_exception(type(error), error, error.__traceback__))

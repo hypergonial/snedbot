@@ -251,6 +251,8 @@ async def tag_delalias(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_transfer(ctx: SnedSlashContext) -> None:
+    helpers.is_member(ctx.options.user)
+
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
     if tag and tag.owner_id == ctx.author.id:
         await tags.d.tag_handler.delete(tag.name, ctx.guild_id)

@@ -8,6 +8,7 @@ from hikari.snowflakes import Snowflakeish
 import lightbulb
 from models.bot import SnedBot
 import models
+from models.context import SnedUserContext
 from models.db_user import User
 from models.errors import BotRoleHierarchyError, RoleHierarchyError
 from models.timer import Timer
@@ -146,8 +147,14 @@ async def post_mod_actions(
     pass
 
 
-async def get_notes(user_id: Snowflakeish, guild_id: Snowflakeish) -> List[str]:
+async def get_notes(
+    user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild]
+) -> List[str]:
     """Returns a list of strings corresponding to a user's journal."""
+
+    user_id = hikari.Snowflake(user)
+    guild_id = hikari.Snowflake(guild)
+
     db_user = await mod.app.global_config.get_user(user_id, guild_id)
     return db_user.notes
 
@@ -155,8 +162,46 @@ async def get_notes(user_id: Snowflakeish, guild_id: Snowflakeish) -> List[str]:
 mod.d.actions.get_notes = get_notes
 
 
-async def add_note(user_id: Snowflakeish, guild_id: Snowflakeish, note: str) -> None:
+async def flag_user(
+    user: hikari.SnowflakeishOr[hikari.PartialUser],
+    guild: hikari.SnowflakeishOr[hikari.Guild],
+    message: hikari.Message,
+    reason: str,
+) -> None:
+    """Flag a message from a user, creating a log entry in the designated log channel."""
+
+    user_id = hikari.Snowflake(user)
+    guild_id = hikari.Snowflake(guild)
+
+    reason = helpers.format_reason(reason, max_length=1500)
+
+    user = (
+        user
+        if isinstance(user, hikari.User)
+        else (mod.app.cache.get_member(guild_id, user_id) or (await mod.app.rest.fetch_user(user_id)))
+    )
+    content = helpers.format_reason(message.content, max_length=2000) if message.content else "No content found."
+
+    embed = hikari.Embed(
+        title="❗🚩 Message flagged",
+        description=f"**{user}** `({user.id})` was flagged by auto-moderator for suspicious behaviour.\n**Reason:**```{reason}```\n**Content:** ```{content}```\n\n[Jump to message!]({message.make_link(guild_id)})",
+        color=mod.app.error_color,
+    )
+    userlog = mod.app.get_plugin("Logging")
+    await userlog.d.actions.log("flags", embed, guild_id)
+
+
+mod.d.actions.flag_user = flag_user
+
+
+async def add_note(
+    user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild], note: str
+) -> None:
     """Add a new journal entry to this user."""
+
+    user_id = hikari.Snowflake(user)
+    guild_id = hikari.Snowflake(guild)
+
     note = helpers.format_reason(note, max_length=256)
 
     db_user = await mod.app.global_config.get_user(user_id, guild_id)
@@ -171,8 +216,13 @@ async def add_note(user_id: Snowflakeish, guild_id: Snowflakeish, note: str) -> 
 mod.d.actions.add_note = add_note
 
 
-async def clear_notes(user_id: Snowflakeish, guild_id: Snowflakeish) -> None:
+async def clear_notes(
+    user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild]
+) -> None:
     """Clear all notes a user has."""
+
+    user_id = hikari.Snowflake(user)
+    guild_id = hikari.Snowflake(guild)
 
     db_user = await mod.app.global_config.get_user(user_id, guild_id)
     db_user.notes = []
@@ -202,6 +252,7 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: Optional
     await pre_mod_actions(member.guild_id, member, ActionType.WARN, reason)
     await mod.app.get_plugin("Logging").d.actions.log("warn", log_embed, member.guild_id)
     await post_mod_actions(member.guild_id, member, ActionType.WARN, reason)
+    await add_note(member, member.guild_id, f"⚠️ **Warned by {moderator}:** {reason}")
     return embed
 
     # TODO: Add note
@@ -386,7 +437,7 @@ async def ban(
     duration: Optional[datetime.datetime] = None,
     *,
     soft: bool = False,
-    days_to_delete: int = 1,
+    days_to_delete: int = 0,
     reason: Optional[str] = hikari.UNDEFINED,
 ) -> hikari.Embed:
     """Ban a user from a guild.
@@ -602,6 +653,14 @@ async def whois(ctx: SnedSlashContext) -> None:
 
 
 @mod.command()
+@lightbulb.command("Show Userinfo", "Show user information about the target user.")
+@lightbulb.implements(lightbulb.UserCommand)
+async def whois_user_command(ctx: SnedUserContext) -> None:
+    embed = await helpers.get_userinfo(ctx, ctx.options.target)
+    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+
+@mod.command()
 @lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
@@ -776,7 +835,7 @@ async def journal_add(ctx: SnedSlashContext) -> None:
 @lightbulb.command("warn", "Warn a user. This gets added to their journal and their warn counter is incremented.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def warn_cmd(ctx: SnedSlashContext) -> None:
-
+    helpers.is_member(ctx.options.user)
     embed = await warn(ctx.options.user, ctx.member, reason=ctx.options.reason)
     await ctx.mod_respond(embed=embed)
 
@@ -793,6 +852,7 @@ async def warns(ctx: SnedSlashContext) -> None:
 @lightbulb.command("list", "List the current warning count for a user.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def warns_list(ctx: SnedSlashContext) -> None:
+    helpers.is_member(ctx.options.user)
     db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
     warns = db_user.warns
     embed = hikari.Embed(
@@ -811,6 +871,7 @@ async def warns_list(ctx: SnedSlashContext) -> None:
 @lightbulb.command("clear", "Clear warnings for the specified user.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def warns_clear(ctx: SnedSlashContext) -> None:
+    helpers.is_member(ctx.options.user)
     db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
     db_user.warns = 0
     await ctx.app.global_config.update_user(db_user)
@@ -828,7 +889,7 @@ async def warns_clear(ctx: SnedSlashContext) -> None:
         color=ctx.app.embed_green,
     )
 
-    await add_note(ctx.options.user.id, ctx.guild_id, f"⚠️ **Warnings cleared by {ctx.author}:** {reason}")
+    await add_note(ctx.options.user, ctx.guild_id, f"⚠️ **Warnings cleared by {ctx.author}:** {reason}")
     await mod.app.get_plugin("Logging").d.actions.log("warn", log_embed, ctx.guild_id)
     await ctx.mod_respond(embed=embed)
 
@@ -854,6 +915,7 @@ def unload(bot: SnedBot) -> None:
 @lightbulb.command("timeout", "Timeout a user, supports durations longer than 28 days.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def timeout_cmd(ctx: SnedSlashContext) -> None:
+    helpers.is_member(ctx.options.user)
     member: hikari.Member = ctx.options.user
     reason: str = helpers.format_reason(ctx.options.reason, max_length=1024)
 
@@ -906,6 +968,7 @@ async def timeouts(ctx: SnedSlashContext) -> None:
 @lightbulb.command("remove", "Remove timeout from a user.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
+    helpers.is_member(ctx.options.user)
     member: hikari.Member = ctx.options.user
     reason: str = helpers.format_reason(ctx.options.reason, max_length=1024)
 
@@ -1034,7 +1097,7 @@ async def unban_cmd(ctx: SnedSlashContext) -> None:
 @lightbulb.command("kick", "Kick a user from this server.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def kick_cmd(ctx: SnedSlashContext) -> None:
-
+    helpers.is_member(ctx.options.user)
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     embed = await kick(ctx.options.user, ctx.member, reason=ctx.options.reason)
     await ctx.mod_respond(embed=embed)
@@ -1068,6 +1131,8 @@ async def kick_cmd(ctx: SnedSlashContext) -> None:
 @lightbulb.command("massban", "Ban a large number of users based on a set of criteria. Useful for handling raids.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def massban(ctx: SnedSlashContext) -> None:
+    helpers.is_member(ctx.options["joined-before"])
+    helpers.is_member(ctx.options["joined-after"])
 
     predicates = [
         lambda member: not member.is_bot,
