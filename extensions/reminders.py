@@ -39,47 +39,47 @@ class ReminderView(miru.View):
                 description="Oops! It looks like this reminder is no longer valid!",
                 color=self.app.error_color,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-        else:
-            if timer.user_id == ctx.user.id:
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+        if timer.user_id == ctx.user.id:
+            embed = hikari.Embed(
+                title="❌ Invalid interaction",
+                description="You cannot do this on your own reminder.",
+                color=self.app.error_color,
+            )
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+        notes: Dict[str, Any] = json.loads(timer.notes)
+
+        if ctx.user.id not in notes["additional_recipients"]:
+
+            if len(notes["additional_recipients"]) > 50:
                 embed = hikari.Embed(
                     title="❌ Invalid interaction",
-                    description="You cannot do this on your own reminder.",
+                    description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
                     color=self.app.error_color,
                 )
                 return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-            notes: Dict[str, Any] = json.loads(timer.notes)
-
-            if ctx.user.id not in notes["additional_recipients"]:
-
-                if len(notes["additional_recipients"]) > 50:
-                    embed = hikari.Embed(
-                        title="❌ Invalid interaction",
-                        description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
-                        color=self.app.error_color,
-                    )
-                    return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-                notes["additional_recipients"].append(ctx.user.id)
-                timer.notes = json.dumps(notes)
-                await self.app.scheduler.update_timer(timer)
-                embed = hikari.Embed(
-                    title="✅ Signed up to reminder",
-                    description="You will also be notified when this reminder is due!",
-                    color=self.app.embed_green,
-                )
-                return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-            else:
-                notes["additional_recipients"].remove(ctx.user.id)
-                timer.notes = json.dumps(notes)
-                await self.app.scheduler.update_timer(timer)
-                embed = hikari.Embed(
-                    title="✅ Removed from reminder",
-                    description="Removed you from the list of recipients!",
-                    color=self.app.embed_green,
-                )
-                return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            notes["additional_recipients"].append(ctx.user.id)
+            timer.notes = json.dumps(notes)
+            await self.app.scheduler.update_timer(timer)
+            embed = hikari.Embed(
+                title="✅ Signed up to reminder",
+                description="You will also be notified when this reminder is due!",
+                color=self.app.embed_green,
+            )
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        else:
+            notes["additional_recipients"].remove(ctx.user.id)
+            timer.notes = json.dumps(notes)
+            await self.app.scheduler.update_timer(timer)
+            embed = hikari.Embed(
+                title="✅ Removed from reminder",
+                description="Removed you from the list of recipients!",
+                color=self.app.embed_green,
+            )
+            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @reminders.command()
@@ -112,46 +112,43 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
             description=f"Your timeformat is invalid! \n**Error:** {error}",
             color=ctx.app.error_color,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    else:
-        if (time - datetime.datetime.now(datetime.timezone.utc)).total_seconds() >= 31536000 * 5:
-            embed = hikari.Embed(
-                title="❌ Error: Invalid data entered",
-                description="Sorry, but that's a bit too far in the future.",
-                color=ctx.app.error_color,
-            )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    if (time - datetime.datetime.now(datetime.timezone.utc)).total_seconds() >= 31536000 * 5:
+        embed = hikari.Embed(
+            title="❌ Error: Invalid data entered",
+            description="Sorry, but that's a bit too far in the future.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-        else:
+    embed = hikari.Embed(
+        title="✅ Reminder set",
+        description=f"Reminder set for:  {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{ctx.options.message}",
+        color=ctx.app.embed_green,
+    )
+    embed = helpers.add_embed_footer(embed, ctx.member)
 
-            embed = hikari.Embed(
-                title="✅ Reminder set",
-                description=f"Reminder set for:  {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{ctx.options.message}",
-                color=ctx.app.embed_green,
-            )
-            embed = helpers.add_embed_footer(embed, ctx.member)
+    reminder_data = {
+        "message": ctx.options.message,
+        "jump_url": None,
+        "additional_recipients": [],
+    }
 
-            reminder_data = {
-                "message": ctx.options.message,
-                "jump_url": None,
-                "additional_recipients": [],
-            }
+    timer = await ctx.app.scheduler.create_timer(
+        expires=time,
+        event="reminder",
+        guild_id=ctx.guild_id,
+        user_id=ctx.author.id,
+        channel_id=ctx.channel_id,
+        notes=json.dumps(reminder_data),
+    )
 
-            timer = await ctx.app.scheduler.create_timer(
-                expires=time,
-                event="reminder",
-                guild_id=ctx.guild_id,
-                user_id=ctx.author.id,
-                channel_id=ctx.channel_id,
-                notes=json.dumps(reminder_data),
-            )
-
-            view = ReminderView(timer.id, timeout=300)
-            proxy = await ctx.respond(embed=embed, components=view.build())
-            reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
-            await ctx.app.scheduler.update_timer(time, timer.id, timer.guild_id, new_notes=json.dumps(reminder_data))
-            view.start(await proxy.message())
+    view = ReminderView(timer.id, timeout=300)
+    proxy = await ctx.respond(embed=embed, components=view.build())
+    reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
+    await ctx.app.scheduler.update_timer(time, timer.id, timer.guild_id, new_notes=json.dumps(reminder_data))
+    view.start(await proxy.message())
 
 
 @reminder.child()
@@ -167,15 +164,15 @@ async def reminder_del(ctx: SnedSlashContext) -> None:
             description=f"Cannot find reminder with ID **{ctx.options.id}**.",
             color=ctx.app.error_color,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-    else:
-        embed = hikari.Embed(
-            title="✅ Reminder deleted",
-            description=f"Reminder **{ctx.options.id}** has been deleted.",
-            color=ctx.app.embed_green,
-        )
-        embed = helpers.add_embed_footer(embed, ctx.member)
-        await ctx.respond(embed=embed)
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    embed = hikari.Embed(
+        title="✅ Reminder deleted",
+        description=f"Reminder **{ctx.options.id}** has been deleted.",
+        color=ctx.app.embed_green,
+    )
+    embed = helpers.add_embed_footer(embed, ctx.member)
+    await ctx.respond(embed=embed)
 
 
 @reminder.child()
@@ -236,43 +233,45 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
         guild = plugin.app.cache.get_guild(event.timer.guild_id)
         user = guild.get_member(event.timer.user_id)
 
-        if user:
-            notes = json.loads(event.timer.notes)
-            embed = hikari.Embed(
-                title=f"✉️ {user.display_name}, your reminder:",
-                description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
-                color=plugin.app.embed_blue,
+        if not user:
+            return
+
+        notes = json.loads(event.timer.notes)
+        embed = hikari.Embed(
+            title=f"✉️ {user.display_name}, your reminder:",
+            description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
+            color=plugin.app.embed_blue,
+        )
+
+        pings = [user.mention]
+
+        if len(notes["additional_recipients"]) > 0:
+            for user_id in notes["additional_recipients"]:
+                member = guild.get_member(user_id)
+                if member:
+                    pings.append(member.mention)
+
+        try:
+            await plugin.app.rest.create_message(
+                event.timer.channel_id,
+                content=" ".join(pings),
+                embed=embed,
+                user_mentions=True,
             )
 
-            pings = [user.mention]
-
-            if len(notes["additional_recipients"]) > 0:
-                for user_id in notes["additional_recipients"]:
-                    member = guild.get_member(user_id)
-                    if member:
-                        pings.append(member.mention)
-
+        except (
+            hikari.ForbiddenError,
+            hikari.NotFoundError,
+            hikari.InternalServerError,
+        ):
             try:
-                await plugin.app.rest.create_message(
-                    event.timer.channel_id,
-                    content=" ".join(pings),
+                await user.send(
+                    content="I lost access to the channel this reminder was sent from, so here it is!",
                     embed=embed,
-                    user_mentions=True,
                 )
 
-            except (
-                hikari.ForbiddenError,
-                hikari.NotFoundError,
-                hikari.InternalServerError,
-            ):
-                try:
-                    await user.send(
-                        content="I lost access to the channel this reminder was sent from, so here it is!",
-                        embed=embed,
-                    )
-
-                except hikari.ForbiddenError:
-                    logger.info(f"Failed to deliver a reminder to user {user}.")
+            except hikari.ForbiddenError:
+                logger.info(f"Failed to deliver a reminder to user {user}.")
 
 
 def load(bot: SnedBot) -> None:
