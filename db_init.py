@@ -2,13 +2,14 @@ import asyncio
 import os
 
 import asyncpg
-from config import config
+from config import Config
 from dotenv import load_dotenv
 
 # Modify this line & change it to your PSQL DB address
 # Do not modify the variables, DBPASS is retrieved from .env,
 # while db_name is decided on runtime.
-dsn = config["postgres_dsn"]
+config = Config()
+dsn = config.POSTGRES_DSN
 
 try:
     print(
@@ -23,11 +24,11 @@ try:
     )
 
     while True:
-        is_experimental = input(
-            "Do you want to initialize the database for the stable or the experimental version? Type 'stable' for stable, 'exp' for experimental.\n> "
+        is_dev_mode = input(
+            "Do you want to initialize the database for the stable or the developer mode version? Type 'stable' for stable, 'dev' for developer.\n> "
         )
-        if is_experimental in ["stable", "exp"]:
-            if is_experimental == "stable":
+        if is_dev_mode in ["stable", "dev"]:
+            if is_dev_mode == "stable":
                 db_name = "sned"
             else:
                 db_name = "sned_exp"
@@ -108,7 +109,7 @@ try:
                     guild_id bigint NOT NULL,
                     is_enabled bool NOT NULL DEFAULT false,
                     channel_id bigint,
-                    pinged_role_ids bigint[] DEFAULT [],
+                    pinged_role_ids bigint[] DEFAULT '{}',
                     PRIMARY KEY (guild_id),
                     FOREIGN KEY (guild_id)
                         REFERENCES global_config (guild_id)
@@ -127,45 +128,6 @@ try:
                         expires bigint NOT NULL,
                         notes text,
                         PRIMARY KEY (id),
-                        FOREIGN KEY (guild_id)
-                            REFERENCES global_config (guild_id)
-                            ON DELETE CASCADE
-                    )"""
-            )
-            await con.execute(
-                """
-                    CREATE TABLE IF NOT EXISTS public.permissions
-                    (
-                        guild_id bigint NOT NULL,
-                        ptype text NOT NULL,
-                        role_ids bigint[] NOT NULL DEFAULT '{}',
-                        PRIMARY KEY (guild_id, ptype),
-                        FOREIGN KEY (guild_id)
-                            REFERENCES global_config (guild_id)
-                            ON DELETE CASCADE
-                    )"""
-            )
-            await con.execute(
-                """
-                    CREATE TABLE IF NOT EXISTS public.modules
-                    (
-                        guild_id bigint NOT NULL,
-                        module_name text NOT NULL,
-                        is_enabled bool NOT NULL DEFAULT true,
-                        PRIMARY KEY (guild_id, module_name),
-                        FOREIGN KEY (guild_id)
-                            REFERENCES global_config (guild_id)
-                            ON DELETE CASCADE
-                    )
-            """
-            )
-            await con.execute(
-                """
-                    CREATE TABLE IF NOT EXISTS public.priviliged
-                    (
-                        guild_id bigint NOT NULL,
-                        priviliged_role_id bigint NOT NULL,
-                        PRIMARY KEY (guild_id, priviliged_role_id),
                         FOREIGN KEY (guild_id)
                             REFERENCES global_config (guild_id)
                             ON DELETE CASCADE
@@ -282,8 +244,38 @@ try:
                             ON DELETE CASCADE
                     )"""
             )
+            await con.execute(
+                """
+                    CREATE TABLE IF NOT EXISTS public.starboard
+                    (
+                        guild_id bigint NOT NULL,
+                        is_enabled bool NOT NULL DEFAULT false,
+                        star_limit smallint NOT NULL DEFAULT 5,
+                        channel_id bigint,
+                        excluded_channels bigint[] DEFAULT '{}',
+                        PRIMARY KEY (guild_id),
+                        FOREIGN KEY (guild_id)
+                            REFERENCES global_config (guild_id)
+                            ON DELETE CASCADE
+                    )"""
+            )
+            await con.execute(
+                """
+                    CREATE TABLE IF NOT EXISTS public.starboard_entries
+                    (
+                        guild_id bigint NOT NULL,
+                        channel_id bigint NOT NULL,
+                        orig_msg_id bigint NOT NULL,
+                        entry_msg_id bigint NOT NULL,
+                        PRIMARY KEY (guild_id, channel_id, orig_msg_id),
+                        FOREIGN KEY (guild_id)
+                            REFERENCES global_config (guild_id)
+                            ON DELETE CASCADE
+                    )"""
+            )
 
-            print("Tables created, database is ready!")
+        await pool.close()
+        print("Tables created, database is ready!")
 
     asyncio.run(init_tables())
     input("\nPress enter to exit...")

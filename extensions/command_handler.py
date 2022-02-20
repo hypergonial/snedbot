@@ -10,11 +10,8 @@ from etc.perms_str import get_perm_str
 import datetime
 from models import SnedContext
 from models.errors import BotRoleHierarchyError, MemberExpectedError, RoleHierarchyError
-from utils import helpers
 import typing as t
-
-if t.TYPE_CHECKING:
-    from models.bot import SnedBot
+from models.bot import SnedBot
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +25,7 @@ async def log_error_to_homeguild(
     error_lines = error_str.split("\n")
     paginator = lightbulb.utils.StringPaginator(max_chars=2000, prefix="```py\n", suffix="```")
 
-    if ctx:
+    if ctx and ctx.get_guild():
         paginator.add_line(
             f"Error in '{ctx.get_guild().name}' ({ctx.guild_id}) during command '{ctx.command.name}' executed by user '{ctx.author}' ({ctx.author.id})\n"
         )
@@ -41,7 +38,8 @@ async def log_error_to_homeguild(
     for line in error_lines:
         paginator.add_line(line)
 
-    channel_id = ctx.app.config.get("error_logging_channel")
+    assert isinstance(ctx.app, SnedBot)
+    channel_id = ctx.app.config.ERROR_LOGGING_CHANNEL
 
     if not channel_id:
         return
@@ -50,7 +48,7 @@ async def log_error_to_homeguild(
         try:
             await ctx.app.rest.create_message(channel_id, page)
         except Exception as error:
-            logging.error(f"Failed sending traceback to logging channel: {error}")
+            logging.error(f"Failed sending traceback to error-logging channel: {error}")
 
 
 async def application_error_handler(ctx: SnedContext, error: lightbulb.LightbulbError) -> None:
@@ -154,7 +152,7 @@ async def slash_error_handler(event: lightbulb.CommandErrorEvent) -> None:
 @ch.listener(lightbulb.SlashCommandCompletionEvent)
 @ch.listener(lightbulb.MessageCommandCompletionEvent)
 async def application_command_completion_handler(event: lightbulb.events.CommandCompletionEvent):
-    if event.context.author.id in event.context.app.owner_ids:
+    if event.context.author.id in event.context.app.owner_ids:  # Ignore cooldowns for owner c:
         if cm := event.command.cooldown_manager:
             await cm.reset_cooldown(event.context)
 

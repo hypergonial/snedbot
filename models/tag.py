@@ -1,15 +1,17 @@
-from dataclasses import dataclass
+import attr
 from typing import List, Optional
 
+import hikari
 
-@dataclass
+
+@attr.define()
 class Tag:
     """
     Represents a tag object.
     """
 
-    guild_id: int
+    guild_id: hikari.Snowflake
     name: str
-    owner_id: int
+    owner_id: hikari.Snowflake
     aliases: Optional[List[str]]
     content: str

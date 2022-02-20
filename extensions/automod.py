@@ -11,8 +11,6 @@ import lightbulb
 import miru
 import perspective
 from etc.settings_static import default_automod_policies, notices
-from miru.ext import nav
-from models import SnedSlashContext
 from models.bot import SnedBot
 from utils import helpers
 import utils
@@ -57,7 +55,9 @@ escalate_prewarn_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER
 escalate_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
 
 
-async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> None:
+async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> t.Dict[str, t.Any]:
+    """Return auto-moderation policies for the specified guild."""
+
     guild_id = hikari.Snowflake(guild)
 
     records = await automod.app.db_cache.get(table="mod_config", guild_id=guild_id)
@@ -120,15 +120,24 @@ async def punish(
 
     state = policies[action.value]["state"]
 
-    if state == "disabled":
+    if state == AutoModState.DISABLED.value:
         return
 
     # States that silence the user and their repetition is undesirable
-    # TODO: Compute escalate in if it has a silencing state in any stage
-    silencers = ["timeout", "kick", "tempban", "softban", "permaban", "escalate"]
+    silencers = [
+        AutoModState.TIMEOUT.value,
+        AutoModState.KICK.value,
+        AutoModState.TEMPBAN.value,
+        AutoModState.SOFTBAN.value,
+        AutoModState.PERMABAN.value,
+    ]
+
+    if policies[AutoModState.ESCALATE.value]["state"] in silencers:
+        silencers.append(AutoModState.ESCALATE.value)
 
     if state in silencers:
         await punish_ratelimiter.acquire(message)
+
         if punish_ratelimiter.is_rate_limited(message):
             return
 
@@ -148,12 +157,12 @@ async def punish(
     if not mod:
         return
 
-    if state == "flag":
+    if state == AutoModState.FLAG.value:
         await mod.d.actions.flag_user(
             offender.id, message.guild_id, message, reason=f"Message flagged by auto-moderator for {reason}."
         )
 
-    if state == "notice":
+    if state == AutoModState.NOTICE.value:
         embed = hikari.Embed(
             title="💬 Auto-Moderation Notice",
             description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
@@ -164,11 +173,11 @@ async def punish(
             offender.id, message.guild_id, message, reason=f"Message flagged by auto-moderator for {reason}."
         )
 
-    if state == "warn":
+    if state == AutoModState.WARN.value:
         embed = await mod.d.actions.warn(offender, me, f"Warned by auto-moderator for {reason}.")
         return await message.respond(embed=embed)
 
-    elif state == "escalate":
+    elif state == AutoModState.ESCALATE.value:
         await escalate_prewarn_ratelimiter.acquire(message)
 
         if not escalate_prewarn_ratelimiter.is_rate_limited(message):
@@ -205,7 +214,7 @@ async def punish(
                     offender=offender,
                 )
 
-    elif state == "timeout":
+    elif state == AutoModState.TIMEOUT.value:
 
         embed = await mod.d.actions.timeout(
             offender,
@@ -215,17 +224,17 @@ async def punish(
         )
         return await message.respond(embed=embed)
 
-    elif state == "kick":
+    elif state == AutoModState.KICK.value:
         embed = await mod.d.actions.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
         return await message.respond(embed=embed)
 
-    elif state == "softban":
+    elif state == AutoModState.SOFTBAN.value:
         embed = await mod.d.actions.ban(
             offender, me, soft=True, reason=f"Soft-banned by auto-moderator for {reason}.", days_to_delete=1
         )
         return await message.respond(embed=embed)
 
-    elif state == "tempban":
+    elif state == AutoModState.TEMPBAN.value:
         embed = await mod.d.actions.ban(
             offender,
             me,
@@ -234,7 +243,7 @@ async def punish(
         )
         return await message.respond(embed=embed)
 
-    elif state == "permaban":
+    elif state == AutoModState.PERMABAN.value:
         embed = await mod.d.actions.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
         return await message.respond(embed=embed)
 
@@ -245,7 +254,7 @@ async def scan_messages(plugin: lightbulb.Plugin, event: hikari.GuildMessageCrea
 
     message = event.message
 
-    if not plugin.app.is_alive or not plugin.app.db_cache.is_ready:
+    if not plugin.app.is_started or not plugin.app.db_cache.is_ready:
         return
 
     if message.guild_id is None:

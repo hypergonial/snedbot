@@ -1,4 +1,3 @@
-import hikari
 import lightbulb
 
 

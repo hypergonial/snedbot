@@ -148,7 +148,7 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
 @lightbulb.command("invite", "Invite the bot to your server!")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def invite(ctx: SnedSlashContext) -> None:
-    if not ctx.app.experimental:
+    if not ctx.app.dev_mode:
         invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.get_me().id}&permissions=1643161053254&scope=applications.commands%20bot"
         embed = hikari.Embed(
             title="🌟 Yay!",

@@ -17,6 +17,8 @@ from utils.tasks import IntervalLoop
 
 from .context import *
 
+from config import Config
+
 
 async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[t.List[str], str]:
     """
@@ -42,9 +44,10 @@ class SnedBot(lightbulb.BotApp):
         See the included config_example.py for formatting help.
     """
 
-    def __init__(self, config: t.Dict[str, t.Any]) -> None:
+    def __init__(self, config: Config) -> None:
         self.loop = asyncio.get_event_loop()
         self._started = asyncio.Event()
+        self._is_started = False
 
         cache_settings = hikari.CacheSettings(
             components=hikari.CacheComponents.ALL, max_messages=10000, max_dm_channel_ids=50
@@ -59,17 +62,17 @@ class SnedBot(lightbulb.BotApp):
             | hikari.Intents.ALL_MESSAGES
         )
 
-        self.experimental = config["experimental"]
+        self.dev_mode: bool = config.DEV_MODE
 
-        if self.experimental:
-            default_enabled_guilds = (config["debug_guilds"]) if config["debug_guilds"] else ()
+        if self.dev_mode:
+            default_enabled_guilds = (config.DEBUG_GUILDS) if config.DEBUG_GUILDS else ()
             db_name = "sned_exp"
         else:
             default_enabled_guilds = ()
             db_name = "sned"
 
         super().__init__(
-            token=config["token"],
+            token=config.TOKEN,
             cache_settings=cache_settings,
             default_enabled_guilds=default_enabled_guilds,
             intents=intents,
@@ -78,12 +81,10 @@ class SnedBot(lightbulb.BotApp):
             help_class=None,
         )
 
-        config.pop("token")
-
         # Initizaling configuration and database
-        self.config = config
-        self.dsn = self.config["postgres_dsn"].format(db_name=db_name)
-        self.pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self.dsn))
+        self._config = config
+        self._dsn = self.config.POSTGRES_DSN.format(db_name=db_name)
+        self._pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self._dsn))
 
         # Startup lightbulb.ext.tasks and miru
         tasks.load(self)
@@ -94,6 +95,7 @@ class SnedBot(lightbulb.BotApp):
         self._db_backup_loop = IntervalLoop(self.backup_bot_db, hours=24.0)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
+        self._initial_guilds: t.List[Snowflake] = []
 
         # Color scheme
         self.error_color = 0xFF0000
@@ -123,11 +125,30 @@ class SnedBot(lightbulb.BotApp):
         """The absolute path to the bot's project."""
         return self._base_dir
 
+    @property
+    def pool(self) -> asyncpg.Pool:
+        """The database connection pool of the bot."""
+        if self._pool is None:
+            raise RuntimeError("The bot is not initialized and has no pool.")
+        return self._pool
+
+    @property
+    def config(self) -> Config:
+        """The passed configuration object."""
+        return self._config
+
+    @property
+    def is_started(self) -> bool:
+        """Boolean indicating if the bot has started up or not."""
+        return self._is_started
+
     def start_listeners(self) -> None:
         """
         Start all listeners located in this class.
         """
         self.subscribe(hikari.StartedEvent, self.on_startup)
+        self.subscribe(hikari.GuildAvailableEvent, self.on_guild_available)
+        self.subscribe(lightbulb.LightbulbStartedEvent, self.on_lightbulb_startup)
         self.subscribe(hikari.MessageCreateEvent, self.on_message)
         self.subscribe(hikari.StoppingEvent, self.on_stopping)
         self.subscribe(hikari.StoppedEvent, self.on_stop)
@@ -169,37 +190,56 @@ class SnedBot(lightbulb.BotApp):
     ) -> t.Optional[SnedPrefixContext]:
         return await super().get_prefix_context(event, cls)
 
+    async def on_guild_available(self, event: hikari.GuildAvailableEvent) -> None:
+        if self.is_started:
+            return
+        self._initial_guilds.append(event.guild_id)
+
     async def on_startup(self, event: hikari.StartedEvent) -> None:
 
         user = self.get_me()
         self._user_id = user.id
-        self._started.set()
-
         self.db_cache = cache.Caching(self)
-        self._db_backup_loop.start()
         self.global_config = ConfigHandler(self)
         self.scheduler = scheduler.Scheduler(self)
-        self.perspective = perspective.Client(self.config["perspective_api_key"], do_not_store=True)
+        self.perspective = perspective.Client(self.config.PERSPECTIVE_API_KEY, do_not_store=True)
+        self._db_backup_loop.start()
 
         logging.info(f"Startup complete, initialized as {user}")
         activity = hikari.Activity(name="to @Sned", type=hikari.ActivityType.LISTENING)
         await self.update_presence(activity=activity)
 
-        if self.experimental:
-            logging.warning("\n--------------\nExperimental mode is enabled!\n--------------")
+        if self.dev_mode:
+            logging.warning("Developer mode is enabled!")
 
         # Insert all guilds the bot is member of into the db global config on startup
         async with self.pool.acquire() as con:
-            for guild in self.cache.get_guilds_view():
+            for guild_id in self.cache.get_guilds_view():
                 await con.execute(
                     """
                 INSERT INTO global_config (guild_id) VALUES ($1)
                 ON CONFLICT (guild_id) DO NOTHING""",
-                    guild,
+                    guild_id,
                 )
 
+    async def on_lightbulb_startup(self, event: lightbulb.LightbulbStartedEvent) -> None:
+
+        # Insert all guilds the bot is member of into the db global config on startup
+        async with self.pool.acquire() as con:
+            for guild_id in self._initial_guilds:
+                await con.execute(
+                    """
+                INSERT INTO global_config (guild_id) VALUES ($1)
+                ON CONFLICT (guild_id) DO NOTHING""",
+                    guild_id,
+                )
+            self._initial_guilds = []
+
+        # Set this here so all guild_ids are in DB
+        self._started.set()
+        self._is_started = True
+
     async def on_stopping(self, event: hikari.StoppingEvent) -> None:
-        self._is_ready = False
         logging.info("Bot is shutting down...")
 
     async def on_stop(self, event: hikari.StoppedEvent) -> None:
@@ -221,6 +261,7 @@ class SnedBot(lightbulb.BotApp):
                 )
                 embed.set_thumbnail(self.get_me().avatar_url)
                 return await event.message.respond(embed=embed)
+
             elif event.content.startswith(await get_prefix(self, event.message)):
                 embed = hikari.Embed(
                     title="Uh Oh!",
@@ -246,7 +287,7 @@ class SnedBot(lightbulb.BotApp):
         try:
             embed = hikari.Embed(
                 title="Beep Boop!",
-                description="I have been summoned to this server. Type `/` to see what I can do!",
+                description="""I have been summoned to this server. Type `/` to see what I can do!\n\nIf you have `Manage Server` permissions, you may configure the bot via `/settings`!""",
                 color=0xFEC01D,
             )
             embed.set_thumbnail(me.avatar_url)
@@ -263,16 +304,16 @@ class SnedBot(lightbulb.BotApp):
 
     async def backup_bot_db(self) -> None:
         if self.skip_first_db_backup:
-            logging.info("Skipping databse backup for this day...")
+            logging.info("Skipping database backup for this day...")
             self.skip_first_db_backup = False
             return
 
-        file = await db_backup.backup_database(self.dsn)
+        file = await db_backup.backup_database(self._dsn)
         await self.wait_until_started()
 
-        if self.config["db_backup_channel"]:
+        if self.config.DB_BACKUP_CHANNEL:
             await self.rest.create_message(
-                self.config["db_backup_channel"],
+                self.config.DB_BACKUP_CHANNEL,
                 f"Database Backup: {helpers.format_dt(helpers.utcnow())}",
                 attachment=file,
             )

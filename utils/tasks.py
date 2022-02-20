@@ -4,7 +4,9 @@ import logging
 
 
 class IntervalLoop:
-    def __init__(self, callback, seconds: float = None, minutes: float = None, hours: float = None, days: float = None):
+    def __init__(
+        self, callback, seconds: float = None, minutes: float = None, hours: float = None, days: float = None
+    ) -> None:
         if not seconds and not minutes and not hours and not days:
             raise ValueError("Expected a loop time.")
         else:
@@ -13,19 +15,19 @@ class IntervalLoop:
             hours = hours or 0
             days = hours or 0
 
-        self.coro = callback
+        self._coro = callback
         self._task = None
         self._failed = 0
         self._sleep = seconds + minutes * 60 + hours * 3600 + days * 24 * 3600
         self._stop_next = False
 
-        if not inspect.iscoroutinefunction(self.coro):
+        if not inspect.iscoroutinefunction(self._coro):
             raise TypeError(f"Expected a coroutine function.")
 
-    async def _loopy_loop(self, *args, **kwargs):
+    async def _loopy_loop(self, *args, **kwargs) -> None:
         while not self._stop_next:
             try:
-                await self.coro(*args, **kwargs)
+                await self._coro(*args, **kwargs)
             except Exception as e:
                 if self._failed < 3:
                     self._failed += 1
@@ -37,7 +39,7 @@ class IntervalLoop:
                 await asyncio.sleep(self._sleep)
         self.cancel()
 
-    def start(self, *args, **kwargs):
+    def start(self, *args, **kwargs) -> None:
         """
         Start looping the task at the specified interval.
         """
@@ -47,7 +49,7 @@ class IntervalLoop:
         self._task = asyncio.create_task(self._loopy_loop(*args, **kwargs))
         return self._task
 
-    def cancel(self):
+    def cancel(self) -> None:
         """
         Cancel the looping of the task.
         """
@@ -57,7 +59,7 @@ class IntervalLoop:
         self._task.cancel()
         self._task = None
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Gracefully stop the looping of the task.
         """

@@ -1,8 +1,11 @@
 import asyncio
 import copy
+from faulthandler import is_enabled
 import json
 import logging
+from sre_constants import SUCCESS
 import typing as t
+from discord import ButtonStyle
 
 import hikari
 import lightbulb
@@ -56,6 +59,7 @@ class SettingsView(models.AuthorOnlyView):
             "Auto-Moderation": self.settings_automod,
             "Auto-Moderation Policies": self.settings_automod_policy,
             "Logging": self.settings_logging,
+            "Starboard": self.settings_starboard,
             "Quit": self.quit_settings,
         }
 
@@ -144,6 +148,7 @@ class SettingsView(models.AuthorOnlyView):
             OptionButton(label="Auto-Moderation"),
             OptionButton(label="Logging"),
             OptionButton(label="Reports"),
+            OptionButton(label="Starboard"),
         ]
 
         self.add_buttons(buttons)
@@ -248,9 +253,6 @@ class SettingsView(models.AuthorOnlyView):
                 )
                 return await self.error_screen(embed, parent="Reports")
 
-            except asyncio.TimeoutError:
-                await self.quit_settings()
-
             else:
                 await self.app.pool.execute(
                     """INSERT INTO reports (channel_id, guild_id)
@@ -294,9 +296,6 @@ class SettingsView(models.AuthorOnlyView):
                 )
                 return await self.error_screen(embed, parent="Reports")
 
-            except asyncio.TimeoutError:
-                return await self.quit_settings()
-
         elif self.value == "Remove Role":
 
             embed = hikari.Embed(
@@ -332,9 +331,6 @@ class SettingsView(models.AuthorOnlyView):
                 )
                 return await self.error_screen(embed, parent="Reports")
 
-            except asyncio.TimeoutError:
-                return await self.quit_settings()
-
         await self.app.pool.execute(
             """INSERT INTO reports (pinged_role_ids, guild_id)
         VALUES ($1, $2)
@@ -351,6 +347,7 @@ class SettingsView(models.AuthorOnlyView):
         """Show and handle Moderation menu."""
 
         mod = self.app.get_plugin("Moderation")
+        assert mod is not None
         mod_settings = await mod.d.actions.get_settings(self.last_ctx.guild_id)
 
         embed = hikari.Embed(
@@ -384,6 +381,246 @@ class SettingsView(models.AuthorOnlyView):
         await self.app.db_cache.refresh(table="mod_config", guild_id=self.last_ctx.guild_id)
 
         await self.settings_mod()
+
+    async def settings_starboard(self) -> None:
+
+        records = await self.app.db_cache.get(table="starboard", guild_id=self.last_ctx.guild_id)
+        settings = (
+            records[0]
+            if records
+            else {"is_enabled": False, "channel_id": None, "star_limit": 5, "excluded_channels": []}
+        )
+
+        starboard_channel = self.app.cache.get_guild_channel(settings["channel_id"]) if settings["channel_id"] else None
+        is_enabled = settings["is_enabled"] if settings["channel_id"] else False
+
+        excluded_channels = (
+            [self.app.cache.get_guild_channel(channel_id) for channel_id in settings["excluded_channels"]]
+            if settings["excluded_channels"]
+            else []
+        )
+        all_channels = [
+            channel
+            for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
+            if isinstance(channel, hikari.TextableGuildChannel)
+        ]
+        included_channels = list(set(all_channels) - set(excluded_channels))
+
+        embed = hikari.Embed(
+            title="Starboard Settings",
+            description="Below you can see the current settings for this server's starboard! If enabled, users can star messages by reacting with ⭐, and if the number of reactions reaches the specified limit, the message will be sent into the specified starboard channel.",
+            color=self.app.embed_blue,
+        )
+        buttons = [
+            BooleanButton(state=is_enabled, label="Enabled", disabled=not starboard_channel),
+            OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Set Channel", emoji=CHANNEL),
+            OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Limit", emoji="⭐"),
+            OptionButton(
+                style=hikari.ButtonStyle.SUCCESS,
+                label="Excluded",
+                emoji="➕",
+                row=1,
+                custom_id="add_excluded",
+                disabled=not included_channels,
+            ),
+            OptionButton(
+                style=hikari.ButtonStyle.DANGER,
+                label="Excluded",
+                emoji="➖",
+                row=1,
+                custom_id="del_excluded",
+                disabled=not excluded_channels,
+            ),
+        ]
+        embed.add_field(
+            "Starboard Channel", starboard_channel.mention if starboard_channel else "*Not set*", inline=True
+        )
+        embed.add_field("Star Limit", settings["star_limit"], inline=True)
+        embed.add_field(
+            "Excluded Channels",
+            " ".join([channel.mention for channel in excluded_channels])[:512] if excluded_channels else "*Not set*",
+            inline=True,
+        )
+        self.add_buttons(buttons, parent="Main")
+        await self.last_ctx.edit_response(embed=embed, components=self.build())
+        await self.wait_for_input()
+
+        if self.value is None:
+            return
+
+        if isinstance(self.value, tuple) and self.value[0] == "Enabled":
+            await self.app.pool.execute(
+                """INSERT INTO starboard (is_enabled, guild_id)
+                VALUES ($1, $2)
+                ON CONFLICT (guild_id) DO
+                UPDATE SET is_enabled = $1""",
+                self.value[1],
+                self.last_ctx.guild_id,
+            )
+            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
+            return await self.settings_starboard()
+
+        if self.value == "Limit":
+            modal = OptionsModal(self, title="Changing star limit...")
+            modal.add_item(
+                miru.TextInput(
+                    label="Star Limit",
+                    required=True,
+                    max_length=3,
+                    value=settings["star_limit"],
+                    placeholder="Enter a positive integer to be set as the minimum required amount of stars...",
+                )
+            )
+            assert isinstance(self.last_ctx, miru.ViewContext)
+            await self.last_ctx.respond_with_modal(modal)
+            await self.wait_for_input()
+
+            if not self.value:
+                return
+
+            limit = list(self.value.values())[0]
+
+            try:
+                limit = abs(int(limit))
+                if limit == 0:
+                    raise ValueError
+
+            except (TypeError, ValueError):
+                embed = hikari.Embed(
+                    title="❌ Invalid Type",
+                    description=f"Expected a non-zero **number**.",
+                    color=self.app.error_color,
+                )
+                return await self.error_screen(embed, parent="Starboard")
+
+            await self.app.pool.execute(
+                """INSERT INTO starboard (star_limit, guild_id)
+                VALUES ($1, $2)
+                ON CONFLICT (guild_id) DO
+                UPDATE SET star_limit = $1""",
+                limit,
+                self.last_ctx.guild_id,
+            )
+            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
+            return await self.settings_starboard()
+
+        if self.value == "Set Channel":
+            embed = hikari.Embed(
+                title="Starboard Settings",
+                description=f"Please select a channel where starred messages will be sent.",
+                color=self.app.embed_blue,
+            )
+
+            options = [
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL) for channel in all_channels
+            ]
+
+            try:
+                channel = await ask_settings(
+                    self,
+                    self.last_ctx,
+                    options=options,
+                    return_type=hikari.TextableGuildChannel,
+                    embed_or_content=embed,
+                    placeholder="Select a channel...",
+                    ephemeral=self.ephemeral,
+                )
+            except TypeError:
+                embed = hikari.Embed(
+                    title="❌ Channel not found.",
+                    description="Unable to locate channel. Please type a channel mention or ID.",
+                    color=self.app.error_color,
+                )
+                return await self.error_screen(embed, parent="Starboard")
+            else:
+                await self.app.pool.execute(
+                    """INSERT INTO starboard (channel_id, guild_id)
+                VALUES ($1, $2)
+                ON CONFLICT (guild_id) DO
+                UPDATE SET channel_id = $1""",
+                    channel.id,
+                    self.last_ctx.guild_id,
+                )
+            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
+            return await self.settings_starboard()
+
+        if self.last_item.custom_id == "add_excluded":
+
+            embed = hikari.Embed(
+                title="Starboard Settings",
+                description="Select a new channel to be added to the list of excluded channels. Users will not be able to star messages from these channels.",
+                color=self.last_ctx.app.embed_blue,
+            )
+
+            options = [
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL) for channel in included_channels
+            ]
+
+            try:
+                channel = await ask_settings(
+                    self,
+                    self.last_ctx,
+                    options=options,
+                    return_type=hikari.TextableGuildChannel,
+                    embed_or_content=embed,
+                    placeholder="Select a channel...",
+                    ephemeral=self.ephemeral,
+                )
+                excluded_channels.append(channel)
+            except TypeError:
+                embed = hikari.Embed(
+                    title="❌ Channel not found.",
+                    description="Unable to locate channel. Please type a channel mention or ID.",
+                    color=self.app.error_color,
+                )
+                return await self.error_screen(embed, parent="Starboard")
+
+        elif self.last_item.custom_id == "del_excluded":
+
+            embed = hikari.Embed(
+                title="Starboard Settings",
+                description="Remove a channel from the list of excluded channels.",
+                color=self.last_ctx.app.embed_blue,
+            )
+
+            options = [
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL) for channel in excluded_channels
+            ]
+
+            try:
+                channel = await ask_settings(
+                    self,
+                    self.last_ctx,
+                    options=options,
+                    return_type=hikari.TextableGuildChannel,
+                    embed_or_content=embed,
+                    placeholder="Select a channel...",
+                    ephemeral=self.ephemeral,
+                )
+                if channel in excluded_channels:
+                    excluded_channels.remove(channel)
+                else:
+                    raise TypeError
+
+            except TypeError:
+                embed = hikari.Embed(
+                    title="❌ Channel not found.",
+                    description="Unable to locate channel. Please type a channel mention or ID.",
+                    color=self.app.error_color,
+                )
+                return await self.error_screen(embed, parent="Starboard")
+
+        await self.app.pool.execute(
+            """INSERT INTO starboard (excluded_channels, guild_id)
+        VALUES ($1, $2)
+        ON CONFLICT (guild_id) DO
+        UPDATE SET excluded_channels = $1""",
+            [channel.id for channel in excluded_channels],
+            self.last_ctx.guild_id,
+        )
+
+        await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
+        await self.settings_starboard()
 
     async def settings_logging(self) -> None:
         """Show and handle Logging menu."""
@@ -473,9 +710,6 @@ class SettingsView(models.AuthorOnlyView):
                 color=self.app.error_color,
             )
             return await self.error_screen(embed, parent="Logging")
-
-        except asyncio.TimeoutError:
-            await self.quit_settings()
         else:
             channel_id = channel.id if channel != "disable" else None
             logging = self.app.get_plugin("Logging")
@@ -816,11 +1050,13 @@ class SettingsView(models.AuthorOnlyView):
                 value = expected_types[opt](value)
                 if isinstance(value, int):
                     value = abs(value)
+                    if value == 0:
+                        raise ValueError
 
             except (TypeError, ValueError):
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
-                    description=f"Expected a **number** for option `{policy_fields[opt]['label']}`.",
+                    description=f"Expected a **number** (that is not zero) for option `{policy_fields[opt]['label']}`.",
                     color=self.app.error_color,
                 )
                 return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
@@ -992,7 +1228,7 @@ async def ask_settings(
                 return view.value
             return await converter.convert(view.value)
 
-        raise asyncio.TimeoutError("View timed out without response.")
+        await view.quit_settings()
 
     else:
         await ctx.defer(flags=flags)
@@ -1005,7 +1241,10 @@ async def ask_settings(
 
         predicate = lambda e: e.author.id == ctx.user.id and e.channel_id == ctx.channel_id
 
-        event = await ctx.app.wait_for(hikari.GuildMessageCreateEvent, timeout=300.0, predicate=predicate)
+        try:
+            event = await ctx.app.wait_for(hikari.GuildMessageCreateEvent, timeout=300.0, predicate=predicate)
+        except asyncio.TimeoutError:
+            return await view.quit_settings()
 
         me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
         perms = lightbulb.utils.permissions_in(event.get_channel(), me)

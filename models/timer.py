@@ -1,17 +1,19 @@
-from dataclasses import dataclass
-from typing import Optional
+import typing as t
+import attr
+
+import hikari
 
 
-@dataclass
+@attr.define()
 class Timer:
     """
     Represents a timer object.
     """
 
     id: int
-    guild_id: int
-    user_id: int
-    channel_id: Optional[int]
+    guild_id: hikari.Snowflake
+    user_id: hikari.Snowflake
+    channel_id: t.Optional[hikari.Snowflake]
     event: str
     expires: int
-    notes: Optional[str]
+    notes: t.Optional[str]

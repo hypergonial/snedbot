@@ -6,7 +6,6 @@ import hikari
 import typing as t
 from .views import AuthorOnlyView
 from utils import helpers
-import functools
 
 __all__ = ["SnedContext", "SnedSlashContext", "SnedMessageContext", "SnedUserContext", "SnedPrefixContext"]
 

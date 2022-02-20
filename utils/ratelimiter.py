@@ -11,8 +11,7 @@ from collections import deque
 import hikari
 
 import lightbulb
-
-_logger = logging.getLogger(__name__)
+import miru
 
 
 class BucketType(enum.IntEnum):
@@ -53,7 +52,7 @@ class RateLimiter:
         self._queue: t.Deque[asyncio.Event] = deque()
         self._task: t.Optional[asyncio.Task[t.Any]] = None
 
-    def _get_key(self, ctx_or_message: t.Union[lightbulb.Context, hikari.Message]) -> str:
+    def _get_key(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> str:
         """Get key for cooldown bucket"""
 
         keys = {
@@ -67,7 +66,7 @@ class RateLimiter:
 
         return keys[self.bucket]
 
-    def is_rate_limited(self, ctx_or_message: t.Union[lightbulb.Context, hikari.Message]) -> bool:
+    def is_rate_limited(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> bool:
         """Returns a boolean determining if the ratelimiter is ratelimited or not."""
         now = time.monotonic()
         key = self._get_key(ctx_or_message)
@@ -82,7 +81,7 @@ class RateLimiter:
         self._bucket_data[key] = {"reset_at": now + self.period, "remaining": self.limit}
         return False
 
-    async def acquire(self, ctx_or_message: t.Union[lightbulb.Context, hikari.Message]) -> None:
+    async def acquire(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> None:
         """Acquire a ratelimit, block execution if ratelimited and wait is True."""
         event = asyncio.Event()
 
@@ -94,7 +93,7 @@ class RateLimiter:
         if self.wait:
             await event.wait()
 
-    async def _iter_queue(self, ctx: t.Union[lightbulb.Context, hikari.Message]) -> None:
+    async def _iter_queue(self, ctx: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> None:
         try:
             if not self._queue:
                 self._task = None

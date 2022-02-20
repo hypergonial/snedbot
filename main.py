@@ -4,7 +4,6 @@ import logging
 import os
 import platform
 
-from config import config
 from models import SnedBot
 
 if int(platform.python_version_tuple()[1]) < 10:
@@ -12,7 +11,7 @@ if int(platform.python_version_tuple()[1]) < 10:
     raise RuntimeError("Python version is not 3.10 or greater.")
 
 try:
-    from config import config
+    from config import Config
 except ImportError:
     logging.fatal(
         "Failed loading configuration. Please make sure 'config.py' exists in the root directory of the project and contains valid data."
@@ -36,6 +35,7 @@ initial_extensions = [
     "extensions.automod",
     "extensions.settings",
     "extensions.reports",
+    "extensions.starboard",
     "extensions.reminders",
     "extensions.fun",
     "extensions.test",
@@ -45,7 +45,7 @@ initial_extensions = [
     "extensions.dev",
 ]
 
-bot = SnedBot(config)
+bot = SnedBot(Config())
 
 if __name__ == "__main__":
 

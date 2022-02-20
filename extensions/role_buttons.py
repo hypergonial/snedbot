@@ -10,6 +10,8 @@ from models import SnedSlashContext
 from utils import helpers
 import typing as t
 
+from utils.ratelimiter import BucketType, RateLimiter
+
 logger = logging.getLogger(__name__)
 
 # Set to true to migrate old stateful rolebuttons
@@ -23,6 +25,7 @@ button_styles = {
     "Green": hikari.ButtonStyle.SUCCESS,
     "Red": hikari.ButtonStyle.DANGER,
 }
+role_button_ratelimiter = RateLimiter(2, 1, BucketType.MEMBER, wait=False)
 
 
 class PersistentRoleView(miru.View):
@@ -112,6 +115,15 @@ async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInt
         )
         return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
+    await role_button_ratelimiter.acquire(event.context)
+    if role_button_ratelimiter.is_rate_limited(event.context):
+        embed = hikari.Embed(
+            title="❌ Slow Down!",
+            description="You are clicking too fast!",
+            color=0xFF0000,
+        )
+        return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
     await event.interaction.create_initial_response(
         hikari.ResponseType.DEFERRED_MESSAGE_CREATE, flags=hikari.MessageFlag.EPHEMERAL
     )
@@ -164,7 +176,7 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
             description="There are no role-buttons for this server.",
             color=ctx.app.error_color,
         )
-        return await ctx.channel.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     paginator = lightbulb.utils.StringPaginator(max_chars=500)
     for record in records:
@@ -177,23 +189,24 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
         else:
             paginator.add_line(f"**#{record['entry_id']}** - C: {record['channel_id']} - R: {record['role_id']}")
 
-        embeds = []
-        for page in paginator.build_pages():
-            embed = hikari.Embed(
-                title="Rolebuttons on this server:",
-                description=page,
-                color=ctx.app.embed_blue,
-            )
-            embeds.append(embed)
+    embeds = []
+    for page in paginator.build_pages():
+        embed = hikari.Embed(
+            title="Rolebuttons on this server:",
+            description=page,
+            color=ctx.app.embed_blue,
+        )
+        embeds.append(embed)
 
-        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)
-        await navigator.send(ctx.interaction)
+    navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)
+    await navigator.send(ctx.interaction)
 
 
 @rolebutton.child()
 @lightbulb.option(
     "button_id",
     "The ID of the rolebutton to delete. You can get this via /rolebutton list",
+    type=int,
 )
 @lightbulb.command("delete", "Delete a rolebutton.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -206,7 +219,7 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
             description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
             color=ctx.app.error_color,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     await ctx.app.pool.execute(
         """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""",
@@ -215,15 +228,20 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
     )
     await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
 
+    embed = hikari.Embed(
+        title="✅ Deleted!",
+        description=f"Rolebutton was successfully deleted!",
+        color=ctx.app.embed_green,
+    )
+    await ctx.respond(embed=embed)
+
     try:
         message = await ctx.app.rest.fetch_message(records[0]["channel_id"], records[0]["msg_id"])
     except hikari.NotFoundError:
         pass
     else:
-        records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message.id)
+        records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message.id) or []
         buttons = []
-        if not records:
-            return
         # Re-sync rolebuttons with db if message still exists
         for record in records:
             emoji = hikari.Emoji.parse(record.get("emoji"))
@@ -285,8 +303,6 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
             color=ctx.app.error_color,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-    print(ctx.options.channel)
 
     try:
         message = await ctx.app.rest.fetch_message(ctx.options.channel.id, message_id)
@@ -353,14 +369,14 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
 
     embed = hikari.Embed(
         title="✅ Done!",
-        description=f"A new rolebutton for role {ctx.options.role.mention} in channel {ctx.options.channel.name} has been created!",
+        description=f"A new rolebutton for role {ctx.options.role.mention} in channel `#{ctx.options.channel.name}` has been created!",
         color=ctx.app.embed_green,
     )
     await ctx.respond(embed=embed)
 
     embed = hikari.Embed(
         title="❇️ Role-Button was added",
-        description=f"A role-button for role {ctx.options.role.mention} has been created by {ctx.author.mention} in channel {ctx.options.channel.mention}.\n\n__Note:__ Anyone who can see this channel can now obtain this role!",
+        description=f"A role-button for role {ctx.options.role.mention} has been created by {ctx.author.mention} in channel <#{ctx.options.channel.id}>.\n\n__Note:__ Anyone who can see this channel can now obtain this role!",
         color=ctx.app.embed_green,
     )
     try:

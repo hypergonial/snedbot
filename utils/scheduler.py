@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import asyncio
-
-
 import datetime
 import logging
 import re
 import typing
 
-from dateutil import parser as dateparser
 import hikari
 import Levenshtein as lev
+from dateutil import parser as dateparser
 from models.events import TimerCompleteEvent
 from models.timer import Timer
+
 from utils.tasks import IntervalLoop
 
 logger = logging.getLogger(__name__)
@@ -29,12 +28,12 @@ class Scheduler:
     Essentially the internal scheduler of the bot.
     """
 
-    def __init__(self, bot: SnedBot):
+    def __init__(self, bot: SnedBot) -> None:
         self.bot: SnedBot = bot
-        self.current_timer: Timer = None  # Currently active timer that is being awaited
-        self.current_task: asyncio.Task = None  # Current task that is handling current_timer
-        self.timer_loop: IntervalLoop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
-        self.timer_loop.start()
+        self._current_timer: Timer = None  # Currently active timer that is being awaited
+        self._current_task: asyncio.Task = None  # Current task that is handling current_timer
+        self._timer_loop: IntervalLoop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
+        self._timer_loop.start()
 
     async def convert_time(self, timestr: str, force_mode: str = None) -> datetime.datetime:
         """
@@ -104,15 +103,14 @@ class Scheduler:
                             time += time_word_dict[string] * float(val)
                             break
 
-            if time > 0:
-
-                time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=time)
-            else:  # If time is 0, then we failed to parse or the user indeed provided 0, which makes no sense, so we raise an error.
+            if (
+                time < 0
+            ):  # If time is 0, then we failed to parse or the user indeed provided 0, which makes no sense, so we raise an error.
                 raise ValueError("Failed converting time from string. (Relative conversion)")
 
-            return time
+            return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=time)
 
-    async def get_latest_timer(self, days=7):
+    async def get_latest_timer(self, days=7) -> Timer:
         """
         Gets the first timer that is about to expire in the specified days and returns it
         Returns None if not found in that scope.
@@ -128,9 +126,9 @@ class Scheduler:
         if len(result) != 0 and result[0]:
             timer = Timer(
                 id=result[0].get("id"),
-                guild_id=result[0].get("guild_id"),
-                user_id=result[0].get("user_id"),
-                channel_id=result[0].get("channel_id"),
+                guild_id=hikari.Snowflake(result[0].get("guild_id")),
+                user_id=hikari.Snowflake(result[0].get("user_id")),
+                channel_id=hikari.Snowflake(result[0].get("channel_id")) if result[0].get("channel_id") else None,
                 event=result[0].get("event"),
                 expires=result[0].get("expires"),
                 notes=result[0].get("notes"),
@@ -139,7 +137,7 @@ class Scheduler:
             logger.debug(f"Timer class created for latest: {timer}")
             return timer
 
-    async def call_timer(self, timer: Timer):
+    async def call_timer(self, timer: Timer) -> None:
         """
         Calls and dispatches a timer object. Updates the database.
         """
@@ -147,58 +145,54 @@ class Scheduler:
         logger.debug("Deleting timer entry {timerid}".format(timerid=timer.id))
         await self.bot.pool.execute("""DELETE FROM timers WHERE id = $1""", timer.id)
 
-        self.current_timer = None
-        logger.debug("Deleted")
+        self._current_timer = None
+        logger.debug(f"Deleted timer {timer.id}.")
 
         """
         Dispatch an event named eventname_timer_complete, which will cause all listeners 
         for this event to fire. This function is not documented, so if anything breaks, it
         is probably in here. It passes on the Timer
         """
-        event = TimerCompleteEvent(app=self.bot, timer=timer)
+        event = TimerCompleteEvent(app=self.bot, timer=timer, guild_id=timer.guild_id)
 
         self.bot.dispatch(event)
-        logger.info(f"Dispatched: TimerCompleteEvent for {timer.event}")
+        logger.info(f"Dispatched TimerCompleteEvent for {timer.event}")
 
     async def dispatch_timers(self):
         """
         A coroutine to dispatch timers.
         """
-        logger.debug("Dispatching timers.")
+        logger.debug("Dispatching timers...")
         try:
             while self.bot.is_ready:
-                logger.debug("Getting timer")
+                logger.debug("Getting timer...")
 
                 timer = await self.get_latest_timer(days=40)
-                self.current_timer = timer
+                self._current_timer = timer
 
                 now = round(datetime.datetime.now(datetime.timezone.utc).timestamp())
                 logger.debug(f"Now: {now}")
                 logger.debug(f"Timer: {timer}")
 
-                if timer:
+                if not timer:
+                    break
 
-                    if timer.expires >= now:
-                        sleep_time = timer.expires - now
-                        logger.info(f"Awaiting next timer: '{timer.event}', which is in {sleep_time}s")
-                        await asyncio.sleep(sleep_time)
+                if timer.expires >= now:
+                    sleep_time = timer.expires - now
+                    logger.info(f"Awaiting next timer: '{timer.event}' (ID: {timer.id}), which is in {sleep_time}s")
+                    await asyncio.sleep(sleep_time)
 
-                    logger.info(f"Dispatching timer: {timer.event}")
-                    await self.call_timer(timer)
-
-                else:
-                    break  # Avoid infinite loop
+                # TODO: Maybe some sort of queue system so we do not spam out timers like crazy after restart?
+                logger.info(f"Dispatching timer: {timer.event} (ID: {timer.id})")
+                await self.call_timer(timer)
 
         except asyncio.CancelledError:
             raise
         except (OSError, hikari.GatewayServerClosedConnectionError):
-            self.current_task.cancel()
-            self.current_task = asyncio.create_task(self.dispatch_timers())
+            self._current_task.cancel()
+            self._current_task = asyncio.create_task(self.dispatch_timers())
 
-    async def update_timer(
-        self,
-        timer: Timer,
-    ) -> None:
+    async def update_timer(self, timer: Timer) -> None:
         """Update a currently running timer, replacing it with the specified timer object."""
 
         await self.bot.pool.execute(
@@ -211,14 +205,15 @@ class Scheduler:
             timer.id,
             timer.guild_id,
         )
-        if self.current_timer and self.current_timer.id == timer.id:
+        if self._current_timer and self._current_timer.id == timer.id:
             logger.debug("Updating timers resulted in reshuffling.")
-            self.current_task.cancel()
-            self.current_task = asyncio.create_task(self.dispatch_timers())
+            self._current_task.cancel()
+            self._current_task = asyncio.create_task(self.dispatch_timers())
 
-    async def get_timer(self, entry_id: int, guild_id: int) -> Timer:
+    async def get_timer(self, entry_id: int, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> Timer:
         """Retrieve a pending timer"""
 
+        guild_id = hikari.Snowflake(guild)
         records = await self.bot.pool.fetch(
             """SELECT * FROM timers WHERE id = $1 AND guild_id = $2""",
             entry_id,
@@ -229,10 +224,10 @@ class Scheduler:
             record = records[0]
             timer = Timer(
                 record.get("id"),
-                record.get("guild_id"),
-                record.get("user_id"),
+                hikari.Snowflake(record.get("guild_id")),
+                hikari.Snowflake(record.get("user_id")),
+                hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
                 record.get("event"),
-                record.get("channel_id"),
                 record.get("expires"),
                 record.get("notes"),
             )
@@ -245,15 +240,19 @@ class Scheduler:
         self,
         expires: datetime.datetime,
         event: str,
-        guild_id: int,
-        user_id: int,
-        channel_id: int = None,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        user: hikari.SnowflakeishOr[hikari.PartialUser],
+        channel: hikari.SnowflakeishOr[hikari.TextableChannel] = None,
         *,
         notes: str = None,
     ) -> Timer:
         """Create a new timer, will dispatch on_<event>_timer_complete when finished."""
 
+        guild_id = hikari.Snowflake(guild)
+        user_id = hikari.Snowflake(user)
+        channel_id = hikari.Snowflake(channel)
         expires = round(expires.timestamp())  # Converting it to time since epoch
+
         records = await self.bot.pool.fetch(
             """INSERT INTO timers (guild_id, channel_id, user_id, event, expires, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *""",
             guild_id,
@@ -266,26 +265,29 @@ class Scheduler:
         record = records[0]
         timer = Timer(
             record.get("id"),
-            record.get("guild_id"),
-            record.get("user_id"),
+            hikari.Snowflake(record.get("guild_id")),
+            hikari.Snowflake(record.get("user_id")),
+            hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
             record.get("event"),
-            record.get("channel_id"),
             record.get("expires"),
             record.get("notes"),
         )
 
         # If there is already a timer in queue, and it has an expiry that is further than the timer we just created
         # Then we reboot the dispatch_timers() function to re-check for the latest timer.
-        if self.current_timer and expires < self.current_timer.expires:
-            logger.debug("Reshuffled timers, this is now the latest timer.")
-            self.current_task.cancel()
-            self.current_task = asyncio.create_task(self.dispatch_timers())
-        elif self.current_timer is None:
-            self.current_task = asyncio.create_task(self.dispatch_timers())
+        if self._current_timer and expires < self._current_timer.expires:
+            logger.debug("Reshuffled timers, created timer is now the latest timer.")
+            self._current_task.cancel()
+            self._current_task = asyncio.create_task(self.dispatch_timers())
+
+        elif self._current_timer is None:
+            self._current_task = asyncio.create_task(self.dispatch_timers())
+
         return timer
 
-    async def cancel_timer(self, entry_id: int, guild_id: int) -> Timer:
+    async def cancel_timer(self, entry_id: int, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> Timer:
         """Prematurely cancel a timer before expiry. Returns the cancelled timer."""
+        guild_id = hikari.Snowflake(guild)
         try:
             timer = await self.get_timer(entry_id, guild_id)
         except ValueError:
@@ -294,16 +296,17 @@ class Scheduler:
             await self.bot.pool.execute(
                 """DELETE FROM timers WHERE id = $1 AND guild_id = $2""", timer.id, timer.guild_id
             )
-            if self.current_timer and self.current_timer.id == int(timer.id):
-                self.current_task.cancel()
-                self.current_task = asyncio.create_task(self.dispatch_timers())
+            if self._current_timer and self._current_timer.id == int(timer.id):
+                self._current_task.cancel()
+                self._current_task = asyncio.create_task(self.dispatch_timers())
+
             return timer
 
-    async def wait_for_active_timers(self):
+    async def wait_for_active_timers(self) -> None:
         """
         Check every hour to see if new timers meet criteria in the database.
         """
         await self.bot.wait_until_started()
 
-        if self.current_task is None:
-            self.current_task = asyncio.create_task(self.dispatch_timers())
+        if self._current_task is None:
+            self._current_task = asyncio.create_task(self.dispatch_timers())

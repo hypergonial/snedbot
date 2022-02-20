@@ -1,8 +1,9 @@
-from dataclasses import dataclass
 from typing import List, Optional
 
+import attr
 
-@dataclass
+
+@attr.define()
 class User:
     """
     Represents a user stored inside the database.

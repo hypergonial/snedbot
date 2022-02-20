@@ -196,9 +196,9 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
         timers.append(
             Timer(
                 id=result.get("id"),
-                guild_id=result.get("guild_id"),
-                user_id=result.get("user_id"),
-                channel_id=result.get("channel_id"),
+                guild_id=hikari.Snowflake(result.get("guild_id")),
+                user_id=hikari.Snowflake(result.get("user_id")),
+                channel_id=hikari.Snowflake(result.get("channel_id")) if result.get("channel_id") else None,
                 event=result.get("event"),
                 expires=result.get("expires"),
                 notes=note,
