@@ -248,10 +248,17 @@ async def punish(
 
 
 @automod.listener(hikari.GuildMessageCreateEvent, bind=True)
-async def scan_messages(plugin: lightbulb.Plugin, event: hikari.GuildMessageCreateEvent) -> None:
+@automod.listener(hikari.GuildMessageUpdateEvent, bind=True)
+async def scan_messages(
+    plugin: lightbulb.Plugin, event: t.Union[hikari.GuildMessageCreateEvent, hikari.GuildMessageDeleteEvent]
+) -> None:
     """Scan messages for all possible offences."""
 
     message = event.message
+
+    if message.author is None:
+        # Probably a partial update, ignore it
+        return
 
     if not plugin.app.is_started or not plugin.app.db_cache.is_ready:
         return

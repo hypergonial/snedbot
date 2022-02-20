@@ -5,12 +5,12 @@ from itertools import chain
 from typing import List
 
 import hikari
+import Levenshtein as lev
 import lightbulb
 import miru
-from models import AuthorOnlyNavigator, Tag
+from models import AuthorOnlyNavigator, SnedSlashContext, Tag
 from models.bot import SnedBot
 from utils import TagHandler, helpers
-from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class TagEditorModal(miru.Modal):
 
 
 @tags.command()
-@lightbulb.option("name", "The name of the tag you want to call.")
+@lightbulb.option("name", "The name of the tag you want to call.", autocomplete=True)
 @lightbulb.command("tag", "Call a tag and display it's contents.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def tag_cmd(ctx: SnedSlashContext) -> None:
@@ -79,6 +79,14 @@ async def tag_cmd(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     await ctx.respond(content=tag.content)
+
+
+@tag_cmd.autocomplete("name")
+async def tag_autocomplete(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
 
 
 @tags.command()

@@ -32,7 +32,14 @@ def get_key(dictionary: dict, value: t.Any) -> t.Any:
 class SettingsView(models.AuthorOnlyView):
     """God objects go brr >_<"""
 
-    def __init__(self, lctx: lightbulb.Context, *, timeout: t.Optional[float] = 300, autodefer: bool = False) -> None:
+    def __init__(
+        self,
+        lctx: lightbulb.Context,
+        *,
+        timeout: t.Optional[float] = 300,
+        ephemeral: bool = False,
+        autodefer: bool = False,
+    ) -> None:
         super().__init__(lctx, timeout=timeout, autodefer=autodefer)
 
         # Last received context object
@@ -43,7 +50,7 @@ class SettingsView(models.AuthorOnlyView):
         # Last value received as input
         self.value: t.Optional[str] = None
         # If True, provides the menu ephemerally
-        self.ephemeral: bool = False
+        self.ephemeral: bool = ephemeral
 
         self.flags = hikari.MessageFlag.EPHEMERAL if self.ephemeral else hikari.MessageFlag.NONE
         self.input_event: asyncio.Event = asyncio.Event()
@@ -100,26 +107,33 @@ class SettingsView(models.AuthorOnlyView):
         """Stop waiting for input events after the view times out."""
         self.input_event.set()
 
+        for item in self.children:
+            item.disabled = True
+
+        try:
+            await self.last_ctx.edit_response(components=self.build(), flags=self.flags)
+        except hikari.NotFoundError:
+            pass
+
     async def wait_for_input(self) -> None:
         """Wait until a user input is given, then reset the event.
         Other functions should check if view.value is None and return if so after waiting for this event."""
         self.input_event.clear()
         await self.input_event.wait()
 
-        if self._stopped.is_set():  # FIXME this is crap
+        if self._stopped.is_set():
             raise asyncio.CancelledError
 
     async def quit_settings(self) -> None:
         """Exit settings menu."""
+
+        for item in self.children:
+            item.disabled = True
+
         try:
-            await self.last_ctx.defer()
-        except RuntimeError:
+            await self.last_ctx.edit_response(components=self.build(), flags=self.flags)
+        except hikari.NotFoundError:
             pass
-
-        if self.ephemeral:
-            return
-
-        await helpers.maybe_delete(self.last_ctx.message)
 
         self.value = None
         self.stop()
@@ -439,7 +453,7 @@ class SettingsView(models.AuthorOnlyView):
             inline=True,
         )
         self.add_buttons(buttons, parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self.build())
+        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
         await self.wait_for_input()
 
         if self.value is None:
@@ -1263,7 +1277,8 @@ async def ask_settings(
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def settings_cmd(ctx: SnedSlashContext) -> None:
-    view = SettingsView(ctx, timeout=300)
+    ephemeral = (await ctx.app.get_plugin("Moderation").d.actions.get_settings(ctx.guild_id))["is_ephemeral"]
+    view = SettingsView(ctx, timeout=300, ephemeral=ephemeral)
     await view.start_settings()
 
 

@@ -233,6 +233,7 @@ class SnedBot(lightbulb.BotApp):
                 ON CONFLICT (guild_id) DO NOTHING""",
                     guild_id,
                 )
+            logging.info(f"Connected to {len(self._initial_guilds)} guilds.")
             self._initial_guilds = []
 
         # Set this here so all guild_ids are in DB
@@ -256,7 +257,7 @@ class SnedBot(lightbulb.BotApp):
             if event.content in mentions:
                 embed = hikari.Embed(
                     title="Beep Boop!",
-                    description="Use `/` to access my commands and see what I can do!\n\n**Spoiler:** Not much as I am currently being rewritten, send help!",
+                    description="Use `/` to access my commands and see what I can do!",
                     color=0xFEC01D,
                 )
                 embed.set_thumbnail(self.get_me().avatar_url)

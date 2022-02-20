@@ -1,12 +1,15 @@
 from __future__ import annotations
+from difflib import get_close_matches
 import enum
 
 import typing as t
 
 import hikari
+from more_itertools import flatten
 
 from models.errors import TagAlreadyExists, TagNotFound
 from models.tag import Tag
+import Levenshtein as lev
 
 if t.TYPE_CHECKING:
     from models import SnedBot
@@ -35,35 +38,50 @@ class TagHandler:
         guild_id = hikari.Snowflake(guild)
 
         async with self.bot.pool.acquire() as con:
-            result = await self.bot.pool.fetch(
+            results = await con.fetch(
                 """SELECT * FROM tags WHERE tag_name = $1 AND guild_id = $2""",
                 name.lower(),
                 guild_id,
             )
-            if len(result) != 0:
+            if len(results) != 0:
                 tag = Tag(
-                    guild_id=hikari.Snowflake(result[0].get("guild_id")),
-                    name=result[0].get("tag_name"),
-                    owner_id=hikari.Snowflake(result[0].get("tag_owner_id")),
-                    aliases=result[0].get("tag_aliases"),
-                    content=result[0].get("tag_content"),
+                    guild_id=hikari.Snowflake(results[0].get("guild_id")),
+                    name=results[0].get("tag_name"),
+                    owner_id=hikari.Snowflake(results[0].get("tag_owner_id")),
+                    aliases=results[0].get("tag_aliases"),
+                    content=results[0].get("tag_content"),
                 )
                 return tag
 
-            result = await con.fetch(
+            results = await con.fetch(
                 """SELECT * FROM tags WHERE $1 = ANY(tag_aliases) AND guild_id = $2""",
                 name.lower(),
                 guild_id,
             )
-            if len(result) != 0:
+            if len(results) != 0:
                 tag = Tag(
-                    guild_id=hikari.Snowflake(result[0].get("guild_id")),
-                    name=result[0].get("tag_name"),
-                    owner_id=hikari.Snowflake(result[0].get("tag_owner_id")),
-                    aliases=result[0].get("tag_aliases"),
-                    content=result[0].get("tag_content"),
+                    guild_id=hikari.Snowflake(results[0].get("guild_id")),
+                    name=results[0].get("tag_name"),
+                    owner_id=hikari.Snowflake(results[0].get("tag_owner_id")),
+                    aliases=results[0].get("tag_aliases"),
+                    content=results[0].get("tag_content"),
                 )
                 return tag
+
+    async def get_closest_name(
+        self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+    ) -> t.Optional[t.List[Tag]]:
+        guild_id = hikari.Snowflake(guild)
+        print("Request!")
+        async with self.bot.pool.acquire() as con:
+            results = await con.fetch("""SELECT tag_name, tag_aliases FROM tags WHERE guild_id = $1""", guild_id)
+
+            names = [result.get("tag_name") for result in results] if results else []
+
+            if results is not None:
+                names += list(flatten([result.get("tag_aliases") or [] for result in results]))
+
+        return get_close_matches(name, names)
 
     async def create(self, tag: Tag) -> None:
         """

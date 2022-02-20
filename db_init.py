@@ -43,6 +43,10 @@ try:
         pool = await asyncpg.create_pool(dsn=dsn.format(db_name=db_name))
         async with pool.acquire() as con:
             print("Creating tables...")
+
+            # To allow for levenshtein()
+            await con.execute("""CREATE EXTENSION IF NOT EXISTS fuzzystrmatch""")
+
             await con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS public.global_config

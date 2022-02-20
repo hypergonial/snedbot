@@ -42,6 +42,7 @@ initial_extensions = [
     "extensions.tags",
     "extensions.misc",
     "extensions.role_buttons",
+    "extensions.troubleshooter",
     "extensions.dev",
 ]
 

@@ -118,7 +118,7 @@ async def about(ctx: SnedSlashContext) -> None:
         title=f"ℹ️ About {me.username}",
         description=f"""**• Made by:** `Hyper#0001`
 **• Servers:** `{len(ctx.app.cache.get_guilds_view())}`
-**• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1643161053254&scope=bot%20applications.commands)
+**• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
 **• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)\n
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
         color=ctx.app.embed_blue,
@@ -149,7 +149,7 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
 @lightbulb.implements(lightbulb.SlashCommand)
 async def invite(ctx: SnedSlashContext) -> None:
     if not ctx.app.dev_mode:
-        invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.get_me().id}&permissions=1643161053254&scope=applications.commands%20bot"
+        invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.user_id}&permissions=1494984682710&scope=applications.commands%20bot"
         embed = hikari.Embed(
             title="🌟 Yay!",
             description=f"[Click here]({invite_url}) for an invite link!",
@@ -165,6 +165,25 @@ async def invite(ctx: SnedSlashContext) -> None:
         )
         embed = helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
+
+
+@misc.command()
+@lightbulb.add_cooldown(10.0, 1, lightbulb.GuildBucket)
+@lightbulb.add_checks(
+    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_NICKNAMES),
+    lightbulb.bot_has_guild_permissions(hikari.Permissions.CHANGE_NICKNAME),
+)
+@lightbulb.option("nickname", "The nickname to set the bot's nickname to. Type 'None' to reset it!")
+@lightbulb.command("setnick", "Set the bot's nickname!")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def setnick(ctx: SnedSlashContext) -> None:
+    nickname = ctx.options.nickname[:32] if not ctx.options.nickname.lower() == "none" else None
+
+    await ctx.app.rest.edit_my_member(
+        ctx.guild_id, nickname=nickname, reason=f"Nickname changed via /setnick by {ctx.author}"
+    )
+    embed = hikari.Embed(title="✅ Nickname changed!", color=ctx.app.embed_green)
+    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @misc.command()
@@ -197,7 +216,7 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 **• Roles:** `{len(guild.get_roles())}`
 **• Channels:** `{len(guild.get_channels())}`
 **• Nitro Boost level:** `{guild.premium_tier}`
-**• Nitro Boost count:** `{guild.premium_subscription_count}`
+**• Nitro Boost count:** `{guild.premium_subscription_count or '*Not found*'}`
 **• Preferred locale:** `{guild.preferred_locale}`
 **• Community:** `{"Yes" if "COMMUNITY" in guild.features else "No"}`
 **• Partner:** `{"Yes" if "PARTNERED" in guild.features else "No"}`

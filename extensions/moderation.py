@@ -254,8 +254,6 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: Optional
     await add_note(member, member.guild_id, f"⚠️ **Warned by {moderator}:** {reason}")
     return embed
 
-    # TODO: Add note
-
 
 mod.d.actions.warn = warn
 
@@ -1028,7 +1026,7 @@ async def ban_cmd(ctx: SnedSlashContext) -> None:
         ctx.guild_id,
         ctx.member,
         duration=duration,
-        days_to_delete=int(ctx.options.days_to_delete),
+        days_to_delete=int(ctx.options.days_to_delete) or 0,
         reason=ctx.options.reason,
     )
     await ctx.mod_respond(embed=embed)
@@ -1060,7 +1058,7 @@ async def softban_cmd(ctx: SnedSlashContext) -> None:
         ctx.guild_id,
         ctx.member,
         soft=True,
-        days_to_delete=int(ctx.options.days_to_delete),
+        days_to_delete=int(ctx.options.days_to_delete) or 0,
         reason=ctx.options.reason,
     )
     await ctx.mod_respond(embed=embed)
@@ -1123,8 +1121,12 @@ async def kick_cmd(ctx: SnedSlashContext) -> None:
 @lightbulb.option(
     "no-roles", "Only match users without a role. Defaults to False.", type=bool, default=False, required=False
 )
-@lightbulb.option("created", "Only match users that signed up to Discord x minutes before.", type=int, required=False)
-@lightbulb.option("joined", "Only match users that joined this server x minutes before.", type=int, required=False)
+@lightbulb.option(
+    "created", "Only match users that signed up to Discord x minutes before.", type=int, min_value=1, required=False
+)
+@lightbulb.option(
+    "joined", "Only match users that joined this server x minutes before.", type=int, min_value=1, required=False
+)
 @lightbulb.option("joined-before", "Only match users that joined before this user.", type=hikari.Member, required=False)
 @lightbulb.option("joined-after", "Only match users that joined after this user.", type=hikari.Member, required=False)
 @lightbulb.command("massban", "Ban a large number of users based on a set of criteria. Useful for handling raids.")

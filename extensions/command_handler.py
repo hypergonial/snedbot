@@ -70,7 +70,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    elif isinstance(error, lightbulb.CommandIsOnCooldown):
+    if isinstance(error, lightbulb.CommandIsOnCooldown):
         embed = hikari.Embed(
             title="🕘 Cooldown Pending",
             description=f"Please retry in: `{datetime.timedelta(seconds=round(error.retry_after))}`",
@@ -78,7 +78,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    elif isinstance(error, lightbulb.CommandInvocationError):
+    if isinstance(error, lightbulb.CommandInvocationError):
 
         if isinstance(error.original, asyncio.TimeoutError):
             embed = hikari.Embed(
@@ -117,7 +117,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-        elif isinstance(error.original, MemberExpectedError):
+        if isinstance(error.original, MemberExpectedError):
             embed = hikari.Embed(
                 title="❌ Member Expected",
                 description=f"Expected a user who is a member of this server.",
