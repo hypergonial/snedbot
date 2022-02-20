@@ -1,11 +1,8 @@
 import asyncio
 import copy
-from faulthandler import is_enabled
 import json
 import logging
-from sre_constants import SUCCESS
 import typing as t
-from discord import ButtonStyle
 
 import hikari
 import lightbulb

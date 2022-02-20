@@ -8,13 +8,11 @@ import typing as t
 import hikari
 import lightbulb
 import miru
-import perspective
 from miru.ext import nav
 from models import SnedPrefixContext
 from models import AuthorOnlyNavigator
 from models.bot import SnedBot
 from models.views import AuthorOnlyView
-from utils import helpers
 import shlex
 
 logger = logging.getLogger(__name__)

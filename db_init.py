@@ -3,7 +3,6 @@ import os
 
 import asyncpg
 from config import Config
-from dotenv import load_dotenv
 
 # Modify this line & change it to your PSQL DB address
 # Do not modify the variables, DBPASS is retrieved from .env,

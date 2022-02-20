@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-import inspect
 import re
-from typing import TYPE_CHECKING, Optional, Sequence, TypeVar, Union, List, Any
+from typing import TYPE_CHECKING, Optional, TypeVar, Union, List, Any
 
 import hikari
 import lightbulb

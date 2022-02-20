@@ -1,10 +1,8 @@
-import asyncio
 import logging
 
 import hikari
 import lightbulb
 import miru
-from miru.ext import nav
 from models.bot import SnedBot
 from utils import helpers
 import typing as t

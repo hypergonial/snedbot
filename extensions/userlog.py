@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import json
-import logging
 from typing import TypeVar, Union, Optional, Dict, Tuple
 
 import hikari

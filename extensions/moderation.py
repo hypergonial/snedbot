@@ -4,7 +4,6 @@ import datetime
 import enum
 
 import hikari
-from hikari.snowflakes import Snowflakeish
 import lightbulb
 from models.bot import SnedBot
 import models
