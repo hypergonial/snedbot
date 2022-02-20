@@ -263,7 +263,7 @@ class SnedBot(lightbulb.BotApp):
                 embed.set_thumbnail(self.get_me().avatar_url)
                 return await event.message.respond(embed=embed)
 
-            elif event.content.startswith(await get_prefix(self, event.message)):
+            elif event.content.startswith(tuple(await get_prefix(self, event.message))):
                 embed = hikari.Embed(
                     title="Uh Oh!",
                     description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!",

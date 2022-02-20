@@ -32,14 +32,14 @@ class ConfirmView(AuthorOnlyView):
     async def confirm_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
         self.value = True
         if self.confirm_resp:
-            await ctx.respond(**self.confirm_resp)
+            await ctx.edit_response(**self.confirm_resp)
         self.stop()
 
     @miru.button(label="Cancel", emoji="✖️", style=hikari.ButtonStyle.DANGER)
-    async def confirm_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+    async def cancel_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
         self.value = False
         if self.cancel_resp:
-            await ctx.respond(**self.cancel_resp)
+            await ctx.edit_response(**self.cancel_resp)
         self.stop()
 
 
@@ -50,6 +50,7 @@ class SnedContext(lightbulb.Context):
         confirm_payload: t.Optional[t.Dict[str, t.Any]] = None,
         cancel_payload: t.Optional[t.Dict[str, t.Any]] = None,
         timeout: int = 120,
+        edit: bool = False,
         message: t.Optional[hikari.Message] = None,
         **kwargs,
     ) -> bool:
@@ -61,6 +62,8 @@ class SnedContext(lightbulb.Context):
             Optional keyword-only payload to send if the user confirmed, by default None
         cancel_payload : Optional[Dict[str, Any]], optional
             Optional keyword-only payload to send if the user cancelled, by default None
+        edit : bool
+            If True, tries editing the initial response or the provided message.
         message : Optional[hikari.Message], optional
             A message to edit & transform into the confirm prompt if provided, by default None
         *args : Any
@@ -77,11 +80,16 @@ class SnedContext(lightbulb.Context):
 
         view = ConfirmView(self, timeout, confirm_payload, cancel_payload)
 
-        if message:
-            message = await message.edit(*args, **kwargs)
+        kwargs.pop("components", None)
+        kwargs.pop("component", None)
+
+        if message and edit:
+            message = await message.edit(*args, components=view.build(), **kwargs)
+        elif edit:
+            resp = await self.edit_last_response(*args, components=view.build(), **kwargs)
         else:
-            resp = await self.respond(*args, **kwargs)
-            message = helpers.resolve_response(resp)
+            resp = await self.respond(*args, components=view.build(), **kwargs)
+            message = await resp.message()
 
         view.start(message)
         await view.wait()

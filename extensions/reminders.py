@@ -89,7 +89,7 @@ async def reminder(ctx: SnedSlashContext) -> None:
 
 
 @lightbulb.option("message", "The message that should be sent to you when this reminder expires.", str)
-@lightbulb.option("when", "When this reminder should expire.", str)
+@lightbulb.option("when", "When this reminder should expire. Example: '10 minutes' or '1 week'", str)
 @reminder.child()
 @lightbulb.command("create", "Create a new reminder.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -137,16 +137,19 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
     timer = await ctx.app.scheduler.create_timer(
         expires=time,
         event="reminder",
-        guild_id=ctx.guild_id,
-        user_id=ctx.author.id,
-        channel_id=ctx.channel_id,
+        guild=ctx.guild_id,
+        user=ctx.author,
+        channel=ctx.channel_id,
         notes=json.dumps(reminder_data),
     )
 
     view = ReminderView(timer.id, timeout=300)
     proxy = await ctx.respond(embed=embed, components=view.build())
+
     reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
-    await ctx.app.scheduler.update_timer(time, timer.id, timer.guild_id, new_notes=json.dumps(reminder_data))
+    timer.notes = json.dumps(reminder_data)
+
+    await ctx.app.scheduler.update_timer(timer)
     view.start(await proxy.message())
 
 

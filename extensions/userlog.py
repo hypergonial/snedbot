@@ -329,9 +329,12 @@ def strip_bot_reason(reason: str) -> Tuple[str]:
     """
     Strip action author for it to be parsed into the actual embed instead of the bot
     """
-    moderator = reason.split(" ")[0]  # Get actual moderator, not the bot
-    reason = reason.split("): ", maxsplit=1)[1]  # Remove author
-    return reason, moderator
+
+    fmt_reason = (
+        reason.split("): ", maxsplit=1)[1] if len(reason.split("): ", maxsplit=1)) > 1 else reason
+    )  # Remove author
+    moderator = reason.split(" (")[0] if fmt_reason != reason else None  # Get actual moderator, not the bot
+    return fmt_reason, moderator
 
 
 # Event Listeners start below
@@ -607,6 +610,7 @@ async def member_ban_remove(plugin: lightbulb.Plugin, event: hikari.BanDeleteEve
 
     if moderator != "Unknown" and moderator.id == plugin.app.get_me().id:
         reason, moderator = strip_bot_reason(reason)
+        moderator = moderator or plugin.app.get_me()
 
     embed = hikari.Embed(
         title=f"🔨 User unbanned",
@@ -634,6 +638,7 @@ async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent)
 
     if moderator != "Unknown" and moderator.id == plugin.app.get_me().id:
         reason, moderator = strip_bot_reason(reason)
+        moderator = moderator or plugin.app.get_me()
 
     embed = hikari.Embed(
         title=f"🔨 User banned",
@@ -659,6 +664,7 @@ async def member_delete(plugin: lightbulb.Plugin, event: hikari.MemberDeleteEven
 
         if moderator != "Unknown" and moderator.id == plugin.app.get_me().id:
             reason, moderator = strip_bot_reason(reason)
+            moderator = moderator or plugin.app.get_me()
 
         embed = hikari.Embed(
             title=f"🚪👈 User was kicked",
@@ -721,6 +727,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 
         if entry.user_id == plugin.app.get_me().id:
             reason, moderator = strip_bot_reason(reason)
+            moderator = moderator or plugin.app.get_me()
 
         mod = userlog.app.get_plugin("Moderation")
 

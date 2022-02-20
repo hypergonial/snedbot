@@ -328,7 +328,7 @@ async def member_create(event: hikari.MemberCreateEvent):
             helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
             "timeout_extend",
             event.member.guild_id,
-            event.member.id,
+            event.member,
             notes=str(expiry),
         )
         await event.member.edit(
@@ -391,7 +391,7 @@ async def timeout(
             helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
             "timeout_extend",
             member.guild_id,
-            member.id,
+            member,
             notes=str(round(duration.timestamp())),
         )
         await member.edit(
@@ -505,9 +505,7 @@ async def ban(
             await mod.app.rest.unban_user(moderator.guild_id, user.id, reason="Automatic unban by softban.")
 
         elif duration:
-            await mod.app.scheduler.create_timer(
-                expires=duration, event="tempban", guild_id=moderator.guild_id, user_id=user.id
-            )
+            await mod.app.scheduler.create_timer(expires=duration, event="tempban", guild=moderator.guild_id, user=user)
 
         await post_mod_actions(moderator.guild_id, user, ActionType.BAN, reason=raw_reason)
         return embed
@@ -550,9 +548,6 @@ async def unban(user: hikari.User, moderator: hikari.Member, reason: Optional[st
     raw_reason = reason
     reason = helpers.format_reason(reason, moderator, max_length=512)
 
-    guild: hikari.GatewayGuild = await mod.app.cache.get_guild(moderator.guild_id)
-    await mod.app.rest.fetch_guild
-
     if not helpers.includes_permissions(perms, hikari.Permissions.BAN_MEMBERS):
         raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.BAN_MEMBERS)
 
@@ -571,7 +566,7 @@ async def unban(user: hikari.User, moderator: hikari.Member, reason: Optional[st
         if isinstance(e, hikari.NotFoundError):
             embed = hikari.Embed(
                 title="❌ Unban failed",
-                description="This could be due to a configuration or network error. Please try again later.",
+                description="This user does not appear to be banned!",
                 color=mod.app.error_color,
             )
         else:
@@ -618,14 +613,14 @@ async def kick(
     helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
 
     try:
-        await pre_mod_actions(member.guild_id, member, ActionType.BAN, reason=raw_reason)
+        await pre_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
         await mod.app.rest.kick_user(member.guild_id, member, reason=reason)
         embed = hikari.Embed(
             title="🚪👈 User kicked",
             description=f"**{member}** has been kicked.\n**Reason:** ```{raw_reason}```",
             color=mod.app.error_color,
         )
-        await post_mod_actions(member.guild_id, member, ActionType.BAN, reason=raw_reason)
+        await post_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
         return embed
 
     except (hikari.ForbiddenError, hikari.HTTPError):
@@ -907,7 +902,7 @@ def unload(bot: SnedBot) -> None:
     is_invoker_above_target,
 )
 @lightbulb.option("reason", "The reason for timing out this user.", required=False)
-@lightbulb.option("duration", "The duration to time the user out for.")
+@lightbulb.option("duration", "The duration to time the user out for. Example: '10 minutes'")
 @lightbulb.option("user", "The user to time out.", type=hikari.Member)
 @lightbulb.command("timeout", "Timeout a user, supports durations longer than 28 days.")
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -1002,7 +997,7 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
     required=False,
     default=0,
 )
-@lightbulb.option("duration", "If specified, how long the ban should last. Leave empty for perma-ban.", required=False)
+@lightbulb.option("duration", "If specified, how long the ban should last. Example: '10 minutes'", required=False)
 @lightbulb.option("reason", "The reason why this ban was performed", required=False)
 @lightbulb.option("user", "The user to be banned", type=hikari.User)
 @lightbulb.command("ban", "Bans a user from the server. Optionally specify a duration to make this a tempban.")
@@ -1023,7 +1018,6 @@ async def ban_cmd(ctx: SnedSlashContext) -> None:
 
     embed = await ban(
         ctx.options.user,
-        ctx.guild_id,
         ctx.member,
         duration=duration,
         days_to_delete=int(ctx.options.days_to_delete) or 0,
@@ -1055,7 +1049,6 @@ async def softban_cmd(ctx: SnedSlashContext) -> None:
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     embed = await ban(
         ctx.options.user,
-        ctx.guild_id,
         ctx.member,
         soft=True,
         days_to_delete=int(ctx.options.days_to_delete) or 0,
@@ -1132,8 +1125,11 @@ async def kick_cmd(ctx: SnedSlashContext) -> None:
 @lightbulb.command("massban", "Ban a large number of users based on a set of criteria. Useful for handling raids.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def massban(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options["joined-before"])
-    helpers.is_member(ctx.options["joined-after"])
+
+    if ctx.options["joined-before"]:
+        helpers.is_member(ctx.options["joined-before"])
+    if ctx.options["joined-after"]:
+        helpers.is_member(ctx.options["joined-after"])
 
     predicates = [
         lambda member: not member.is_bot,
@@ -1254,8 +1250,9 @@ async def massban(ctx: SnedSlashContext) -> None:
     confirmed = await ctx.confirm(
         embed=embed,
         flags=flags,
-        cancel_payload={"embed": cancel_embed, "flags": flags},
-        confirm_payload={"embed": confirm_embed, "flags": flags},
+        cancel_payload={"embed": cancel_embed, "flags": flags, "components": []},
+        confirm_payload={"embed": confirm_embed, "flags": flags, "components": []},
+        attachment=file,
     )
     if not confirmed:
         return
@@ -1279,7 +1276,7 @@ async def massban(ctx: SnedSlashContext) -> None:
         color=ctx.app.error_color,
     )
     file = hikari.Bytes(content.encode("utf-8"), "members_banned.txt")
-    await userlog.log("ban", log_embed, ctx.guild_id, file=file, bypass=True)
+    await userlog.d.actions.log("ban", log_embed, ctx.guild_id, file=file, bypass=True)
 
     embed = hikari.Embed(
         title="✅ Smartban finished",
