@@ -346,7 +346,8 @@ async def scan_messages(
                 reason="having too many links in a single message",
             )
 
-        if link_matches:
+        # If the user edited in a new link, that should not be counted
+        if link_matches and isinstance(event, hikari.GuildMessageCreateEvent):
             await link_spam_ratelimiter.acquire(message)
 
             if link_spam_ratelimiter.is_rate_limited(message):
