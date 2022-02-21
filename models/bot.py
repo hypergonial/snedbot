@@ -20,7 +20,7 @@ from .context import *
 from config import Config
 
 
-async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[t.List[str], str]:
+async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[t.Tuple[str], str]:
     """
     Get custom prefix for guild to show prefix command deprecation warn
     """
@@ -29,7 +29,7 @@ async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[
 
     records = await bot.db_cache.get(table="global_config", guild_id=message.guild_id)
     if records and records[0]["prefix"]:
-        return records[0]["prefix"]
+        return tuple(records[0]["prefix"])
 
     return "sn "
 
@@ -263,7 +263,7 @@ class SnedBot(lightbulb.BotApp):
                 embed.set_thumbnail(self.get_me().avatar_url)
                 return await event.message.respond(embed=embed)
 
-            elif event.content.startswith(tuple(await get_prefix(self, event.message))):
+            elif event.content.startswith(await get_prefix(self, event.message)):
                 embed = hikari.Embed(
                     title="Uh Oh!",
                     description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!",

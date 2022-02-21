@@ -283,7 +283,7 @@ async def timeout_extend(event: models.TimerCompleteEvent) -> None:
                 helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
                 "timeout_extend",
                 timer.guild_id,
-                member.id,
+                member,
                 notes=timer.notes,
             )
             await member.edit(
@@ -525,7 +525,7 @@ mod.d.actions.ban = ban
 @mod.listener(models.TimerCompleteEvent)
 async def tempban_expire(event: models.TimerCompleteEvent) -> None:
     """Handle tempban timer expiry"""
-    timer: Timer = event.timer
+    timer = event.timer
 
     # Ensure the guild still exists
     guild = mod.app.cache.get_guild(timer.guild_id)
@@ -663,6 +663,7 @@ async def whois_user_command(ctx: SnedUserContext) -> None:
 @lightbulb.option("links", "Only delete messages that contain links.", type=bool, required=False)
 @lightbulb.option("invites", "Only delete messages that contain Discord invites.", type=bool, required=False)
 @lightbulb.option("attachments", "Only delete messages that contain files & images.", type=bool, required=False)
+@lightbulb.option("onlytext", "Only delete messages that exclusively contain text.", type=bool, required=False)
 @lightbulb.option("notext", "Only delete messages that do not contain text.", type=bool, required=False)
 @lightbulb.option("endswith", "Only delete messages that end with the specified text.", required=False)
 @lightbulb.option("startswith", "Only delete messages that start with the specified text.", required=False)
@@ -701,6 +702,9 @@ async def purge(ctx: SnedSlashContext) -> None:
 
     if ctx.options.notext:
         predicates.append(lambda message: not message.content)
+
+    if ctx.options.onlytext:
+        predicates.append(lambda message: message.content and not message.attachments and not message.embeds)
 
     if ctx.options.attachments:
         predicates.append(lambda message: bool(message.attachments))
@@ -764,6 +768,7 @@ async def journal(ctx: SnedSlashContext) -> None:
 
 
 @journal.child()
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("user", "The user to retrieve the journal for.", type=hikari.User)
 @lightbulb.command("get", "Retrieve the journal for the specified user.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -804,7 +809,7 @@ async def journal_get(ctx: SnedSlashContext) -> None:
 
 
 @journal.child()
-@lightbulb.add_checks(is_invoker_above_target)
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("note", "The journal note to add.")
 @lightbulb.option("user", "The user to add a journal entry for.", type=hikari.User)
 @lightbulb.command("add", "Add a new journal entry for the specified user.")
@@ -821,7 +826,7 @@ async def journal_add(ctx: SnedSlashContext) -> None:
 
 
 @mod.command()
-@lightbulb.add_checks(is_invoker_above_target)
+@lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for this warn", required=False)
 @lightbulb.option("user", "The user to be warned.", type=hikari.Member)
 @lightbulb.command("warn", "Warn a user. This gets added to their journal and their warn counter is incremented.")
@@ -857,7 +862,7 @@ async def warns_list(ctx: SnedSlashContext) -> None:
 
 
 @warns.child()
-@lightbulb.add_checks(is_invoker_above_target)
+@lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
 @lightbulb.command("clear", "Clear warnings for the specified user.")

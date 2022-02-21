@@ -15,6 +15,12 @@ userlog = lightbulb.Plugin("Logging", include_datastore=True)
 # Functions exposed to other extensions & plugins
 userlog.d.actions = lightbulb.utils.DataStore()
 
+# Mapping of channel_id: payload
+userlog.d.queue = {}
+
+# Queue iter task
+userlog.d._task = None
+
 userlog.d.valid_log_events = [
     "ban",
     "kick",
@@ -104,7 +110,7 @@ userlog.d.actions["is_color_enabled"] = is_color_enabled
 
 async def log(
     log_event: str,
-    log_content: Union[str, hikari.Embed],
+    log_content: hikari.Embed,
     guild_id: int,
     file: hikari.UndefinedOr[hikari.File] = hikari.UNDEFINED,
     bypass: bool = False,
@@ -115,7 +121,7 @@ async def log(
     ----------
     log_event : str
         The channel associated with this event to post it under.
-    log_content : Union[str, hikari.Embed]
+    log_content : hikari.Embed
         What needs to be logged.
     guild_id : int
         The ID of the guild.
@@ -136,14 +142,8 @@ async def log(
     if not log_channel_id:
         return
 
-    if isinstance(log_content, hikari.Embed):
-        log_content.timestamp = datetime.datetime.now(datetime.timezone.utc)
-        embed = log_content
-        content = hikari.UNDEFINED
-
-    elif isinstance(log_content, str):
-        content = log_content
-        embed = hikari.UNDEFINED
+    log_content.timestamp = datetime.datetime.now(datetime.timezone.utc)
+    embed = log_content
 
     # Check if the channel still exists or not, and lazily invalidate it if not
     log_channel = userlog.app.cache.get_guild_channel(log_channel_id)
@@ -155,13 +155,52 @@ async def log(
         # Do not attempt message send if we have no perms
         return
 
-    try:
-        await log_channel.send(content=content, embed=embed, attachment=file)
-    except (hikari.ForbiddenError, hikari.HTTPError):
-        return
+    if userlog.d.queue.get(log_channel.id) is None:
+        userlog.d.queue[log_channel.id] = []
+
+    if file:  # Embeds with attachments will be sent without grouping
+        try:
+            return await log_channel.send(embed=embed, attachment=file)
+        except (hikari.ForbiddenError, hikari.HTTPError):
+            return
+
+    userlog.d.queue[log_channel.id].append(embed)
 
 
 userlog.d.actions["log"] = log
+
+
+async def _iter_queue() -> None:
+    """Iter queue and bulk-send embeds"""
+    try:
+        while True:
+            for channel_id, embeds in userlog.d.queue.items():
+                if not embeds:
+                    continue
+
+                embed_chunks = [[]]
+                for embed in embeds:
+                    # If combined length of all embeds is below 6000 and there are less than 10 embeds in chunk, add to chunk
+                    if (
+                        sum([helpers.len_embed(embed) for embed in embed_chunks[-1]]) + helpers.len_embed(embed)
+                    ) <= 6000 and len(embed_chunks[-1]) < 10:
+                        embed_chunks[-1].append(embed)
+                    # Otherwise make new chunk
+                    else:
+                        embed_chunks.append([embed])
+
+                for chunk in embed_chunks:
+                    if len(chunk) == 1:
+                        await userlog.app.rest.create_message(channel_id, embed=chunk[0])
+                    else:
+                        await userlog.app.rest.create_message(channel_id, embeds=chunk)
+
+                # Remove embeds from queue
+                userlog.d.queue[channel_id] = []
+
+            await asyncio.sleep(10.0)
+    except Exception as error:
+        print(error)
 
 
 async def freeze_logging(guild_id: int) -> None:
@@ -459,7 +498,7 @@ async def role_update(plugin: lightbulb.Plugin, event: hikari.RoleUpdateEvent) -
         if not diff and not perms_diff:
             diff = "Changes could not be resolved."
 
-        perms_str = f"\nPermissions: {perms_diff}" if perms_diff else ""
+        perms_str = f"\nPermissions:\n {perms_diff}" if perms_diff else ""
         embed = hikari.Embed(
             title=f"🖊️ Role updated",
             description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{moderator}`\n**Changes:**```ansi\n{diff}{perms_str}```""",
@@ -508,7 +547,6 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
         attrs = {
             "name": "Name",
             "position": "Position",
-            "permission_overwrites": "Permission Overwrites",
             "parent_id": "Category",
         }
         if isinstance(event.channel, hikari.TextableGuildChannel):
@@ -516,6 +554,7 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
             attrs["is_nsfw"] = "Is NSFW"
         if isinstance(event.channel, hikari.GuildTextChannel):
             attrs["rate_limit_per_user"] = "Slowmode duration"
+
         if isinstance(event.channel, (hikari.GuildVoiceChannel, hikari.GuildStageChannel)):
             attrs["bitrate"] = "Bitrate"
             attrs["region"] = "Region"
@@ -524,6 +563,11 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
             attrs["video_quality_mode"] = "Video Quality"
 
         diff = await get_diff(event.guild_id, event.old_channel, event.channel, attrs)
+
+        # Because displaying this nicely is practically impossible
+        if event.old_channel.permission_overwrites != event.channel.permission_overwrites:
+            diff = f"{diff}\nChannel overrides have been modified."
+
         diff = diff or "Changes could not be resolved."
 
         embed = hikari.Embed(
@@ -810,7 +854,9 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 
 def load(bot: SnedBot) -> None:
     bot.add_plugin(userlog)
+    userlog.d._task = bot.loop.create_task(_iter_queue())
 
 
 def unload(bot: SnedBot) -> None:
+    userlog.d_task.cancel()
     bot.remove_plugin(userlog)

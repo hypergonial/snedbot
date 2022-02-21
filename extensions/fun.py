@@ -337,7 +337,7 @@ async def funfact(ctx: SnedSlashContext) -> None:
 @fun.command
 @lightbulb.command("penguinfact", "Shows a fact about penguins.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def funfact(ctx: SnedSlashContext) -> None:
+async def penguinfact(ctx: SnedSlashContext) -> None:
     penguin_path = Path(ctx.app.base_dir, "etc", "penguinfacts.txt")
     penguin_facts = open(penguin_path, "r").readlines()
     embed = hikari.Embed(
@@ -346,6 +346,34 @@ async def funfact(ctx: SnedSlashContext) -> None:
         color=ctx.app.embed_blue,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
+    await ctx.respond(embed=embed)
+
+
+@fun.command
+@lightbulb.option(
+    "amount", "The amount of dice to roll. 1 by default.", required=False, type=int, min_value=1, max_value=20
+)
+@lightbulb.option(
+    "sides",
+    "The amount of sides a single die should have. 6 by default.",
+    required=False,
+    type=int,
+    min_value=6,
+    max_value=100,
+)
+@lightbulb.command("dice", "Roll the dice!")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def dice(ctx: SnedSlashContext) -> None:
+    amount = ctx.options.amount or 1
+    sides = ctx.options.sides or 6
+
+    calc = " ".join([f"`[{i+1}: {random.randint(1, sides)}]`" for i in range(0, amount)])
+
+    embed = hikari.Embed(
+        title=f"🎲 Rolled the {'die' if amount == 1 else 'dice'}!",
+        description=f"**Results (`{amount}d{sides}`):** {calc}",
+        color=ctx.app.embed_blue,
+    )
     await ctx.respond(embed=embed)
 
 

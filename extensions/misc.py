@@ -237,7 +237,8 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 
 @misc.command()
 @lightbulb.add_checks(
-    lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL)
+    lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
+    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option(
     "channel",
@@ -272,7 +273,8 @@ async def echo(ctx: SnedSlashContext) -> None:
 @lightbulb.add_checks(
     lightbulb.bot_has_role_permissions(
         hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
-    )
+    ),
+    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option("message_id", "You can get this by enabling Developer Mode and right-clicking a message.", type=str)
 @lightbulb.option(
