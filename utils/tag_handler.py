@@ -31,9 +31,20 @@ class TagHandler:
         self.bot: SnedBot = bot
 
     async def get(self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[Tag]:
-        """
-        Returns a Tag object for the given name & guild ID, returns None if not found.
+        """Returns a Tag object for the given name & guild ID, returns None if not found.
         Will try to find aliases too.
+
+        Parameters
+        ----------
+        name : str
+            The name or alias of the tag to get.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild this tag is located in.
+
+        Returns
+        -------
+        t.Optional[Tag]
+            The tag object, if found.
         """
         guild_id = hikari.Snowflake(guild)
 
@@ -70,9 +81,22 @@ class TagHandler:
 
     async def get_closest_name(
         self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> t.Optional[t.List[Tag]]:
+    ) -> t.Optional[t.List[str]]:
+        """Get a list of closest-matching tagnames. Used for autocomplete.
+
+        Parameters
+        ----------
+        name : str
+            The name of the tag to search for.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the tags belong to.
+
+        Returns
+        -------
+        t.Optional[t.List[str]]
+            A list of tagnames and aliases that matched the query.
+        """
         guild_id = hikari.Snowflake(guild)
-        print("Request!")
         async with self.bot.pool.acquire() as con:
             results = await con.fetch("""SELECT tag_name, tag_aliases FROM tags WHERE guild_id = $1""", guild_id)
 
@@ -83,9 +107,51 @@ class TagHandler:
 
         return get_close_matches(name, names)
 
-    async def create(self, tag: Tag) -> None:
+    async def get_closest_owned_name(
+        self,
+        name: str,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        owner: hikari.SnowflakeishOr[hikari.PartialUser],
+    ) -> t.Optional[t.List[str]]:
+        """Get a list of closest-matching tagnames for the owner.
+
+        Parameters
+        ----------
+        name : str
+            The name of the tag to search for.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the tags belong to.
+        owner : hikari.SnowflakeishOr[hikari.PartialUser]
+            The owner of the tags.
+
+        Returns
+        -------
+        t.Optional[t.List[str]]
+            A list of tagnames and aliases that matched the query.
         """
-        Creates a new tag based on an instance of a Tag.
+        guild_id = hikari.Snowflake(guild)
+        owner_id = hikari.Snowflake(owner)
+        async with self.bot.pool.acquire() as con:
+            results = await con.fetch(
+                """SELECT tag_name, tag_aliases FROM tags WHERE guild_id = $1 AND tag_owner_id = $2""",
+                guild_id,
+                owner_id,
+            )
+
+            names = [result.get("tag_name") for result in results] if results else []
+
+            if results is not None:
+                names += list(flatten([result.get("tag_aliases") or [] for result in results]))
+
+        return get_close_matches(name, names)
+
+    async def create(self, tag: Tag) -> None:
+        """Create and store a new tag.
+
+        Parameters
+        ----------
+        tag : Tag
+            The tag object to create.
         """
         await self.bot.pool.execute(
             """
@@ -99,8 +165,17 @@ class TagHandler:
         )
 
     async def get_all(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.List[Tag]:
-        """
-        Returns a list of all tags for the specified guild.
+        """Returns a list of all tags for the specified guild.
+
+        Parameters
+        ----------
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild to return all tags from.
+
+        Returns
+        -------
+        t.List[Tag]
+            A list of all tags found in the guild.
         """
         guild_id = hikari.Snowflake(guild)
         results = await self.bot.pool.fetch("""SELECT * FROM tags WHERE guild_id = $1""", guild_id)
@@ -127,7 +202,13 @@ class TagHandler:
         )
 
     async def update(self, tag: Tag) -> None:
-        """Update a tag with new data. If the tag already exists, only the aliases & content will be updated."""
+        """Update a tag with new data. If the tag already exists, only the aliases & content will be updated.
+
+        Parameters
+        ----------
+        tag : Tag
+            The tag to update.
+        """
 
         await self.bot.pool.execute(
             """INSERT INTO tags (guild_id, tag_name, tag_owner_id, tag_aliases, tag_content)
@@ -147,8 +228,25 @@ class TagHandler:
         invoker: hikari.SnowflakeishOr[hikari.PartialUser],
         name: str,
     ) -> None:
-        """
-        Migrates a tag from one guild to another.
+        """Migrates a tag from one guild to another.
+
+        Parameters
+        ----------
+        origin : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild where the tag is currently located.
+        destination : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild where the tag should be migrated to.
+        invoker : hikari.SnowflakeishOr[hikari.PartialUser]
+            The owner under whom the new tag will be registered.
+        name : str
+            The name or alias of the tag.
+
+        Raises
+        ------
+        TagNotFound
+            The tag was not found in origin.
+        TagAlreadyExists
+            The tag already exists in destination.
         """
 
         origin_id = hikari.Snowflake(origin)
@@ -174,13 +272,23 @@ class TagHandler:
         invoker: hikari.SnowflakeishOr[hikari.PartialUser],
         strategy: TagMigrationStrategy,
     ) -> None:
-        """
-        Migrates all tags from one server to a different one. 'strategy' defines overriding behaviour.
+        """Migrates all tags from the origin guild to the destination guild.
 
-        override - Override all tags in the destination server.
-        keep - Keep conflicting tags in the destination server.
+        Parameters
+        ----------
+        origin : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild where the tags are currently located.
+        destination : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild where the tags should be migrated to.
+        invoker : hikari.SnowflakeishOr[hikari.PartialUser]
+            The owner under whom the new tags will be registered.
+        strategy : TagMigrationStrategy
+            The migration strategy to use for this migration.
 
-        Note: Migration of all tags does not migrate aliases.
+        Raises
+        ------
+        ValueError
+            An invalid strategy was passed.
         """
 
         origin_id = hikari.Snowflake(origin)

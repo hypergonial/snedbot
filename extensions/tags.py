@@ -82,7 +82,7 @@ async def tag_cmd(ctx: SnedSlashContext) -> None:
 
 
 @tag_cmd.autocomplete("name")
-async def tag_autocomplete(
+async def tag_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
@@ -133,7 +133,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
 
 
 @tag_group.child()
-@lightbulb.option("name", "The name of the tag to get information about.")
+@lightbulb.option("name", "The name of the tag to get information about.", autocomplete=True)
 @lightbulb.command("info", "Display information about the specified tag.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_info(ctx: SnedSlashContext) -> None:
@@ -162,9 +162,17 @@ async def tag_info(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
+@tag_info.autocomplete("name")
+async def tag_info_name_ac(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+
+
 @tag_group.child()
 @lightbulb.option("alias", "The alias to add to this tag.")
-@lightbulb.option("name", "The tag to add an alias for.")
+@lightbulb.option("name", "The tag to add an alias for.", autocomplete=True)
 @lightbulb.command("alias", "Adds an alias to a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_alias(ctx: SnedSlashContext) -> None:
@@ -210,9 +218,17 @@ async def tag_alias(ctx: SnedSlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
+@tag_alias.autocomplete("name")
+async def tag_alias_name_ac(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+
+
 @tag_group.child()
 @lightbulb.option("alias", "The name of the alias to remove.")
-@lightbulb.option("name", "The tag to remove the alias from.")
+@lightbulb.option("name", "The tag to remove the alias from.", autocomplete=True)
 @lightbulb.command("delalias", "Remove an alias from a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_delalias(ctx: SnedSlashContext) -> None:
@@ -248,9 +264,17 @@ async def tag_delalias(ctx: SnedSlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
+@tag_delalias.autocomplete("name")
+async def tag_delalias_name_ac(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+
+
 @tag_group.child()
 @lightbulb.option("receiver", "The user to receive the tag.", type=hikari.Member)
-@lightbulb.option("name", "The name of the tag to transfer.")
+@lightbulb.option("name", "The name of the tag to transfer.", autocomplete=True)
 @lightbulb.command(
     "transfer",
     "Transfer ownership of a tag to another user, letting them modify or delete it.",
@@ -280,8 +304,16 @@ async def tag_transfer(ctx: SnedSlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
+@tag_transfer.autocomplete("name")
+async def tag_transfer_name_ac(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+
+
 @tag_group.child()
-@lightbulb.option("name", "The name of the tag to claim.")
+@lightbulb.option("name", "The name of the tag to claim.", autocomplete=True)
 @lightbulb.command(
     "claim",
     "Claim a tag that has been created by a user that has since left the server.",
@@ -324,8 +356,16 @@ async def tag_claim(ctx: SnedSlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
+@tag_claim.autocomplete("name")
+async def tag_claim_name_ac(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+
+
 @tag_group.child()
-@lightbulb.option("name", "The name of the tag to edit.")
+@lightbulb.option("name", "The name of the tag to edit.", autocomplete=True)
 @lightbulb.command("edit", "Edit the content of a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_edit(ctx: SnedSlashContext) -> None:
@@ -358,8 +398,16 @@ async def tag_edit(ctx: SnedSlashContext) -> None:
     await mctx.respond(embed=embed)
 
 
+@tag_edit.autocomplete("name")
+async def tag_edit_name_ac(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+
+
 @tag_group.child()
-@lightbulb.option("name", "The name of the tag to delete.")
+@lightbulb.option("name", "The name of the tag to delete.", autocomplete=True)
 @lightbulb.command("delete", "Delete a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_delete(ctx: SnedSlashContext) -> None:
@@ -384,6 +432,14 @@ async def tag_delete(ctx: SnedSlashContext) -> None:
             color=ctx.app.error_color,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+
+@tag_delete.autocomplete("name")
+async def tag_delete_name_ac(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
 
 
 @tag_group.child()
@@ -434,24 +490,17 @@ async def tag_search(ctx: SnedSlashContext) -> None:
         for tag in tags_list:
             if tag.aliases:
                 aliases.append(tag.aliases)
+
         aliases = list(chain(*aliases))
 
         name_matches = get_close_matches(ctx.options.query.lower(), names)
         alias_matches = get_close_matches(ctx.options.query.lower(), aliases)
 
-        response = []
-        if len(name_matches) > 0:
-            for name in name_matches:
-                response.append(name)
+        response = [name for name in name_matches]
+        response += [f"*{alias}*" for alias in alias_matches]
 
-        if len(alias_matches) > 0:
-            for name in alias_matches:
-                response.append(f"*{name}*")
-
-        if len(response) > 0:
-            if len(response) < 10:
-                response = response[0:10]
-            embed = hikari.Embed(title="🔎 Search results:", description="\n".join(response))
+        if response:
+            embed = hikari.Embed(title="🔎 Search results:", description="\n".join(response[:10]))
             embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
 
