@@ -1,4 +1,5 @@
 import attr
+import typing as t
 
 """
 Configuration file example for the Discord bot Sned.
@@ -23,4 +24,4 @@ class Config:
 
     DB_BACKUP_CHANNEL: int = 123456789  # DB backups will be sent here if specified
 
-    DEBUG_GUILDS: int = (123, 456, 789)  # Commands will only be registered here if DEV_MODE is on
+    DEBUG_GUILDS: t.Sequence[int] = (123, 456, 789)  # Commands will only be registered here if DEV_MODE is on
