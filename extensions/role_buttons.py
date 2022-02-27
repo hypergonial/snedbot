@@ -268,14 +268,8 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
 @lightbulb.option("emoji", "The emoji that should appear in the button.", type=hikari.Emoji)
 @lightbulb.option("role", "The role that should be handed out by the button.", type=hikari.Role)
 @lightbulb.option(
-    "message_id",
-    "The ID of a message that MUST be from the bot, the rolebutton will be attached here.",
-)
-@lightbulb.option(
-    "channel",
-    "The channel where the message is located in.",
-    type=hikari.TextableGuildChannel,
-    channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
+    "message_link",
+    "The link of a message that MUST be from the bot, the rolebutton will be attached here.",
 )
 @lightbulb.command(
     "add",
@@ -286,33 +280,9 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
 
     ctx.options.buttonstyle = ctx.options.buttonstyle or "Grey"
 
-    if ctx.options.role.id == ctx.guild_id or ctx.options.role.is_managed:
-        embed = hikari.Embed(
-            title="❌ Invalid role",
-            description="The specified role cannot be manually assigned.",
-            color=ctx.app.error_color,
-        )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-    try:
-        message_id = int(ctx.options.message_id)
-    except (TypeError, AssertionError):
-        embed = hikari.Embed(
-            title="❌ Invalid ID",
-            description="Please enter a valid integer for parameter `message_id`",
-            color=ctx.app.error_color,
-        )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-    try:
-        message = await ctx.app.rest.fetch_message(ctx.options.channel.id, message_id)
-    except (hikari.NotFoundError, hikari.ForbiddenError):
-        embed = hikari.Embed(
-            title="❌ Unknown message",
-            description="Could not find message with this ID. Ensure the ID is valid, and that the bot has permissions to view the channel.",
-            color=ctx.app.error_color,
-        )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    message = await helpers.parse_message_link(ctx, ctx.options.message_link)
+    if not message:
+        return
 
     records = await ctx.app.pool.fetch("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC LIMIT 1""")
     entry_id = records[0].get("entry_id") + 1 if records else 1
@@ -329,7 +299,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
 
     buttons = []
 
-    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message_id)
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message.id)
     if records:
         # Account for other rolebuttons on the same message
         for record in records:
@@ -358,8 +328,8 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         """,
         entry_id,
         ctx.guild_id,
-        ctx.options.channel.id,
-        message_id,
+        message.channel_id,
+        message.id,
         str(emoji),
         ctx.options.label,
         ctx.options.buttonstyle,
@@ -367,16 +337,18 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     )
     await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
 
+    channel = ctx.app.cache.get_guild_channel(message.channel_id)
+
     embed = hikari.Embed(
         title="✅ Done!",
-        description=f"A new rolebutton for role {ctx.options.role.mention} in channel `#{ctx.options.channel.name}` has been created!",
+        description=f"A new rolebutton for role {ctx.options.role.mention} in channel `#{channel.name}` has been created!",
         color=ctx.app.embed_green,
     )
     await ctx.respond(embed=embed)
 
     embed = hikari.Embed(
         title="❇️ Role-Button was added",
-        description=f"A role-button for role {ctx.options.role.mention} has been created by {ctx.author.mention} in channel <#{ctx.options.channel.id}>.\n\n__Note:__ Anyone who can see this channel can now obtain this role!",
+        description=f"A role-button for role {ctx.options.role.mention} has been created by {ctx.author.mention} in channel <#{channel.id}>.\n\n__Note:__ Anyone who can see this channel can now obtain this role!",
         color=ctx.app.embed_green,
     )
     try:

@@ -82,6 +82,16 @@ async def modaltest(ctx: SnedSlashContext) -> None:
 
 
 @test.command()
+@lightbulb.command("navtest", "Test miru nav")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def navtest(ctx: SnedSlashContext) -> None:
+
+    navigator = nav.NavigatorView(pages=["1", "2", "3"])
+    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+    await navigator.send(ctx.interaction, deferred=True)
+
+
+@test.command()
 @lightbulb.option("text", "Text to analyze.")
 @lightbulb.command("perspectivetestmultiple", "aaa", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)

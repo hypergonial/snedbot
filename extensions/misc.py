@@ -276,18 +276,16 @@ async def echo(ctx: SnedSlashContext) -> None:
     ),
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
-@lightbulb.option("message_id", "You can get this by enabling Developer Mode and right-clicking a message.", type=str)
-@lightbulb.option(
-    "channel",
-    "The channel the message is located in.",
-    type=hikari.TextableGuildChannel,
-    channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
-)
+@lightbulb.option("message_link", "You can get this by right-clicking a message.", type=str)
 @lightbulb.command("edit", "Edit a message that was sent by the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def edit(ctx: SnedSlashContext) -> None:
 
-    channel = ctx.app.cache.get_guild_channel(ctx.options.channel.id) or ctx.get_channel()
+    message = await helpers.parse_message_link(ctx, ctx.options.message_link)
+    if not message:
+        return
+
+    channel = ctx.app.cache.get_guild_channel(message.channel_id) or ctx.get_channel()
 
     perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
     if not helpers.includes_permissions(
@@ -299,10 +297,6 @@ async def edit(ctx: SnedSlashContext) -> None:
             | hikari.Permissions.VIEW_CHANNEL
             | hikari.Permissions.READ_MESSAGE_HISTORY
         )
-
-    message = await helpers.parse_message_id(ctx, channel, ctx.options.message_id)
-    if not message:
-        return
 
     if message.author.id != ctx.app.user_id:
         embed = hikari.Embed(

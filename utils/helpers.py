@@ -12,11 +12,21 @@ import miru
 
 import models
 from models import errors
+from models.context import SnedSlashContext
 from models.db_user import User
 from models.components import *
 
 if TYPE_CHECKING:
     from extensions.settings import SettingsView
+
+
+MESSAGE_LINK_REGEX = re.compile(
+    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)channels[\/][0-9]{1,}[\/][0-9]{1,}[\/][0-9]{1,}"
+)
+LINK_REGEX = re.compile(
+    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)"
+)
+INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
 
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
@@ -263,12 +273,10 @@ def is_url(string: str, *, fullmatch: bool = True) -> bool:
     """
     Returns True if the provided string is an URL, otherwise False.
     """
-    url_regex = re.compile(
-        r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)"
-    )
-    if fullmatch and url_regex.fullmatch(string):
+
+    if fullmatch and LINK_REGEX.fullmatch(string):
         return True
-    elif not fullmatch and url_regex.match(string):
+    elif not fullmatch and LINK_REGEX.match(string):
         return True
 
     return False
@@ -278,10 +286,10 @@ def is_invite(string: str, *, fullmatch: bool = True) -> bool:
     """
     Returns True if the provided string is a Discord invite, otherwise False.
     """
-    invite_regex = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
-    if fullmatch and invite_regex.fullmatch(string):
+
+    if fullmatch and INVITE_REGEX.fullmatch(string):
         return True
-    elif not fullmatch and invite_regex.match(string):
+    elif not fullmatch and INVITE_REGEX.match(string):
         return True
 
     return False
@@ -316,32 +324,44 @@ async def resolve_response(response: Union[lightbulb.ResponseProxy, hikari.Messa
 T = TypeVar("T")
 
 
-async def parse_message_id(
-    ctx: lightbulb.SlashContext, channel: hikari.TextableChannel, message_id: str
-) -> Optional[hikari.Message]:
-    """Parse a message_id string into a message object."""
+async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Optional[hikari.Message]:
+    """Parse a message_link string into a message object."""
+
+    if not MESSAGE_LINK_REGEX.fullmatch(message_link):
+        embed = hikari.Embed(
+            title="❌ Invalid link",
+            description="This does not appear to be a valid message link! You can get a message's link by right-clicking it and selecting `Copy Message Link`!",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return None
+
+    snowflakes = message_link.split("/channels/")[1].split("/")
+    guild_id = hikari.Snowflake(snowflakes[0]) if snowflakes[0] != "@me" else None
+    channel_id = hikari.Snowflake(snowflakes[1])
+    message_id = hikari.Snowflake(snowflakes[2])
+
+    if ctx.guild_id != guild_id:
+        embed = hikari.Embed(
+            title="❌ Invalid link",
+            description="The message seems to be from another server! Please copy a message link from this server!",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return None
+
+    channel = ctx.app.cache.get_guild_channel(channel_id)
 
     perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
     if not (perms & hikari.Permissions.READ_MESSAGE_HISTORY):
         raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)
 
     try:
-        message_id = int(ctx.options.message_id)
-    except TypeError:
-        embed = hikari.Embed(
-            title="❌ Invalid ID",
-            description="Please enter a valid integer for parameter `message_id`",
-            color=ctx.app.error_color,
-        )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-        return None
-
-    try:
         message = await ctx.app.rest.fetch_message(channel, message_id)
     except (hikari.NotFoundError, hikari.ForbiddenError):
         embed = hikari.Embed(
             title="❌ Unknown message",
-            description="Could not find message with this ID. Ensure the ID is valid, and that the bot has permissions to view the channel.",
+            description="Could not find message with this link. Ensure the link is valid, and that the bot has permissions to view the channel.",
             color=ctx.app.error_color,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
