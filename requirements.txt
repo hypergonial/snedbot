@@ -1,6 +1,6 @@
-hikari>=2.0.0.dev106
+hikari @ git+https://github.com/thesadru/hikari@feat/modal
 hikari-lightbulb>=2.2.0
-hikari-miru>=1.1.1
+hikari-miru @ git+https://github.com/HyperGH/hikari-miru@feature/modals
 perspective.py>=0.1.1
 Levenshtein
 python-dateutil
