@@ -24,7 +24,7 @@ max_timeout_seconds = 2246400  # Duration of segments to break timeouts up to
 
 default_mod_settings = {
     "dm_users_on_punish": True,
-    "clean_up_mod_commands": False,
+    "is_ephemeral": False,
 }
 
 
