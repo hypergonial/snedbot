@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 mod = lightbulb.Plugin("Moderation", include_datastore=True)
 mod.d.actions = lightbulb.utils.DataStore()
-max_timeout_seconds = 2246400  # Duration of segments to break timeouts up to
+
+MAX_TIMEOUT_SECONDS = 2246400  # Duration of segments to break timeouts up to
 
 
 default_mod_settings = {
@@ -280,17 +281,17 @@ async def timeout_extend(event: models.TimerCompleteEvent) -> None:
         if not helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS):
             return
 
-        if expiry - helpers.utcnow().timestamp() > max_timeout_seconds:
+        if expiry - helpers.utcnow().timestamp() > MAX_TIMEOUT_SECONDS:
 
             await event.app.scheduler.create_timer(
-                helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+                helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
                 "timeout_extend",
                 timer.guild_id,
                 member,
                 notes=timer.notes,
             )
             await member.edit(
-                communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+                communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
                 reason="Automatic timeout extension applied.",
             )
 
@@ -326,16 +327,16 @@ async def member_create(event: hikari.MemberCreateEvent):
         # If this is in the past already
         return
 
-    if expiry - helpers.utcnow().timestamp() > max_timeout_seconds:
+    if expiry - helpers.utcnow().timestamp() > MAX_TIMEOUT_SECONDS:
         await event.app.scheduler.create_timer(
-            helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+            helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
             "timeout_extend",
             event.member.guild_id,
             event.member,
             notes=str(expiry),
         )
         await event.member.edit(
-            communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+            communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
             reason="Automatic timeout extension applied.",
         )
 
@@ -389,16 +390,16 @@ async def timeout(
     helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
 
     await pre_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
-    if duration > helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds):
+    if duration > helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS):
         await mod.app.scheduler.create_timer(
-            helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+            helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
             "timeout_extend",
             member.guild_id,
             member,
             notes=str(round(duration.timestamp())),
         )
         await member.edit(
-            communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=max_timeout_seconds),
+            communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
             reason=reason,
         )
 

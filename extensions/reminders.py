@@ -9,6 +9,7 @@ import miru
 from models import events
 from models import SnedBot
 from models import Timer
+from models.views import AuthorOnlyNavigator
 from utils import helpers
 from models import SnedSlashContext
 
@@ -65,7 +66,7 @@ class ReminderView(miru.View):
             await self.app.scheduler.update_timer(timer)
             embed = hikari.Embed(
                 title="✅ Signed up to reminder",
-                description="You will also be notified when this reminder is due!",
+                description="You will be notified when this reminder is due!",
                 color=self.app.embed_green,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -113,10 +114,18 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    if (time - datetime.datetime.now(datetime.timezone.utc)).total_seconds() >= 31536000 * 5:
+    if (time - helpers.utcnow()).total_seconds() >= 31536000 * 5:
         embed = hikari.Embed(
             title="❌ Error: Invalid data entered",
             description="Sorry, but that's a bit too far in the future.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    if (time - helpers.utcnow()).total_seconds() < 10:
+        embed = hikari.Embed(
+            title="❌ Error: Invalid data entered",
+            description="Sorry, but that's a bit too short, reminders must last longer than `10` seconds.",
             color=ctx.app.error_color,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -181,49 +190,41 @@ async def reminder_del(ctx: SnedSlashContext) -> None:
 @lightbulb.command("list", "List your currently pending reminders.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_list(ctx: SnedSlashContext) -> None:
-    results = await ctx.app.pool.fetch(
-        """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = 'reminder' ORDER BY expires LIMIT 10""",
+    records = await ctx.app.pool.fetch(
+        """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = 'reminder' ORDER BY expires""",
         ctx.guild_id,
         ctx.author.id,
     )
-    timers = []
-    reminderstr = ""
-    for result in results:
-        note = json.loads(result.get("notes"))["message"].replace("\n", " ")
-        if len(note) > 50:
-            note = f"{note[slice(47)]}..."
-        timers.append(
-            Timer(
-                id=result.get("id"),
-                guild_id=hikari.Snowflake(result.get("guild_id")),
-                user_id=hikari.Snowflake(result.get("user_id")),
-                channel_id=hikari.Snowflake(result.get("channel_id")) if result.get("channel_id") else None,
-                event=result.get("event"),
-                expires=result.get("expires"),
-                notes=note,
+
+    if records:
+        reminders = []
+
+        for record in records:
+            time = datetime.datetime.fromtimestamp(record.get("expires"))
+            notes = json.loads(record["notes"])["message"].replace("\n", " ")
+            if len(notes) > 50:
+                notes = notes[:47] + "..."
+
+            reminders.append(
+                f"**ID: {record.get('id')}** - {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n{notes}\n"
             )
-        )
 
-    if len(timers) != 0:
+        reminders = [reminders[i * 10 : (i + 1) * 10] for i in range((len(reminders) + 10 - 1) // 10)]
 
-        for timer in timers:
-            time = datetime.datetime.fromtimestamp(timer.expires)
-
-            reminderstr = (
-                reminderstr
-                + f"**ID: {timer.id}** - {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n{timer.notes}\n"
-            )
+        pages = [
+            hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=ctx.app.embed_blue)
+            for content in reminders
+        ]
+        navigator = AuthorOnlyNavigator(ctx, pages=pages)
+        await navigator.send(ctx.interaction)
 
     else:
-        reminderstr = f"You have no reminders. You can set one via `/reminder create`!"
-
-    embed = hikari.Embed(
-        title="✉️ Your reminders:",
-        description=reminderstr,
-        color=ctx.app.embed_blue,
-    )
-    embed = helpers.add_embed_footer(embed, ctx.member)
-    await ctx.respond(embed=embed)
+        embed = hikari.Embed(
+            title="✉️ No pending reminders!",
+            description="You have no pending reminders. You can create one via `/reminder create`!",
+            color=ctx.app.warn_color,
+        )
+        await ctx.respond(embed=embed)
 
 
 @reminders.listener(events.TimerCompleteEvent, bind=True)

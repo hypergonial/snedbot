@@ -495,7 +495,7 @@ async def dice(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
-@lightbulb.command("randomcat", "Searches the interwebz™️ for a random cat picture.", auto_defer=True)
+@lightbulb.command("cat", "Searches the interwebz™️ for a random cat picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomcat(ctx: SnedSlashContext) -> None:
     async with aiohttp.ClientSession() as session:
@@ -517,7 +517,7 @@ async def randomcat(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
-@lightbulb.command("randomdog", "Searches the interwebz™️ for a random dog picture.", auto_defer=True)
+@lightbulb.command("dog", "Searches the interwebz™️ for a random dog picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomdog(ctx: SnedSlashContext) -> None:
     async with aiohttp.ClientSession() as session:
@@ -539,7 +539,7 @@ async def randomdog(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
-@lightbulb.command("randomfox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
+@lightbulb.command("fox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomfox(ctx: SnedSlashContext) -> None:
     async with aiohttp.ClientSession() as session:
@@ -553,6 +553,28 @@ async def randomfox(ctx: SnedSlashContext) -> None:
                 embed = hikari.Embed(
                     title="🦊 Random fox",
                     description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
+                    color=ctx.app.error_color,
+                )
+
+            embed = helpers.add_embed_footer(embed, ctx.member)
+            await ctx.respond(embed=embed)
+
+
+@fun.command
+@lightbulb.command("otter", "Searches the interwebz™️ for a random otter picture.", auto_defer=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def randomotter(ctx: SnedSlashContext) -> None:
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://otter.bruhmomentlol.repl.co/random") as response:
+            if response.status == 200:
+                otter_image = await response.content.read()
+
+                embed = hikari.Embed(title="🦦 Random otter", color=0xA78E81)
+                embed.set_image(hikari.Bytes(otter_image, "otter.jpeg"))
+            else:
+                embed = hikari.Embed(
+                    title="🦦 Random otter",
+                    description="Oops! Looks like the otter delivery service is unavailable! Check back later.",
                     color=ctx.app.error_color,
                 )
 
