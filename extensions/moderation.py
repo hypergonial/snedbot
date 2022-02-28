@@ -87,8 +87,8 @@ async def get_settings(guild_id: int) -> Dict[str, bool]:
     records = await mod.app.db_cache.get(table="mod_config", guild_id=guild_id)
     if records:
         mod_settings = {
-            "dm_users_on_punish": records[0]["dm_users_on_punish"],
-            "is_ephemeral": records[0]["is_ephemeral"],
+            "dm_users_on_punish": records[0].get("dm_users_on_punish") or True,
+            "is_ephemeral": records[0].get("is_ephemeral") or False,
         }
     else:
         mod_settings = default_mod_settings

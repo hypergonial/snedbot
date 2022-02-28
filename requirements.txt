@@ -1,7 +1,9 @@
+psutil
+Pillow
 asyncpg
 hikari @ git+https://github.com/thesadru/hikari@feat/modal
 hikari-lightbulb>=2.2.0
 hikari-miru @ git+https://github.com/HyperGH/hikari-miru@feature/modals
-perspective.py>=0.1.1
+perspective.py @ git+https://github.com/HyperGH/perspective.py
 Levenshtein
 python-dateutil
