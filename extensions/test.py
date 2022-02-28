@@ -66,7 +66,6 @@ class BasicModal(miru.Modal):
 @lightbulb.command("mirutest", "Test miru views")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def viewtest(ctx: SnedSlashContext) -> None:
-    assert 1 == 2
     view = BasicView()
     view.add_item(miru.Button(label="Settings!", url="discord://-/settings/advanced"))
     resp = await ctx.respond("foo", components=view.build())
@@ -140,8 +139,10 @@ async def test_cmd(ctx: SnedSlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    bot.add_plugin(test)
+    # bot.add_plugin(test)
+    pass
 
 
 def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(test)
+    # bot.remove_plugin(test)
+    pass

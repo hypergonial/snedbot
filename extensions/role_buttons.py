@@ -165,6 +165,7 @@ async def rolebutton(ctx: SnedSlashContext) -> None:
 
 
 @rolebutton.child()
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.command("list", "List all registered rolebuttons on this server.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_list(ctx: SnedSlashContext) -> None:
@@ -203,6 +204,7 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
 
 
 @rolebutton.child()
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
     "button_id",
     "The ID of the rolebutton to delete. You can get this via /rolebutton list",
@@ -263,6 +265,7 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
 
 
 @rolebutton.child()
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option("buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"])
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
 @lightbulb.option("emoji", "The emoji that should appear in the button.", type=hikari.Emoji)

@@ -7,7 +7,7 @@ import hikari
 import lightbulb
 from models.bot import SnedBot
 import models
-from models.context import SnedUserContext
+from models.context import SnedContext, SnedUserContext
 from models.db_user import User
 from models.errors import BotRoleHierarchyError, RoleHierarchyError
 from models.timer import Timer
@@ -40,7 +40,7 @@ class ActionType(enum.Enum):
 
 
 @lightbulb.Check
-async def is_above_target(ctx: lightbulb.Context) -> bool:
+async def is_above_target(ctx: SnedContext) -> bool:
     """Check if the targeted user is above the bot's top role or not."""
 
     if not hasattr(ctx.options, "user"):
@@ -63,10 +63,13 @@ async def is_above_target(ctx: lightbulb.Context) -> bool:
 
 
 @lightbulb.Check
-async def is_invoker_above_target(ctx: lightbulb.Context) -> bool:
+async def is_invoker_above_target(ctx: SnedContext) -> bool:
     """Check if the targeted user is above the invoker's top role or not."""
 
     if not hasattr(ctx.options, "user"):
+        return True
+
+    if ctx.member.id == ctx.get_guild().owner_id:
         return True
 
     if isinstance(ctx.options.user, hikari.Member):

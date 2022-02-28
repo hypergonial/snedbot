@@ -338,7 +338,15 @@ async def edit(ctx: SnedSlashContext) -> None:
 @lightbulb.command("Raw Content", "Show raw content for this message.")
 @lightbulb.implements(lightbulb.MessageCommand)
 async def raw(ctx: SnedMessageContext) -> None:
-    await ctx.respond(f"```{ctx.options.target.content}```", flags=hikari.MessageFlag.EPHEMERAL)
+    if ctx.options.target.content:
+        await ctx.respond(f"```{ctx.options.target.content}```", flags=hikari.MessageFlag.EPHEMERAL)
+    else:
+        embed = hikari.Embed(
+            title="❌ Missing Content",
+            description="Oops! It looks like this message has no content to display!",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 def load(bot: SnedBot) -> None:
