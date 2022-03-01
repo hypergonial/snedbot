@@ -104,6 +104,8 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     modal = TagEditorModal()
     await modal.send(ctx.interaction)
     await modal.wait()
+    if not modal.values:
+        return
     mctx = modal.get_response_context()
 
     tag: Tag = await tags.d.tag_handler.get(modal.tag_name.lower(), ctx.guild_id)
@@ -383,6 +385,8 @@ async def tag_edit(ctx: SnedSlashContext) -> None:
     modal = TagEditorModal(name=tag.name, content=tag.content)
     await modal.send(ctx.interaction)
     await modal.wait()
+    if not modal.values:
+        return
     mctx = modal.get_response_context()
 
     tag.content = modal.tag_content

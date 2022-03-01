@@ -28,33 +28,7 @@ if os.name != "nt":  # Lol imagine using Windows
     else:
         uvloop.install()
 
-initial_extensions = [
-    "extensions.command_handler",
-    "extensions.userlog",
-    "extensions.moderation",
-    "extensions.automod",
-    "extensions.settings",
-    "extensions.reports",
-    "extensions.starboard",
-    "extensions.reminders",
-    "extensions.fun",
-    "extensions.test",
-    "extensions.tags",
-    "extensions.misc",
-    "extensions.role_buttons",
-    "extensions.troubleshooter",
-    "extensions.dev",
-]
-
 bot = SnedBot(Config())
 
 if __name__ == "__main__":
-
-    for extension in initial_extensions:
-        try:
-            bot.load_extensions(extension)
-        except Exception as error:
-            logging.fatal(f"Failed loading extension {extension} due to error: {error}")
-            exit()
-
     bot.run()

@@ -240,3 +240,12 @@ async def eval_sh(ctx: SnedPrefixContext) -> None:
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def dev_git_pull(ctx: SnedPrefixContext) -> None:
     await run_shell(ctx, f"git {ctx.options.code}")
+
+
+@dev.command()
+@lightbulb.command("sync", "Sync application commands.")
+@lightbulb.implements(lightbulb.PrefixCommand)
+async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
+    await ctx.app.rest.trigger_typing(ctx.channel_id)
+    await ctx.app.sync_application_commands()
+    await ctx.respond("🔃 Synced application commands.")

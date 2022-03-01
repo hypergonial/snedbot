@@ -1,6 +1,8 @@
 import asyncio
+import functools
 import logging
 import os
+import pathlib
 import typing as t
 
 import asyncpg
@@ -91,7 +93,7 @@ class SnedBot(lightbulb.BotApp):
         miru.load(self)
 
         # Some global variables
-        self._base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
         self._db_backup_loop = IntervalLoop(self.backup_bot_db, hours=24.0)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
@@ -321,3 +323,8 @@ class SnedBot(lightbulb.BotApp):
             return logging.info("Daily database backup complete, database backed up to specified Discord channel.")
 
         logging.info("Daily database backup complete.")
+
+    @functools.wraps(lightbulb.BotApp.run)
+    def run(self, *args, **kwargs) -> None:
+        self.load_extensions_from(os.path.join(self.base_dir, "extensions"), must_exist=True)
+        super().run(*args, **kwargs)
