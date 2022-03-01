@@ -3,6 +3,7 @@ import logging
 import hikari
 import lightbulb
 from models.bot import SnedBot
+from models.context import SnedSlashContext
 from utils import helpers
 import typing as t
 import re
@@ -194,6 +195,57 @@ async def on_reaction(
     plugin: lightbulb.Plugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
 ) -> None:
     await handle_starboard(plugin, event)
+
+
+@starboard.command()
+@lightbulb.command("star", "Handle the starboard.")
+@lightbulb.implements(lightbulb.SlashCommandGroup)
+async def star(ctx: SnedSlashContext) -> None:
+    pass
+
+
+@star.child()
+@lightbulb.option("id", "The ID of the starboard entry. You can find this in the footer.")
+@lightbulb.command("show", "Show a starboard entry.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def star_show(ctx: SnedSlashContext) -> None:
+
+    try:
+        orig_id = abs(int(ctx.options.id))
+    except (TypeError, ValueError):
+        embed = hikari.Embed(
+            title="❌ Invalid value",
+            description="Expected an integer value for parameter `id`.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed)
+
+    records = await ctx.app.db_cache.get(table="starboard", guild_id=ctx.guild_id)
+
+    if not records or not records[0]["is_enabled"]:
+        embed = hikari.Embed(
+            title="❌ Starboard disabled",
+            description="The starboard is not enabled on this server!",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed)
+
+    settings = records[0]
+
+    records = await ctx.app.pool.fetch(
+        "SELECT entry_msg_id, channel_id FROM starboard_entries WHERE orig_msg_id = $1 AND guild_id = $2",
+        orig_id,
+        ctx.guild_id,
+    )
+
+    if not records:
+        embed = hikari.Embed(title="❌ Not found", description="Starboard entry not found!", color=ctx.app.error_color)
+        return await ctx.respond(embed=embed)
+
+    message = await ctx.app.rest.fetch_message(settings["channel_id"], records[0].get("entry_msg_id"))
+    await ctx.respond(
+        f"Showing entry: `{orig_id}`\n[Jump to entry!]({message.make_link(ctx.guild_id)})", embed=message.embeds[0]
+    )
 
 
 def load(bot: SnedBot) -> None:
