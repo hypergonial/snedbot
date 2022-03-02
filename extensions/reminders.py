@@ -151,6 +151,7 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         notes=json.dumps(reminder_data),
     )
 
+    embed.set_footer(f"Reminder ID: {timer.id}")
     view = ReminderView(timer.id, timeout=300)
     proxy = await ctx.respond(embed=embed, components=view.build())
 
@@ -181,7 +182,6 @@ async def reminder_del(ctx: SnedSlashContext) -> None:
         description=f"Reminder **{ctx.options.id}** has been deleted.",
         color=ctx.app.embed_green,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
 
 
