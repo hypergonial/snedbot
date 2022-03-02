@@ -34,11 +34,6 @@ class BasicView(miru.View):
         await ctx.respond("You clicked me!")
 
     # Define a new Button that when pressed will stop the view & invalidate all the buttons in this view
-    @miru.button(label="Stop me!", style=hikari.ButtonStyle.DANGER)
-    async def stop_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
-        self.stop()  # Called to stop the view
-
-    # Define a new Button that when pressed will stop the view & invalidate all the buttons in this view
     @miru.button(label="Modal!", style=hikari.ButtonStyle.PRIMARY)
     async def stop_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
         modal = BasicModal()

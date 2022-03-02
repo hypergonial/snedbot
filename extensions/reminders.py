@@ -132,10 +132,9 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
 
     embed = hikari.Embed(
         title="✅ Reminder set",
-        description=f"Reminder set for:  {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{ctx.options.message}",
+        description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{ctx.options.message}",
         color=ctx.app.embed_green,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
 
     reminder_data = {
         "message": ctx.options.message,
@@ -237,6 +236,9 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
         user = guild.get_member(event.timer.user_id)
 
         if not user:
+            return
+
+        if not guild:
             return
 
         notes = json.loads(event.timer.notes)

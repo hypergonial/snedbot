@@ -5,10 +5,10 @@ import datetime
 import logging
 import re
 import typing
+import dateparser
 
 import hikari
 import Levenshtein as lev
-from dateutil import parser as dateparser
 from models.events import TimerCompleteEvent
 from models.timer import Timer
 
@@ -42,19 +42,6 @@ class Scheduler:
         """
 
         logger.debug(f"String passed for time conversion: {timestr}")
-
-        if not force_mode or force_mode == "absolute":
-
-            try:
-                time = dateparser.parse(timestr)
-            except Exception:
-                if force_mode == "absolute":  # Only raise exception if this is the only conversion attempted
-                    raise
-            else:
-                if not time.tzinfo:
-                    time = datetime.datetime.fromtimestamp(time.timestamp(), tz=datetime.timezone.utc)
-                if time > datetime.datetime.now(datetime.timezone.utc):
-                    return time
 
         if not force_mode or force_mode == "relative":
             # Relative time conversion
@@ -103,12 +90,24 @@ class Scheduler:
                             time += time_word_dict[string] * float(val)
                             break
 
-            if (
-                time < 0
-            ):  # If time is 0, then we failed to parse or the user indeed provided 0, which makes no sense, so we raise an error.
-                raise ValueError("Failed converting time from string. (Relative conversion)")
+            if time > 0:  # If we found time
+                return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=time)
 
-            return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=time)
+            if force_mode == "relative":
+                raise ValueError("Failed time conversion. (relative)")
+
+        if not force_mode or force_mode == "absolute":
+
+            time = dateparser.parse(
+                timestr, settings={"RETURN_AS_TIMEZONE_AWARE": True, "TIMEZONE": "UTC", "NORMALIZE": True}
+            )
+
+            # if not time.tzinfo:
+            #    time = time.astimezone().astimezone(datetime.timezone.utc)
+            if time > datetime.datetime.now(datetime.timezone.utc):
+                return time
+
+            raise ValueError("Time provided is in the past. (absolute)")
 
     async def get_latest_timer(self, days=7) -> Timer:
         """

@@ -1,3 +1,4 @@
+dateparser
 psutil
 Pillow
 asyncpg
