@@ -115,8 +115,9 @@ class Scheduler:
                 timestr, settings={"RETURN_AS_TIMEZONE_AWARE": True, "TIMEZONE": timezone, "NORMALIZE": True}
             )
 
-            # if not time.tzinfo:
-            #    time = time.astimezone().astimezone(datetime.timezone.utc)
+            if not time:
+                raise ValueError("Time could not be parsed. (absolute)")
+
             if time > datetime.datetime.now(datetime.timezone.utc):
                 return time
 
