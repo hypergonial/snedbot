@@ -71,6 +71,16 @@ try:
                         ON DELETE CASCADE
                 )"""
             )
+            await con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.preferences
+                (
+                    user_id bigint NOT NULL,
+                    timezone text NOT NULL DEFAULT 'UTC',
+                    PRIMARY KEY (user_id)
+                )
+                """
+            )
             # guild_id is always needed in table, so I just hacked it in c:
             # the table is not guild-specific though
             await con.execute(

@@ -929,7 +929,7 @@ async def timeout_cmd(ctx: SnedSlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     try:
-        duration: datetime.datetime = await ctx.app.scheduler.convert_time(ctx.options.duration)
+        duration: datetime.datetime = await ctx.app.scheduler.convert_time(ctx.options.duration, user=ctx.user)
     except ValueError:
         embed = hikari.Embed(
             title="❌ Invalid data entered",
@@ -1014,7 +1014,7 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
 async def ban_cmd(ctx: SnedSlashContext) -> None:
 
     try:
-        duration: datetime.datetime = await ctx.app.scheduler.convert_time(ctx.options.duration)
+        duration: datetime.datetime = await ctx.app.scheduler.convert_time(ctx.options.duration, user=ctx.user)
     except ValueError:
         embed = hikari.Embed(
             title="❌ Invalid data entered",

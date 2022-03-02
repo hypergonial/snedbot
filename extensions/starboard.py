@@ -67,10 +67,7 @@ def create_starboard_payload(message: hikari.Message, stars: int) -> t.Dict[str,
     )
     attachments = message.attachments
 
-    if message.embeds and message.embeds[0].image:
-        embed.set_image(message.embeds[0].image.url)
-
-    elif image_urls := get_attachment_urls(message):
+    if image_urls := get_attachment_urls(message):
         embed.set_image(image_urls)
         attachments = [attachment for attachment in attachments if attachment.url != image_urls]
 

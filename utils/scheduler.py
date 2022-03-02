@@ -5,8 +5,9 @@ import datetime
 import logging
 import re
 import typing
-import dateparser
+import typing as t
 
+import dateparser
 import hikari
 import Levenshtein as lev
 from models.events import TimerCompleteEvent
@@ -35,12 +36,19 @@ class Scheduler:
         self._timer_loop: IntervalLoop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
         self._timer_loop.start()
 
-    async def convert_time(self, timestr: str, force_mode: str = None) -> datetime.datetime:
+    async def convert_time(
+        self,
+        timestr: str,
+        *,
+        user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
+        force_mode: t.Optional[str] = None,
+    ) -> datetime.datetime:
         """
         Tries converting a string to datetime.datetime via regex, returns datetime.datetime if successful.
         Raises ValueError if time is invalid or not in the future.
         """
 
+        user_id = hikari.Snowflake(user) if user else None
         logger.debug(f"String passed for time conversion: {timestr}")
 
         if not force_mode or force_mode == "relative":
@@ -98,8 +106,13 @@ class Scheduler:
 
         if not force_mode or force_mode == "absolute":
 
+            timezone = "UTC"
+            if user_id:
+                records = await self.bot.pool.fetch("""SELECT timezone FROM preferences WHERE user_id = $1""", user_id)
+                timezone = records[0].get("timezone") if records else "UTC"
+
             time = dateparser.parse(
-                timestr, settings={"RETURN_AS_TIMEZONE_AWARE": True, "TIMEZONE": "UTC", "NORMALIZE": True}
+                timestr, settings={"RETURN_AS_TIMEZONE_AWARE": True, "TIMEZONE": timezone, "NORMALIZE": True}
             )
 
             # if not time.tzinfo:

@@ -1,9 +1,12 @@
+from difflib import get_close_matches
 import logging
 
 import hikari
 import lightbulb
 import psutil
 import miru
+import pytz
+import typing as t
 from models.context import SnedMessageContext, SnedSlashContext
 from utils import helpers
 from models import SnedBot
@@ -347,6 +350,46 @@ async def raw(ctx: SnedMessageContext) -> None:
             color=ctx.app.error_color,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+
+@misc.command()
+@lightbulb.option("timezone", "The timezone to set as your default. Example: 'Europe/Kiev'", autocomplete=True)
+@lightbulb.command("timezone", "Set your preferred timezone!")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def set_timezone(ctx: SnedSlashContext) -> None:
+    if ctx.options.timezone not in pytz.common_timezones:
+        embed = hikari.Embed(
+            title="❌ Invalid Timezone",
+            description="Oops! This does not look like a valid timezone! Specify your timezone as a valid `Continent/City` combination.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+    await ctx.app.pool.execute(
+        """
+    INSERT INTO preferences (user_id, timezone) 
+    VALUES ($1, $2) 
+    ON CONFLICT (user_id) DO 
+    UPDATE SET timezone = $2""",
+        ctx.user.id,
+        ctx.options.timezone,
+    )
+
+    embed = hikari.Embed(
+        title="✅ Timezone set!",
+        description=f"Your preferred timezone has been set to `{ctx.options.timezone}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
+        color=ctx.app.embed_green,
+    )
+    await ctx.respond(embed=embed)
+
+
+@set_timezone.autocomplete("timezone")
+async def tz_opts(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    if option.value:
+        return get_close_matches(option.value, pytz.common_timezones)[:25]
+    return pytz.common_timezones[:25]
 
 
 def load(bot: SnedBot) -> None:
