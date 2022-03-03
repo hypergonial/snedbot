@@ -90,7 +90,9 @@ async def reminder(ctx: SnedSlashContext) -> None:
 
 
 @lightbulb.option("message", "The message that should be sent to you when this reminder expires.", str)
-@lightbulb.option("when", "When this reminder should expire. Examples: 'in 10 minutes', '20:00 UTC+1', 'tomorrow'", str)
+@lightbulb.option(
+    "when", "When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'", str
+)
 @reminder.child()
 @lightbulb.command("create", "Create a new reminder.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -104,7 +106,7 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     try:
-        time = await ctx.app.scheduler.convert_time(ctx.options.when, user=ctx.user)
+        time = await ctx.app.scheduler.convert_time(ctx.options.when, user=ctx.user, future_time=True)
 
     except ValueError as error:
         embed = hikari.Embed(

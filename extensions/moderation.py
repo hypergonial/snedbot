@@ -911,7 +911,9 @@ def unload(bot: SnedBot) -> None:
     is_invoker_above_target,
 )
 @lightbulb.option("reason", "The reason for timing out this user.", required=False)
-@lightbulb.option("duration", "The duration to time the user out for. Example: '10 minutes'")
+@lightbulb.option(
+    "duration", "The duration to time the user out for. Example: '10 minutes', '2022-03-01', 'tomorrow 20:00'"
+)
 @lightbulb.option("user", "The user to time out.", type=hikari.Member)
 @lightbulb.command("timeout", "Timeout a user, supports durations longer than 28 days.")
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -929,7 +931,9 @@ async def timeout_cmd(ctx: SnedSlashContext) -> None:
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     try:
-        duration: datetime.datetime = await ctx.app.scheduler.convert_time(ctx.options.duration, user=ctx.user)
+        duration: datetime.datetime = await ctx.app.scheduler.convert_time(
+            ctx.options.duration, user=ctx.user, future_time=True
+        )
     except ValueError:
         embed = hikari.Embed(
             title="❌ Invalid data entered",
@@ -1006,7 +1010,11 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
     required=False,
     default=0,
 )
-@lightbulb.option("duration", "If specified, how long the ban should last. Example: '10 minutes'", required=False)
+@lightbulb.option(
+    "duration",
+    "If specified, how long the ban should last. Example: '10 minutes', '2022-03-01', 'tomorrow 20:00'",
+    required=False,
+)
 @lightbulb.option("reason", "The reason why this ban was performed", required=False)
 @lightbulb.option("user", "The user to be banned", type=hikari.User)
 @lightbulb.command("ban", "Bans a user from the server. Optionally specify a duration to make this a tempban.")
@@ -1014,7 +1022,9 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
 async def ban_cmd(ctx: SnedSlashContext) -> None:
 
     try:
-        duration: datetime.datetime = await ctx.app.scheduler.convert_time(ctx.options.duration, user=ctx.user)
+        duration: datetime.datetime = await ctx.app.scheduler.convert_time(
+            ctx.options.duration, user=ctx.user, future_time=True
+        )
     except ValueError:
         embed = hikari.Embed(
             title="❌ Invalid data entered",

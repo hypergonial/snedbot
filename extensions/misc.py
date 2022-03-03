@@ -354,7 +354,7 @@ async def raw(ctx: SnedMessageContext) -> None:
 
 @misc.command()
 @lightbulb.option("timezone", "The timezone to set as your default. Example: 'Europe/Kiev'", autocomplete=True)
-@lightbulb.command("timezone", "Set your preferred timezone!")
+@lightbulb.command("timezone", "Sets your preferred timezone for other time-related commands to use.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def set_timezone(ctx: SnedSlashContext) -> None:
     if ctx.options.timezone not in pytz.common_timezones:
@@ -390,6 +390,39 @@ async def tz_opts(
     if option.value:
         return get_close_matches(option.value, pytz.common_timezones, 25)
     return pytz.common_timezones[:25]
+
+
+@misc.command()
+@lightbulb.option(
+    "style",
+    "Timestamp style.",
+    choices=[
+        "t - Short time",
+        "T - Long time",
+        "d - Short date",
+        "D - Long Date",
+        "f - Short Datetime",
+        "F - Long Datetime",
+        "R - Relative",
+    ],
+    required=False,
+)
+@lightbulb.option("time", "The time to create the timestamp from. Examples: 'in 20 minutes', '2022-04-03', '21:43'")
+@lightbulb.command("timestamp", "Create a Discord timestamp from human-readable time formats and dates.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def timestamp_gen(ctx: SnedSlashContext) -> None:
+    try:
+        time = await ctx.app.scheduler.convert_time(ctx.options.time, user=ctx.user)
+    except ValueError as error:
+        embed = hikari.Embed(
+            title="❌ Error: Invalid data entered",
+            description=f"Your timeformat is invalid! \n**Error:** {error}",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    style = ctx.options.style.split(" -")[0] if ctx.options.style else "f"
+
+    await ctx.respond(f"`{helpers.format_dt(time, style=style)}` --> {helpers.format_dt(time, style=style)}")
 
 
 def load(bot: SnedBot) -> None:

@@ -42,12 +42,35 @@ class Scheduler:
         *,
         user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
         force_mode: t.Optional[str] = None,
+        future_time: bool = False,
     ) -> datetime.datetime:
-        """
-        Tries converting a string to datetime.datetime via regex, returns datetime.datetime if successful.
-        Raises ValueError if time is invalid or not in the future.
-        """
+        """Try converting a string of human-readable time to a datetime object.
 
+        Parameters
+        ----------
+        timestr : str
+            The string containing the time.
+        user : t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]], optional
+            The user whose preferences will be used in the case of timezones, by default None
+        force_mode : t.Optional[str], optional
+            If specified, forces either 'relative' or 'absolute' conversion, by default None
+        future_time : bool, optional
+            If True and the time specified is in the past, raise an error, by default False
+
+        Returns
+        -------
+        datetime.datetime
+            The converted datetime.datetime object.
+
+        Raises
+        ------
+        ValueError
+            Time could not be parsed using relative conversion.
+        ValueError
+            Time could not be parsed using absolute conversion.
+        ValueError
+            Time is not in the future.
+        """
         user_id = hikari.Snowflake(user) if user else None
         logger.debug(f"String passed for time conversion: {timestr}")
 
@@ -118,10 +141,10 @@ class Scheduler:
             if not time:
                 raise ValueError("Time could not be parsed. (absolute)")
 
-            if time > datetime.datetime.now(datetime.timezone.utc):
-                return time
+            if future_time and time < datetime.datetime.now(datetime.timezone.utc):
+                raise ValueError("Time is not in the future!")
 
-            raise ValueError("Time provided is in the past. (absolute)")
+            return time
 
     async def get_latest_timer(self, days=7) -> Timer:
         """
