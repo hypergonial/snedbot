@@ -412,7 +412,7 @@ async def tz_opts(
 @lightbulb.implements(lightbulb.SlashCommand)
 async def timestamp_gen(ctx: SnedSlashContext) -> None:
     try:
-        time = await ctx.app.scheduler.convert_time(ctx.options.time, user=ctx.user)
+        time = await ctx.app.scheduler.convert_time(ctx.options.time, force_mode="absolute", user=ctx.user)
     except ValueError as error:
         embed = hikari.Embed(
             title="❌ Error: Invalid data entered",
