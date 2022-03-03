@@ -105,6 +105,7 @@ class SettingsView(models.AuthorOnlyView):
 
     async def on_timeout(self) -> None:
         """Stop waiting for input events after the view times out."""
+        self.value = None
         self.input_event.set()
 
         for item in self.children:

@@ -208,7 +208,7 @@ class SnedBot(lightbulb.BotApp):
         self._db_backup_loop.start()
 
         logging.info(f"Startup complete, initialized as {user}")
-        activity = hikari.Activity(name="to @Sned", type=hikari.ActivityType.LISTENING)
+        activity = hikari.Activity(name="@Sned", type=hikari.ActivityType.LISTENING)
         await self.update_presence(activity=activity)
 
         if self.dev_mode:
