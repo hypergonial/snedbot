@@ -304,7 +304,7 @@ async def typeracer(ctx: SnedSlashContext) -> None:
     length = ctx.options.length or 5
     difficulty = ctx.options.difficulty or "medium"
 
-    file = open(Path(ctx.app.base_dir, "etc", f"words_{difficulty}.txt"), "r")
+    file = open(Path(ctx.app.base_dir, "etc", "text", f"words_{difficulty}.txt"), "r")
     words = [word.strip() for word in file.readlines()]
     font = Path(ctx.app.base_dir, "etc", "fonts", "roboto-slab.ttf")
     text = " ".join([random.choice(words) for i in range(0, length)])
@@ -441,7 +441,7 @@ async def avatar_context(ctx: SnedUserContext) -> None:
 @lightbulb.command("funfact", "Shows a random fun fact.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def funfact(ctx: SnedSlashContext) -> None:
-    fun_path = Path(ctx.app.base_dir, "etc", "funfacts.txt")
+    fun_path = Path(ctx.app.base_dir, "etc", "text", "funfacts.txt")
     fun_facts = open(fun_path, "r").readlines()
     embed = hikari.Embed(
         title="🤔 Did you know?",
@@ -456,7 +456,7 @@ async def funfact(ctx: SnedSlashContext) -> None:
 @lightbulb.command("penguinfact", "Shows a fact about penguins.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def penguinfact(ctx: SnedSlashContext) -> None:
-    penguin_path = Path(ctx.app.base_dir, "etc", "penguinfacts.txt")
+    penguin_path = Path(ctx.app.base_dir, "etc", "text", "penguinfacts.txt")
     penguin_facts = open(penguin_path, "r").readlines()
     embed = hikari.Embed(
         title="🐧 Penguin Fact",
@@ -603,7 +603,7 @@ async def nitro(ctx: SnedSlashContext) -> None:
 @lightbulb.command("8ball", "Ask a question, and the answers shall reveal themselves.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def eightball(ctx: SnedSlashContext) -> None:
-    ball_path = Path(ctx.app.base_dir, "etc", "8ball.txt")
+    ball_path = Path(ctx.app.base_dir, "etc", "text", "8ball.txt")
     answers = open(ball_path, "r").readlines()
     embed = hikari.Embed(
         title=f"🎱 {ctx.options.question}",
