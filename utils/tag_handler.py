@@ -54,7 +54,7 @@ class TagHandler:
                 name.lower(),
                 guild_id,
             )
-            if len(results) != 0:
+            if results:
                 tag = Tag(
                     guild_id=hikari.Snowflake(results[0].get("guild_id")),
                     name=results[0].get("tag_name"),
@@ -69,7 +69,7 @@ class TagHandler:
                 name.lower(),
                 guild_id,
             )
-            if len(results) != 0:
+            if results:
                 tag = Tag(
                     guild_id=hikari.Snowflake(results[0].get("guild_id")),
                     name=results[0].get("tag_name"),
@@ -179,18 +179,17 @@ class TagHandler:
         """
         guild_id = hikari.Snowflake(guild)
         results = await self.bot.pool.fetch("""SELECT * FROM tags WHERE guild_id = $1""", guild_id)
-        if len(results) != 0:
-            tags = []
-            for result in results:
-                tag = Tag(
+        if results:
+            return [
+                Tag(
                     guild_id=hikari.Snowflake(result.get("guild_id")),
                     name=result.get("tag_name"),
                     owner_id=hikari.Snowflake(result.get("tag_owner_id")),
                     aliases=result.get("tag_aliases"),
                     content=result.get("tag_content"),
                 )
-                tags.append(tag)
-            return tags
+                for result in results
+            ]
 
     async def delete(self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]):
         """Delete a tag from the database."""

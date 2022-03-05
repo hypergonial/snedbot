@@ -1,13 +1,13 @@
 -- Creation of all tables necessary for the bot to function
 
-CREATE TABLE IF NOT EXISTS public.global_config
+CREATE TABLE IF NOT EXISTS global_config
 (
     guild_id bigint NOT NULL,
     prefix text[],
     PRIMARY KEY (guild_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.users
+CREATE TABLE IF NOT EXISTS users
 (
     user_id bigint NOT NULL,
     guild_id bigint NOT NULL,
@@ -20,21 +20,21 @@ CREATE TABLE IF NOT EXISTS public.users
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.preferences
+CREATE TABLE IF NOT EXISTS preferences
 (
     user_id bigint NOT NULL,
     timezone text NOT NULL DEFAULT 'UTC',
     PRIMARY KEY (user_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.blacklist
+CREATE TABLE IF NOT EXISTS blacklist
 (
     guild_id integer NOT NULL DEFAULT 0,
     user_id bigint NOT NULL,
     PRIMARY KEY (user_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.mod_config
+CREATE TABLE IF NOT EXISTS mod_config
 (
     guild_id bigint NOT NULL,
     dm_users_on_punish bool NOT NULL DEFAULT true,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.mod_config
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.reports
+CREATE TABLE IF NOT EXISTS reports
 (
     guild_id bigint NOT NULL,
     is_enabled bool NOT NULL DEFAULT false,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.reports
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.timers
+CREATE TABLE IF NOT EXISTS timers
 (
     id serial NOT NULL,
     guild_id bigint NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.timers
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.button_roles
+CREATE TABLE IF NOT EXISTS button_roles
 (
     guild_id bigint NOT NULL,
     entry_id serial NOT NULL,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS public.button_roles
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.tags
+CREATE TABLE IF NOT EXISTS tags
 (
     guild_id bigint NOT NULL,
     tag_name text NOT NULL,
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS public.tags
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.log_config
+CREATE TABLE IF NOT EXISTS log_config
 (
     guild_id bigint NOT NULL,
     log_channels json,
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS public.log_config
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.starboard
+CREATE TABLE IF NOT EXISTS starboard
 (
     guild_id bigint NOT NULL,
     is_enabled bool NOT NULL DEFAULT false,
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS public.starboard
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS public.starboard_entries
+CREATE TABLE IF NOT EXISTS starboard_entries
 (
     guild_id bigint NOT NULL,
     channel_id bigint NOT NULL,
