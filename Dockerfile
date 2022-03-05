@@ -1,5 +1,7 @@
 FROM python:3.10
 
+ARG postgres_version=14
+
 RUN python3.10 -m ensurepip
 
 RUN pip install -U pip
@@ -12,7 +14,7 @@ RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-k
 
 RUN apt-get update
 
-RUN apt-get install -y postgresql-client-14
+RUN apt-get install -y postgresql-client-${postgres_version}
 
 COPY requirements.txt .
 

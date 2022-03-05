@@ -16,7 +16,11 @@ services:
       - private
 
   sned:
-    build: .
+    build:
+        context: .
+        dockerfile: Dockerfile
+        args:
+          postgres_version: ${POSTGRES_VERSION:-14}
     command: ["python3.10", "-O", "main.py"]
     depends_on:
       - sned-db

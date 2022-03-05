@@ -1,0 +1,10 @@
+services:
+
+  sned:
+    build:
+        context: .
+        dockerfile: Dockerfile
+        args:
+          postgres_version: ${POSTGRES_VERSION:-14}
+    command: ["python3.10", "-O", "main.py"]
+    restart: always

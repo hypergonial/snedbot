@@ -18,8 +18,7 @@ try:
             os.environ[line.split("=")[0]] = line.split("=")[1].split("#")[0].strip()
 
 except FileNotFoundError:
-    logging.fatal("Failed to locate .env file. Please make sure it exists and contains valid secrets.")
-    exit()
+    logging.info(".env file not found, using secrets from the environment instead.")
 
 try:
     from config import Config
