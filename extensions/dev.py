@@ -290,6 +290,7 @@ async def shutdown_cmd(ctx: SnedPrefixContext) -> None:
 
 @dev.command()
 @lightbulb.command("pg_dump", "Back up the database.", aliases=["dbbackup", "backup"])
+@lightbulb.implements(lightbulb.PrefixCommand)
 async def backup_db_cmd(ctx: SnedPrefixContext) -> None:
     await ctx.app.backup_db()
     await ctx.event.message.add_reaction("✅")

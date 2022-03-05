@@ -325,7 +325,9 @@ async def tag_claim(ctx: SnedSlashContext) -> None:
     if tag:
         members = ctx.app.cache.get_members_view_for_guild(ctx.guild_id)
         if tag.owner_id not in members.keys() or (
-            lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_MESSAGES
+            helpers.includes_permissions(
+                lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
+            )
             and tag.owner_id != ctx.member.id
         ):
             tag.owner_id = ctx.author.id
@@ -417,7 +419,7 @@ async def tag_delete(ctx: SnedSlashContext) -> None:
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
     if tag and (
         (tag.owner_id == ctx.author.id)
-        or (lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_MESSAGES)
+        or helpers.includes_permissions(lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES)
     ):
         await tags.d.tag_handler.delete(ctx.options.name.lower(), ctx.guild_id)
         embed = hikari.Embed(

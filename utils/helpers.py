@@ -3,22 +3,16 @@ from __future__ import annotations
 import asyncio
 import datetime
 import re
-from typing import TYPE_CHECKING, Any, List, Optional, TypeVar, Union
+from typing import List, Optional, Union
 
 import hikari
 import lightbulb
-import miru
-from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
 
-import models
+from etc import constants as const
 from models import errors
 from models.components import *
 from models.context import SnedSlashContext
 from models.db_user import User
-
-if TYPE_CHECKING:
-    from extensions.settings import SettingsView
-
 
 MESSAGE_LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)channels[\/][0-9]{1,}[\/][0-9]{1,}[\/][0-9]{1,}"
@@ -193,6 +187,9 @@ async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embe
 
 def includes_permissions(permissions: hikari.Permissions, should_include: hikari.Permissions) -> bool:
     """Check if permissions includes should_includes."""
+
+    if permissions & hikari.Permissions.ADMINISTRATOR:
+        return True
 
     missing_perms = ~permissions & should_include
     if missing_perms is not hikari.Permissions.NONE:
