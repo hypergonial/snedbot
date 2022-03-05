@@ -1,12 +1,14 @@
 import logging
+import re
+import typing as t
 
 import hikari
 import lightbulb
+
+from etc import constants as const
 from models.bot import SnedBot
 from models.context import SnedSlashContext
 from utils import helpers
-import typing as t
-import re
 
 # Mapping of message_id: starboard_message_id
 starboard_messages = {}
@@ -216,7 +218,7 @@ async def star_show(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Invalid value",
             description="Expected an integer value for parameter `id`.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed)
 
@@ -226,7 +228,7 @@ async def star_show(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Starboard disabled",
             description="The starboard is not enabled on this server!",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed)
 
@@ -239,7 +241,7 @@ async def star_show(ctx: SnedSlashContext) -> None:
     )
 
     if not records:
-        embed = hikari.Embed(title="❌ Not found", description="Starboard entry not found!", color=ctx.app.error_color)
+        embed = hikari.Embed(title="❌ Not found", description="Starboard entry not found!", color=const.ERROR_COLOR)
         return await ctx.respond(embed=embed)
 
     message = await ctx.app.rest.fetch_message(settings["channel_id"], records[0].get("entry_msg_id"))

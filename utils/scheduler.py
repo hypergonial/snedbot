@@ -10,9 +10,9 @@ import typing as t
 import dateparser
 import hikari
 import Levenshtein as lev
+
 from models.events import TimerCompleteEvent
 from models.timer import Timer
-
 from utils.tasks import IntervalLoop
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class Scheduler:
 
             return time
 
-    async def get_latest_timer(self, days=7) -> Timer:
+    async def get_latest_timer(self, days: int = 7) -> Timer:
         """
         Gets the first timer that is about to expire in the specified days and returns it
         Returns None if not found in that scope.
@@ -299,7 +299,7 @@ class Scheduler:
         guild_id = hikari.Snowflake(guild)
         user_id = hikari.Snowflake(user)
         channel_id = hikari.Snowflake(channel)
-        expires = round(expires.timestamp())  # Converting it to time since epoch
+        expires = round(expires.timestamp())
 
         records = await self.bot.pool.fetch(
             """INSERT INTO timers (guild_id, channel_id, user_id, event, expires, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *""",
@@ -322,7 +322,7 @@ class Scheduler:
         )
 
         # If there is already a timer in queue, and it has an expiry that is further than the timer we just created
-        # Then we reboot the dispatch_timers() function to re-check for the latest timer.
+        # then we restart the dispatch_timers() to re-check for the latest timer.
         if self._current_timer and expires < self._current_timer.expires:
             logger.debug("Reshuffled timers, created timer is now the latest timer.")
             self._current_task.cancel()

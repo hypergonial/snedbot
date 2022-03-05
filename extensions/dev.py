@@ -1,6 +1,7 @@
 import ast
 import logging
 import os
+import shlex
 import subprocess
 import textwrap
 import traceback
@@ -10,11 +11,11 @@ import hikari
 import lightbulb
 import miru
 from miru.ext import nav
-from models import SnedPrefixContext
-from models import AuthorOnlyNavigator
+
+from etc import constants as const
+from models import AuthorOnlyNavigator, SnedPrefixContext
 from models.bot import SnedBot
 from models.views import AuthorOnlyView
-import shlex
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,7 @@ async def eval_py(ctx: SnedPrefixContext) -> None:
             embed = hikari.Embed(
                 title="❌ Exception encountered",
                 description=f"```{e.__class__.__name__}: {e}```",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             try:
                 await ctx.event.message.add_reaction("❗")
@@ -260,7 +261,7 @@ async def run_sql(ctx: SnedPrefixContext) -> None:
         embed = hikari.Embed(
             title="❌ No valid attachment",
             description=f"Expected a singular `.sql` file as attachment with `UTF-8` encoding!",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed)
 
@@ -288,15 +289,23 @@ async def shutdown_cmd(ctx: SnedPrefixContext) -> None:
 
 
 @dev.command()
+@lightbulb.command("pg_dump", "Back up the database.", aliases=["dbbackup", "backup"])
+async def backup_db_cmd(ctx: SnedPrefixContext) -> None:
+    await ctx.app.backup_db()
+    await ctx.event.message.add_reaction("✅")
+    await ctx.respond("📤 Database backup complete.")
+
+
+@dev.command()
 @lightbulb.option("--ignore-errors", "Ignore all errors.", type=bool, default=False)
-@lightbulb.command("pg_restore", "Restore database from attached dump file.")
+@lightbulb.command("pg_restore", "Restore database from attached dump file.", aliases=["restore"])
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def restore_db(ctx: SnedPrefixContext) -> None:
     if not ctx.attachments or not ctx.attachments[0].filename.endswith(".pgdmp"):
         embed = hikari.Embed(
             title="❌ No valid attachment",
             description=f"Required dump-file attachment not found. Expected a `.pgdmp` file.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed)
 
@@ -332,7 +341,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
         embed = hikari.Embed(
             title="❌ Fatal Error",
             description=f"Failed to load database backup, database corrupted. Shutting down as a security measure...",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed)
         return await ctx.app.close()
@@ -342,7 +351,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
         embed = hikari.Embed(
             title="❌ Fatal Error",
             description=f"Failed to load database backup, database corrupted. Shutdown recommended.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed)
 

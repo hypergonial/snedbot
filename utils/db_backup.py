@@ -1,8 +1,8 @@
 import datetime
-from io import TextIOWrapper
 import logging
 import os
 import platform
+from io import TextIOWrapper
 from pathlib import Path
 
 import hikari

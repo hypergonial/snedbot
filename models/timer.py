@@ -1,6 +1,6 @@
 import typing as t
-import attr
 
+import attr
 import hikari
 
 

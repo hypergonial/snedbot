@@ -1,22 +1,23 @@
 import asyncio
-from io import BytesIO
 import logging
 import random
 from enum import IntEnum
+from io import BytesIO
 from pathlib import Path
 from textwrap import fill
-from PIL import Image, ImageDraw, ImageFont
 from typing import Optional
 
 import aiohttp
 import hikari
+import Levenshtein as lev
 import lightbulb
 import miru
+from PIL import Image, ImageDraw, ImageFont
+
+from etc import constants as const
+from models import SnedBot, SnedSlashContext
 from models.context import SnedUserContext
 from utils import helpers
-from models import SnedBot
-from models import SnedSlashContext
-import Levenshtein as lev
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +267,7 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Invoking self",
             description=f"I'm sorry, but how would that even work?",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -274,7 +275,7 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="Tic Tac Toe!",
             description=f"**{ctx.options.user.username}** was challenged for a round of tic tac toe by **{ctx.member.username}**!\nFirst to a row of **{size} wins!**\nIt is **{ctx.member.username}**'s turn!",
-            color=ctx.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         embed.set_thumbnail(helpers.get_display_avatar(ctx.member))
 
@@ -286,7 +287,7 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Invalid user",
             description=f"Sorry, but you cannot play with a bot.. yet...",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -312,7 +313,7 @@ async def typeracer(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🏁 Typeracing begins in 10 seconds!",
         description="Prepare your keyboard of choice!",
-        color=ctx.app.embed_blue,
+        color=const.EMBED_BLUE,
     )
     await ctx.respond(embed=embed)
 
@@ -340,7 +341,7 @@ async def typeracer(ctx: SnedSlashContext) -> None:
 
         embed = hikari.Embed(
             description="🏁 Type in the text from above as fast as you can!",
-            color=ctx.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         await ctx.respond(embed=embed, attachment=hikari.Bytes(buffer.getvalue(), "sned_typerace.png"))
 
@@ -376,7 +377,7 @@ async def typeracer(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="🏁 Typeracing results",
             description="Nobody was able to complete the typerace within **60** seconds. Typerace cancelled.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed)
 
@@ -384,7 +385,7 @@ async def typeracer(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="🏁 First Place",
             description=f"**{list(winners.keys())[0]}** finished first, everyone else has **15 seconds** to submit their reply!",
-            color=ctx.app.embed_green,
+            color=const.EMBED_GREEN,
         )
         await ctx.respond(embed=embed)
         await asyncio.sleep(15.0)
@@ -395,7 +396,7 @@ async def typeracer(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="🏁 Typeracing results",
             description=desc,
-            color=ctx.app.embed_green,
+            color=const.EMBED_GREEN,
         )
         await ctx.respond(embed=embed)
 
@@ -445,7 +446,7 @@ async def funfact(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🤔 Did you know?",
         description=f"{random.choice(fun_facts)}",
-        color=ctx.app.embed_blue,
+        color=const.EMBED_BLUE,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
@@ -460,7 +461,7 @@ async def penguinfact(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🐧 Penguin Fact",
         description=f"{random.choice(penguin_facts)}",
-        color=ctx.app.embed_blue,
+        color=const.EMBED_BLUE,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
@@ -489,7 +490,7 @@ async def dice(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title=f"🎲 Rolled the {'die' if amount == 1 else 'dice'}!",
         description=f"**Results (`{amount}d{sides}`):** {calc}",
-        color=ctx.app.embed_blue,
+        color=const.EMBED_BLUE,
     )
     await ctx.respond(embed=embed)
 
@@ -503,13 +504,13 @@ async def randomcat(ctx: SnedSlashContext) -> None:
             if response.status == 200:
                 catjson = await response.json()
 
-                embed = hikari.Embed(title="🐱 Random kitten", color=ctx.app.embed_blue)
+                embed = hikari.Embed(title="🐱 Random kitten", color=const.EMBED_BLUE)
                 embed.set_image(catjson[0]["url"])
             else:
                 embed = hikari.Embed(
                     title="🐱 Random kitten",
                     description="Oops! Looks like the cat delivery service is unavailable! Check back later.",
-                    color=ctx.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
 
             embed = helpers.add_embed_footer(embed, ctx.member)
@@ -525,13 +526,13 @@ async def randomdog(ctx: SnedSlashContext) -> None:
             if response.status == 200:
                 dogjson = await response.json()
 
-                embed = hikari.Embed(title="🐶 Random doggo", color=ctx.app.embed_blue)
+                embed = hikari.Embed(title="🐶 Random doggo", color=const.EMBED_BLUE)
                 embed.set_image(dogjson[0]["url"])
             else:
                 embed = hikari.Embed(
                     title="🐶 Random doggo",
                     description="Oops! Looks like the dog delivery service is unavailable! Check back later.",
-                    color=ctx.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
 
             embed = helpers.add_embed_footer(embed, ctx.member)
@@ -553,7 +554,7 @@ async def randomfox(ctx: SnedSlashContext) -> None:
                 embed = hikari.Embed(
                     title="🦊 Random fox",
                     description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
-                    color=ctx.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
 
             embed = helpers.add_embed_footer(embed, ctx.member)
@@ -575,7 +576,7 @@ async def randomotter(ctx: SnedSlashContext) -> None:
                 embed = hikari.Embed(
                     title="🦦 Random otter",
                     description="Oops! Looks like the otter delivery service is unavailable! Check back later.",
-                    color=ctx.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
 
             embed = helpers.add_embed_footer(embed, ctx.member)
@@ -607,7 +608,7 @@ async def eightball(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title=f"🎱 {ctx.options.question}",
         description=f"{random.choice(answers)}",
-        color=ctx.app.embed_blue,
+        color=const.EMBED_BLUE,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
@@ -633,13 +634,13 @@ async def wiki(ctx: SnedSlashContext) -> None:
             embed = hikari.Embed(
                 title=f"Wikipedia: {ctx.options.query}",
                 description=desc,
-                color=ctx.app.misc_color,
+                color=const.MISC_COLOR,
             )
         else:
             embed = hikari.Embed(
                 title="❌ No results",
                 description="Could not find anything related to your query.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
         await ctx.respond(embed=embed)
 

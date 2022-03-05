@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import hikari
-import lightbulb
 import typing as t
 
+import hikari
+import lightbulb
+
+import etc.constants as con
 from models.context import SnedSlashContext
-import constants as con
 
 if t.TYPE_CHECKING:
     from models import SnedBot

@@ -1,8 +1,9 @@
-import miru
-from miru.ext import nav
-from typing import List, Union, Optional
+from typing import List, Optional, Union
+
 import hikari
 import lightbulb
+import miru
+from miru.ext import nav
 
 
 class StopSelect(miru.Select):
@@ -28,7 +29,7 @@ class AuthorOnlyView(miru.View):
             embed = hikari.Embed(
                 title="❌ Oops!",
                 description="A magical barrier is stopping you from interacting with this component menu!",
-                color=self.lctx.app.error_color,
+                color=self.lconst.ERROR_COLOR,
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -57,7 +58,7 @@ class AuthorOnlyNavigator(nav.NavigatorView):
             embed = hikari.Embed(
                 title="❌ Oops!",
                 description="A magical barrier is stopping you from interacting with this navigation menu!",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 

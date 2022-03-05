@@ -1,6 +1,6 @@
-import attr
 from typing import List, Optional
 
+import attr
 import hikari
 
 

@@ -7,8 +7,8 @@ import time
 import traceback
 import typing as t
 from collections import deque
-import hikari
 
+import hikari
 import lightbulb
 import miru
 

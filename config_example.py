@@ -1,5 +1,6 @@
-import attr
 import typing as t
+
+import attr
 
 """
 Configuration file example for the Discord bot Sned.

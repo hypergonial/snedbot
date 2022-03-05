@@ -1,15 +1,15 @@
 from __future__ import annotations
-from difflib import get_close_matches
+
 import enum
+import typing as t
+from difflib import get_close_matches
 from itertools import chain
 
-import typing as t
-
 import hikari
+import Levenshtein as lev
 
 from models.errors import TagAlreadyExists, TagNotFound
 from models.tag import Tag
-import Levenshtein as lev
 
 if t.TYPE_CHECKING:
     from models import SnedBot

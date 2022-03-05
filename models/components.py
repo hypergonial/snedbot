@@ -1,6 +1,7 @@
-import miru
-import hikari
 import typing as t
+
+import hikari
+import miru
 
 
 class BooleanButton(miru.Button):

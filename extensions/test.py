@@ -4,11 +4,13 @@ import logging
 import hikari
 import lightbulb
 import miru
+import perspective
 from miru.ext import nav
+
+from etc import constants as const
+from models import SnedSlashContext
 from models.bot import SnedBot
 from utils import helpers
-import perspective
-from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 

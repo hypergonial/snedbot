@@ -1,14 +1,14 @@
 import asyncio
 import datetime
 import json
-from typing import TypeVar, Union, Optional, Dict, Tuple
+from typing import Dict, Optional, Tuple, TypeVar, Union
 
 import hikari
 import lightbulb
 
+from etc import get_perm_str
 from models import SnedBot
 from utils import helpers
-from etc import get_perm_str
 
 userlog = lightbulb.Plugin("Logging", include_datastore=True)
 

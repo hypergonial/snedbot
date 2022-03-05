@@ -6,12 +6,11 @@ from typing import Any, Dict
 import hikari
 import lightbulb
 import miru
-from models import events
-from models import SnedBot
-from models import Timer
+
+from etc import constants as const
+from models import SnedBot, SnedSlashContext, Timer, events
 from models.views import AuthorOnlyNavigator
 from utils import helpers
-from models import SnedSlashContext
 
 reminders = lightbulb.Plugin(name="Reminders")
 
@@ -101,7 +100,7 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Reminder too long",
             description="Your reminder cannot exceed **1000** characters!",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -112,7 +111,7 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Error: Invalid data entered",
             description=f"Your timeformat is invalid! \n**Error:** {error}",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -120,7 +119,7 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Error: Invalid data entered",
             description="Sorry, but that's a bit too far in the future.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -128,14 +127,14 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Error: Invalid data entered",
             description="Sorry, but that's a bit too short, reminders must last longer than `10` seconds.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     embed = hikari.Embed(
         title="✅ Reminder set",
         description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{ctx.options.message}",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
 
     reminder_data = {
@@ -175,14 +174,14 @@ async def reminder_del(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Reminder not found",
             description=f"Cannot find reminder with ID **{ctx.options.id}**.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     embed = hikari.Embed(
         title="✅ Reminder deleted",
         description=f"Reminder **{ctx.options.id}** has been deleted.",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.respond(embed=embed)
 
@@ -213,7 +212,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
         reminders = [reminders[i * 10 : (i + 1) * 10] for i in range((len(reminders) + 10 - 1) // 10)]
 
         pages = [
-            hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=ctx.app.embed_blue)
+            hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=const.EMBED_BLUE)
             for content in reminders
         ]
         navigator = AuthorOnlyNavigator(ctx, pages=pages)
@@ -223,7 +222,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="✉️ No pending reminders!",
             description="You have no pending reminders. You can create one via `/reminder create`!",
-            color=ctx.app.warn_color,
+            color=const.WARN_COLOR,
         )
         await ctx.respond(embed=embed)
 

@@ -7,11 +7,12 @@ import typing as t
 import hikari
 import lightbulb
 import miru
-import models
-from etc.settings_static import *
-from etc.emojis import *
 from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
 from miru.abc import *
+
+import models
+from etc import constants as const
+from etc.settings_static import *
 from models.bot import SnedBot
 from models.components import *
 from models.context import SnedSlashContext
@@ -242,7 +243,7 @@ class SettingsView(models.AuthorOnlyView):
             )
 
             options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL)
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
                 for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
                 if isinstance(channel, hikari.TextableGuildChannel)
             ]
@@ -282,12 +283,12 @@ class SettingsView(models.AuthorOnlyView):
             embed = hikari.Embed(
                 title="Reports Settings",
                 description="Select a role to add to the list of roles that will be mentioned when a new report is made.",
-                color=self.last_ctx.app.embed_blue,
+                color=self.last_const.EMBED_BLUE,
             )
 
             options = []
             for role in unadded_roles:
-                options.append(miru.SelectOption(label=role.name, value=role.id, emoji=MENTION))
+                options.append(miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION))
 
             try:
                 role = await ask_settings(
@@ -304,7 +305,7 @@ class SettingsView(models.AuthorOnlyView):
                 embed = hikari.Embed(
                     title="❌ Role not found.",
                     description="Unable to locate role. Please type a role mention or ID.",
-                    color=self.last_ctx.app.error_color,
+                    color=self.last_const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Reports")
 
@@ -313,12 +314,12 @@ class SettingsView(models.AuthorOnlyView):
             embed = hikari.Embed(
                 title="Reports Settings",
                 description="Remove a role from the list of roles that is mentioned when a new report is made.",
-                color=self.last_ctx.app.embed_blue,
+                color=self.last_const.EMBED_BLUE,
             )
 
             options = []
             for role in pinged_roles:
-                options.append(miru.SelectOption(label=role.name, value=role.id, emoji=MENTION))
+                options.append(miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION))
 
             try:
                 role = await ask_settings(
@@ -339,7 +340,7 @@ class SettingsView(models.AuthorOnlyView):
                 embed = hikari.Embed(
                     title="❌ Role not found.",
                     description="Unable to locate role. Please type a role mention or ID.",
-                    color=self.last_ctx.app.error_color,
+                    color=self.last_const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Reports")
 
@@ -430,7 +431,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         )
         buttons = [
             BooleanButton(state=is_enabled, label="Enable", disabled=not starboard_channel),
-            OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Set Channel", emoji=CHANNEL),
+            OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Set Channel", emoji=const.EMOJI_CHANNEL),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Limit", emoji="⭐"),
             OptionButton(
                 style=hikari.ButtonStyle.SUCCESS,
@@ -529,7 +530,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             )
 
             options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL) for channel in all_channels
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
+                for channel in all_channels
             ]
 
             try:
@@ -566,11 +568,12 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description="Select a new channel to be added to the list of excluded channels. Users will not be able to star messages from these channels.",
-                color=self.last_ctx.app.embed_blue,
+                color=self.last_const.EMBED_BLUE,
             )
 
             options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL) for channel in included_channels
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
+                for channel in included_channels
             ]
 
             try:
@@ -597,11 +600,12 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description="Remove a channel from the list of excluded channels.",
-                color=self.last_ctx.app.embed_blue,
+                color=self.last_const.EMBED_BLUE,
             )
 
             options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL) for channel in excluded_channels
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
+                for channel in excluded_channels
             ]
 
             try:
@@ -698,7 +702,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         options = []
         options.append(miru.SelectOption(label="Disable", value="disable", description="Stop logging this event."))
         options += [
-            miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL)
+            miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
             for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
             if isinstance(channel, hikari.TextableGuildChannel)
         ]
@@ -745,7 +749,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed = hikari.Embed(
             title="Automoderation Settings",
             description="Below you can see a summary of the current automoderation settings. To see more details about a specific entry or change their settings, select it below!",
-            color=self.last_ctx.app.embed_blue,
+            color=self.last_const.EMBED_BLUE,
         )
 
         options = []
@@ -1086,7 +1090,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 match opt:
                     case "add_channel":
                         options = [
-                            miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL)
+                            miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
                             for channel in included_channels
                         ]
                         embed = hikari.Embed(
@@ -1097,7 +1101,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         return_type = hikari.TextableGuildChannel
                     case "del_channel":
                         options = [
-                            miru.SelectOption(label=channel.name, value=channel.id, emoji=CHANNEL)
+                            miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
                             for channel in excluded_channels
                         ]
                         embed = hikari.Embed(
@@ -1108,7 +1112,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         return_type = hikari.TextableGuildChannel
                     case "add_role":
                         options = [
-                            miru.SelectOption(label=role.name, value=role.id, emoji=MENTION) for role in included_roles
+                            miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION)
+                            for role in included_roles
                         ]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
@@ -1118,7 +1123,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         return_type = hikari.Role
                     case "del_role":
                         options = [
-                            miru.SelectOption(label=role.name, value=role.id, emoji=MENTION) for role in excluded_roles
+                            miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION)
+                            for role in excluded_roles
                         ]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",

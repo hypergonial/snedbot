@@ -6,20 +6,20 @@ import pathlib
 import typing as t
 
 import asyncpg
-import db_backup
 import hikari
 import lightbulb
 import miru
 import perspective
 from hikari.snowflakes import Snowflake
 from lightbulb.ext import tasks
+
+import utils.db_backup as db_backup
+from config import Config
 from utils import cache, helpers, scheduler
 from utils.config_handler import ConfigHandler
 from utils.tasks import IntervalLoop
 
 from .context import *
-
-from config import Config
 
 
 async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[t.Tuple[str], str]:
@@ -92,7 +92,7 @@ class SnedBot(lightbulb.BotApp):
 
         # Some global variables
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
-        self._db_backup_loop = IntervalLoop(self.backup_bot_db, hours=24.0)
+        self._db_backup_loop = IntervalLoop(self.backup_db, hours=24.0)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
         self._initial_guilds: t.List[Snowflake] = []
@@ -310,7 +310,7 @@ class SnedBot(lightbulb.BotApp):
         await self.db_cache.wipe(event.guild_id)
         logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
 
-    async def backup_bot_db(self) -> None:
+    async def backup_db(self) -> None:
         if self.skip_first_db_backup:
             logging.info("Skipping database backup for this day...")
             self.skip_first_db_backup = False
@@ -325,9 +325,9 @@ class SnedBot(lightbulb.BotApp):
                 f"Database Backup: {helpers.format_dt(helpers.utcnow())}",
                 attachment=file,
             )
-            return logging.info("Daily database backup complete, database backed up to specified Discord channel.")
+            return logging.info("Database backup complete, database backed up to specified Discord channel.")
 
-        logging.info("Daily database backup complete.")
+        logging.info("Database backup complete.")
 
     @functools.wraps(lightbulb.BotApp.run)
     def run(self, *args, **kwargs) -> None:

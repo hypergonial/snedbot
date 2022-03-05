@@ -3,9 +3,11 @@ import logging
 
 import hikari
 import lightbulb
-from models.bot import SnedBot
-from models import SnedSlashContext
+
+from etc import constants as const
 from etc import get_perm_str
+from models import SnedSlashContext
+from models.bot import SnedBot
 
 logger = logging.getLogger(__name__)
 
@@ -84,14 +86,14 @@ async def troubleshoot(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="✅ No problems found!",
             description="If you believe there is an issue with Sned, found a bug, or simply have a question, please join the [support server!](https://discord.gg/KNKr8FPmJa)",
-            color=ctx.app.embed_green,
+            color=const.EMBED_GREEN,
         )
     else:
         content = "\n".join(content)
         embed = hikari.Embed(
             title="Uh Oh!",
             description=f"It looks like there may be some issues with the configuration. Please review the list below!\n\n{content}\n\nIf you need any assistance resolving these issues, please join the [support server!](https://discord.gg/KNKr8FPmJa)",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
 
     await ctx.mod_respond(embed=embed)

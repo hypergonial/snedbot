@@ -1,12 +1,14 @@
 import logging
+import typing as t
 
 import hikari
 import lightbulb
 import miru
+
+from etc import constants as const
+from models import SnedSlashContext
 from models.bot import SnedBot
 from utils import helpers
-import typing as t
-from models import SnedSlashContext
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +56,7 @@ async def report_error(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="❌ Oops!",
         description=f"It looks like the moderators of **{guild.name}** did not enable this functionality.",
-        color=ctx.app.error_color,
+        color=const.ERROR_COLOR,
     )
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -64,7 +66,7 @@ async def report_perms_error(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="❌ Oops!",
         description=f"It looks like I do not have permissions to create a message in the reports channel. Please notify a moderator!",
-        color=ctx.app.error_color,
+        color=const.ERROR_COLOR,
     )
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -75,7 +77,7 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
         embed = hikari.Embed(
             title="❌ Huh?",
             description=f"I'm not sure how that would work...",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -121,13 +123,13 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
 **Reported User:**  {member.mention} `({member.id})`
 **Reason:** ```{modal.reason}```
 **Additional Context:** ```{modal.info or "Not provided."}```""",
-        color=ctx.app.warn_color,
+        color=const.WARN_COLOR,
     )
 
     feedback_embed = hikari.Embed(
         title="✅ Report Submitted",
         description="A moderator will review your report shortly!",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
 
     components = hikari.UNDEFINED

@@ -3,18 +3,18 @@ from __future__ import annotations
 import asyncio
 import datetime
 import re
-from typing import TYPE_CHECKING, Optional, TypeVar, Union, List, Any
+from typing import TYPE_CHECKING, Any, List, Optional, TypeVar, Union
 
 import hikari
 import lightbulb
-from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
 import miru
+from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
 
 import models
 from models import errors
+from models.components import *
 from models.context import SnedSlashContext
 from models.db_user import User
-from models.components import *
 
 if TYPE_CHECKING:
     from extensions.settings import SettingsView
@@ -175,7 +175,7 @@ async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embe
 **• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}`
 **• Roles:** `-`
 *Note: This user is not a member of this server*""",
-            color=ctx.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         embed.set_thumbnail(user.display_avatar_url)
         user = await ctx.app.rest.fetch_user(user.id)
@@ -261,14 +261,6 @@ def can_harm(
     return True
 
 
-def get_jump_url(message: hikari.Message):
-    """
-    Get jump URL for a message.
-    """
-    guild_id = "@me" if not message.guild_id else message.guild_id
-    return f"https://discord.com/channels/{guild_id}/{message.channel_id}/{message.id}"
-
-
 def is_url(string: str, *, fullmatch: bool = True) -> bool:
     """
     Returns True if the provided string is an URL, otherwise False.
@@ -295,33 +287,12 @@ def is_invite(string: str, *, fullmatch: bool = True) -> bool:
     return False
 
 
-def get_or_fetch_user(bot: hikari.GatewayBot, user_id: int):
-    user = bot.cache.get_user(user_id)
-    if not user:
-        bot.rest.fetch_user(user_id)
-    return user
-
-
-def is_member(user: hikari.PartialUser) -> bool:
+def is_member(user: hikari.PartialUser) -> bool:  # Such useful
+    """Determine if the passed object is a member or not, otherwise raise an error."""
     if isinstance(user, hikari.Member):
         return True
 
     raise errors.MemberExpectedError(f"Expected an instance of hikari.Member, not {user.__class__.__name__}!")
-
-
-async def resolve_response(response: Union[lightbulb.ResponseProxy, hikari.Message]) -> hikari.Message:
-    """
-    Resolve a potential ResponseProxy into a hikari message object. If a hikari.Message is passed, it is returned directly.
-    """
-    if isinstance(response, hikari.Message):
-        return response
-    elif isinstance(response, lightbulb.ResponseProxy):
-        return await response.message()
-    else:
-        raise TypeError(f"response must be of type hikari.Message or lightbulb.ResponseProxy, not {type(response)}")
-
-
-T = TypeVar("T")
 
 
 async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Optional[hikari.Message]:
@@ -331,7 +302,7 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
         embed = hikari.Embed(
             title="❌ Invalid link",
             description="This does not appear to be a valid message link! You can get a message's link by right-clicking it and selecting `Copy Message Link`!",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return None
@@ -345,7 +316,7 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
         embed = hikari.Embed(
             title="❌ Invalid link",
             description="The message seems to be from another server! Please copy a message link from this server!",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return None
@@ -362,120 +333,12 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
         embed = hikari.Embed(
             title="❌ Unknown message",
             description="Could not find message with this link. Ensure the link is valid, and that the bot has permissions to view the channel.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return None
 
     return message
-
-
-async def ask(
-    ctx: Union[lightbulb.Context, miru.Context],
-    *,
-    options: List[miru.SelectOption],
-    return_type: T,
-    embed_or_content: Union[str, hikari.Embed],
-    placeholder: str = None,
-    ignore: Optional[List[Any]] = None,
-    message: Optional[hikari.Message] = None,
-) -> Union[T, Any]:
-    """A function that abstracts away the limitations of select menus
-    by falling back to a text input from the user if limits are exceeded.
-
-    Parameters
-    ----------
-    ctx : lightbulb.Context
-        The lightbulb context to use for converters.
-    options : List[miru.SelectOption]
-        A list of select options to use, if not falling back for text input.
-    return_type : T
-        The expected return type, an appropriate converter will be used.
-    embed_or_content : Union[str, hikari.Embed]
-        The embed or content to use for the prompt.
-    placeholder : str, optional
-        The select menu's placeholder, by default None
-    ignore : List[Any], optional
-        Return values to skip conversion for, by default None
-    message : Optional[hikari.Message], optional
-        If provided, a message to edit, by default None
-
-    Returns
-    -------
-    Union[T, Any]
-        An object corresponding to the specified return type, or raw value if in ignore.
-
-    Raises
-    ------
-    TypeError
-        An invalid return_type was provided or conversion to it failed.
-    asyncio.TimeoutError
-        Timed out without a response.
-    """
-    if return_type not in CONVERTER_TYPE_MAPPING.keys():
-        return TypeError(
-            f"return_type must be of types: {' '.join(list(CONVERTER_TYPE_MAPPING.keys()))}, not {return_type}"
-        )
-
-    # Get appropiate converter for return type
-    converter: lightbulb.BaseConverter = CONVERTER_TYPE_MAPPING[return_type](ctx)
-
-    # If the select will result in a Bad Request or not
-    invalid_select: bool = False
-    if len(options) > 25:
-        invalid_select = True
-    else:
-        for option in options:
-            if len(option.label) > 100 or (option.description and len(option.description) > 100):
-                invalid_select = True
-
-    if isinstance(embed_or_content, str):
-        content = embed_or_content
-        embeds = []
-    elif isinstance(embed_or_content, hikari.Embed):
-        content = ""
-        embeds = [embed_or_content]
-    else:
-        raise TypeError(f"embed_or_content must be of type str or hikari.Embed, not {type(embed_or_content)}")
-
-    if not invalid_select:
-        view = models.AuthorOnlyView(ctx)
-        view.add_item(models.StopSelect(placeholder=placeholder, options=options))
-
-        if message:
-            message = await message.edit(content=content, embeds=embeds, components=view.build())
-        else:
-            response = await ctx.respond(content=content, embeds=embeds, components=view.build())
-            message = await resolve_response(response)
-
-        view.start(message)
-        await view.wait()
-        if view.children[0].values:
-            if ignore and view.children[0].values[0] in ignore:
-                return view.children[0].values[0]
-            return await converter.convert(view.children[0].values[0])
-
-        raise asyncio.TimeoutError("View timed out without response.")
-
-    else:
-        if embeds:
-            embeds[0].description = f"{embeds[0].description}\n\nPlease type your response below!"
-        elif content:
-            content = f"{content}\n\nPlease type your response below!"
-
-        if message:
-            message = await message.edit(content=content, embeds=embeds)
-        else:
-            response = await ctx.respond(content=content, embeds=embeds)
-            message = await resolve_response(response)
-
-        predicate = lambda e: e.author_id == ctx.author.id and e.channel_id == ctx.channel_id
-
-        event = await ctx.app.wait_for(hikari.MessageCreateEvent, timeout=120.0, predicate=predicate)
-        if event.content:
-            if ignore and event.content in ignore:
-                return event.content
-            return await converter.convert(event.content)
 
 
 async def maybe_delete(message: hikari.Message) -> None:

@@ -1,15 +1,15 @@
 import logging
-import asyncpg
+import typing as t
 
+import asyncpg
 import hikari
 import lightbulb
 import miru
-from models import SnedBot
-import models
-from models import SnedSlashContext
-from utils import helpers
-import typing as t
 
+import models
+from etc import constants as const
+from models import SnedBot, SnedSlashContext
+from utils import helpers
 from utils.ratelimiter import BucketType, RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -175,7 +175,7 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Error: No role-buttons",
             description="There are no role-buttons for this server.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -195,7 +195,7 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="Rolebuttons on this server:",
             description=page,
-            color=ctx.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         embeds.append(embed)
 
@@ -219,7 +219,7 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Not found",
             description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -233,7 +233,7 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="✅ Deleted!",
         description=f"Rolebutton was successfully deleted!",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.respond(embed=embed)
 
@@ -345,14 +345,14 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="✅ Done!",
         description=f"A new rolebutton for role {ctx.options.role.mention} in channel `#{channel.name}` has been created!",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.respond(embed=embed)
 
     embed = hikari.Embed(
         title="❇️ Role-Button was added",
         description=f"A role-button for role {ctx.options.role.mention} has been created by {ctx.author.mention} in channel <#{channel.id}>.\n\n__Note:__ Anyone who can see this channel can now obtain this role!",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     try:
         await ctx.app.get_plugin("Logging").d.actions.log("roles", embed, ctx.guild.id)

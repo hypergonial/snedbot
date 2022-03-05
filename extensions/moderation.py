@@ -1,19 +1,21 @@
-import logging
-from typing import Dict, Union, Optional, List
 import datetime
 import enum
+import logging
+import re
+from typing import Dict, List, Optional, Union
 
 import hikari
 import lightbulb
-from models.bot import SnedBot
+
 import models
+from etc import constants as const
+from models import SnedSlashContext
+from models.bot import SnedBot
 from models.context import SnedContext, SnedUserContext
 from models.db_user import User
 from models.errors import BotRoleHierarchyError, RoleHierarchyError
 from models.timer import Timer
-from models import SnedSlashContext
 from utils import helpers
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -689,7 +691,7 @@ async def purge(ctx: SnedSlashContext) -> None:
             embed = hikari.Embed(
                 title="❌ Invalid regex passed",
                 description=f"Failed parsing regex: ```{str(error)}```",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return await ctx.invoked.cooldown_manager.reset_cooldown(ctx)
@@ -744,21 +746,21 @@ async def purge(ctx: SnedSlashContext) -> None:
             embed = hikari.Embed(
                 title="🗑️ Messages purged",
                 description=f"**{len(messages)}** messages have been deleted.",
-                color=ctx.app.embed_green,
+                color=const.EMBED_GREEN,
             )
 
         except hikari.BulkDeleteError as error:
             embed = hikari.Embed(
                 title="🗑️ Messages purged",
                 description=f"Only **{len(error.messages_deleted)}/{len(messages)}** messages have been deleted due to an error.",
-                color=ctx.app.warn_color,
+                color=const.WARN_COLOR,
             )
             raise error
     else:
         embed = hikari.Embed(
             title="🗑️ Not found",
             description=f"No messages matched the specified criteria from the past two weeks!",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
 
     await ctx.mod_respond(embed=embed)
@@ -794,7 +796,7 @@ async def journal_get(ctx: SnedSlashContext) -> None:
             embed = hikari.Embed(
                 title="📒 " + "Journal entries for this user:",
                 description=page,
-                color=ctx.app.embed_blue,
+                color=const.EMBED_BLUE,
             )
             embeds.append(embed)
 
@@ -807,7 +809,7 @@ async def journal_get(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="📒 Journal entries for this user:",
             description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {ctx.options.user}` ",
-            color=ctx.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         await ctx.mod_respond(embed=embed)
 
@@ -824,7 +826,7 @@ async def journal_add(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="✅ Journal entry added!",
         description=f"Added a new journal entry to user **{ctx.options.user}**. You can view this user's journal via the command `/journal get {ctx.options.user}`.",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.mod_respond(embed=embed)
 
@@ -859,7 +861,7 @@ async def warns_list(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title=f"{ctx.options.user}'s warnings",
         description=f"**Warnings:** `{warns}`",
-        color=ctx.app.warn_color,
+        color=const.WARN_COLOR,
     )
     embed.set_thumbnail(ctx.options.user.display_avatar_url)
     await ctx.mod_respond(embed=embed)
@@ -882,12 +884,12 @@ async def warns_clear(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="✅ Warnings cleared",
         description=f"**{ctx.options.user}**'s warnings have been cleared.\n**Reason:** ```{reason}```",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     log_embed = hikari.Embed(
         title="⚠️ Warnings cleared.",
         description=f"{ctx.options.user.mention}'s warnings have been cleared by {ctx.author.mention}.\n**Reason:** ```{reason}```",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
 
     await add_note(ctx.options.user, ctx.guild_id, f"⚠️ **Warnings cleared by {ctx.author}:** {reason}")
@@ -926,7 +928,7 @@ async def timeout_cmd(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ User already timed out",
             description="User is already timed out. Use `/timeouts remove` to remove it.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -938,7 +940,7 @@ async def timeout_cmd(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Invalid data entered",
             description="Your entered timeformat is invalid.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -949,7 +951,7 @@ async def timeout_cmd(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🔇 " + "User timed out",
         description=f"**{member}** has been timed out until {helpers.format_dt(duration)}.\n**Reason:** ```{reason}```",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.mod_respond(embed=embed)
 
@@ -981,7 +983,7 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ User not timed out",
             description="This user is not timed out.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -991,7 +993,7 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🔉 " + "Timeout removed",
         description=f"**{member}**'s timeout was removed.\n**Reason:** ```{reason}```",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.mod_respond(embed=embed)
 
@@ -1029,7 +1031,7 @@ async def ban_cmd(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Invalid data entered",
             description="Your entered timeformat is invalid.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -1171,7 +1173,7 @@ async def massban(ctx: SnedSlashContext) -> None:
             embed = hikari.Embed(
                 title="❌ Invalid regex passed",
                 description=f"Failed parsing regex: ```{str(error)}```",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             await ctx.invoked.cooldown_manager.reset_cooldown(ctx)
@@ -1230,7 +1232,7 @@ async def massban(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ No members match criteria",
             description=f"No members found that match all criteria.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -1251,17 +1253,17 @@ async def massban(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="⚠️ Confirm Massban",
         description=f"You are about to ban **{len(to_ban)}** users. Are you sure you want to do this? Please review the attached list above for a full list of matched users. The user journals will not be updated.",
-        color=ctx.app.warn_color,
+        color=const.WARN_COLOR,
     )
     confirm_embed = hikari.Embed(
         title="Starting Massban...",
         description="This could take some time...",
-        color=ctx.app.warn_color,
+        color=const.WARN_COLOR,
     )
     cancel_embed = hikari.Embed(
         title="Massban interrupted",
         description="Massban session was terminated prematurely. No users were banned.",
-        color=ctx.app.error_color,
+        color=const.ERROR_COLOR,
     )
 
     is_ephemeral = (await get_settings(ctx.guild_id))["is_ephemeral"]
@@ -1292,7 +1294,7 @@ async def massban(ctx: SnedSlashContext) -> None:
     log_embed = hikari.Embed(
         title="🔨 Smartban concluded",
         description=f"Banned **{count}/{len(to_ban)}** users.\n**Moderator:** `{ctx.author} ({ctx.author.id if ctx.author else '0'})`\n**Reason:** ```{reason}```",
-        color=ctx.app.error_color,
+        color=const.ERROR_COLOR,
     )
     file = hikari.Bytes(content.encode("utf-8"), "members_banned.txt")
     await userlog.d.actions.log("ban", log_embed, ctx.guild_id, file=file, bypass=True)
@@ -1300,7 +1302,7 @@ async def massban(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="✅ Smartban finished",
         description=f"Banned **{count}/{len(to_ban)}** users.",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.mod_respond(embed=embed)
 

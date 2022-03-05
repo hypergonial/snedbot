@@ -1,15 +1,17 @@
-from difflib import get_close_matches
 import logging
+import typing as t
+from difflib import get_close_matches
 
 import hikari
 import lightbulb
-import psutil
 import miru
+import psutil
 import pytz
-import typing as t
+
+from etc import constants as const
+from models import SnedBot
 from models.context import SnedMessageContext, SnedSlashContext
 from utils import helpers
-from models import SnedBot
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ async def ping(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🏓 Pong!",
         description="Latency: `{latency}ms`".format(latency=round(ctx.app.heartbeat_latency * 1000)),
-        color=ctx.app.misc_color,
+        color=const.MISC_COLOR,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
@@ -77,7 +79,7 @@ async def embed(ctx: SnedSlashContext) -> None:
             embed = hikari.Embed(
                 title="❌ Invalid URL",
                 description=f"Provided an invalid URL.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -124,7 +126,7 @@ async def about(ctx: SnedSlashContext) -> None:
 **• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
 **• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)\n
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
-        color=ctx.app.embed_blue,
+        color=const.EMBED_BLUE,
     )
     embed = helpers.add_embed_footer(embed, ctx.member)
     embed.set_thumbnail(me.avatar_url)
@@ -156,7 +158,7 @@ async def invite(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="🌟 Yay!",
             description=f"[Click here]({invite_url}) for an invite link!",
-            color=ctx.app.misc_color,
+            color=const.MISC_COLOR,
         )
         embed = helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
@@ -164,7 +166,7 @@ async def invite(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="🌟 Oops!",
             description=f"It looks like this bot is in developer mode, and not intended to be invited!",
-            color=ctx.app.misc_color,
+            color=const.MISC_COLOR,
         )
         embed = helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
@@ -185,7 +187,7 @@ async def setnick(ctx: SnedSlashContext) -> None:
     await ctx.app.rest.edit_my_member(
         ctx.guild_id, nickname=nickname, reason=f"Nickname changed via /setnick by {ctx.author}"
     )
-    embed = hikari.Embed(title="✅ Nickname changed!", color=ctx.app.embed_green)
+    embed = hikari.Embed(title="✅ Nickname changed!", color=const.EMBED_GREEN)
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
@@ -228,7 +230,7 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 **• Monetization enabled:** `{"Yes" if "MONETIZATION_ENABLED" in guild.features else "No"}`
 {f"**• Vanity URL:** {guild.vanity_url_code}" if guild.vanity_url_code else ""}
 """,
-        color=ctx.app.embed_blue,
+        color=const.EMBED_BLUE,
     )
 
     embed = helpers.add_embed_footer(embed, ctx.member)
@@ -268,7 +270,7 @@ async def echo(ctx: SnedSlashContext) -> None:
 
     await channel.send(ctx.options.text)
 
-    embed = hikari.Embed(title="✅ Message sent!", color=ctx.app.embed_green)
+    embed = hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN)
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
@@ -305,7 +307,7 @@ async def edit(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Not Authored",
             description="The bot did not author this message, thus it cannot edit it.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -328,7 +330,7 @@ async def edit(ctx: SnedSlashContext) -> None:
     content = list(modal.values.values())[0]
     await message.edit(content=content)
 
-    embed = hikari.Embed(title="✅ Message edited!", color=ctx.app.embed_green)
+    embed = hikari.Embed(title="✅ Message edited!", color=const.EMBED_GREEN)
     await modal.get_response_context().respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
@@ -347,7 +349,7 @@ async def raw(ctx: SnedMessageContext) -> None:
         embed = hikari.Embed(
             title="❌ Missing Content",
             description="Oops! It looks like this message has no content to display!",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -361,7 +363,7 @@ async def set_timezone(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Invalid Timezone",
             description="Oops! This does not look like a valid timezone! Specify your timezone as a valid `Continent/City` combination.",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -378,7 +380,7 @@ async def set_timezone(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="✅ Timezone set!",
         description=f"Your preferred timezone has been set to `{ctx.options.timezone}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
-        color=ctx.app.embed_green,
+        color=const.EMBED_GREEN,
     )
     await ctx.respond(embed=embed)
 
@@ -417,7 +419,7 @@ async def timestamp_gen(ctx: SnedSlashContext) -> None:
         embed = hikari.Embed(
             title="❌ Error: Invalid data entered",
             description=f"Your timeformat is invalid! \n**Error:** {error}",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
     style = ctx.options.style.split(" -")[0] if ctx.options.style else "f"

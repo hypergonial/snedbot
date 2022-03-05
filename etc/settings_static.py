@@ -1,5 +1,5 @@
-import miru
 import hikari
+import miru
 
 # Static values for the settings extension
 

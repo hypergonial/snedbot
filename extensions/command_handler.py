@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 import traceback
+import typing as t
 
 import hikari
 import lightbulb
+
 from etc.perms_str import get_perm_str
-import datetime
 from models import SnedContext
-from models.errors import BotRoleHierarchyError, MemberExpectedError, RoleHierarchyError
-import typing as t
 from models.bot import SnedBot
+from models.errors import (BotRoleHierarchyError, MemberExpectedError,
+                           RoleHierarchyError)
 
 logger = logging.getLogger(__name__)
 
@@ -59,14 +61,14 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             embed = hikari.Embed(
                 title="❌ Missing Permissions",
                 description=f"You require `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         elif isinstance(error, lightbulb.BotMissingRequiredPermission):
             embed = hikari.Embed(
                 title="❌ Bot Missing Permissions",
                 description=f"The bot requires `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -74,7 +76,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         embed = hikari.Embed(
             title="🕘 Cooldown Pending",
             description=f"Please retry in: `{datetime.timedelta(seconds=round(error.retry_after))}`",
-            color=ctx.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -84,21 +86,21 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             embed = hikari.Embed(
                 title="❌ Action timed out",
                 description=f"This command timed out.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         elif isinstance(error.original, hikari.InternalServerError):
             embed = hikari.Embed(
                 title="❌ Discord Server Error",
                 description="This action has failed due to an issue with Discord's servers. Please try again in a few moments.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         elif isinstance(error.original, hikari.ForbiddenError):
             embed = hikari.Embed(
                 title="❌ Forbidden",
                 description=f"This action has failed due to a lack of permissions.\n**Error:** ```{error.original}```",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -106,14 +108,14 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             embed = hikari.Embed(
                 title="❌ Role Hiearchy Error",
                 description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         elif isinstance(error.original, BotRoleHierarchyError):
             embed = hikari.Embed(
                 title="❌ Role Hiearchy Error",
                 description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -121,7 +123,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             embed = hikari.Embed(
                 title="❌ Member Expected",
                 description=f"Expected a user who is a member of this server.",
-                color=ctx.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -133,7 +135,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
     embed = hikari.Embed(
         title="❌ Unhandled exception",
         description=f"An error happened that should not have happened. Please [contact us](https://discord.gg/KNKr8FPmJa) with a screenshot of this message!\n**Error:** ```{error.__class__.__name__}: {error}```",
-        color=ctx.app.error_color,
+        color=const.ERROR_COLOR,
     )
     embed.set_footer(text=f"Guild: {ctx.guild_id}")
     await log_error_to_homeguild(exception_msg, ctx)
