@@ -11,6 +11,17 @@ if int(platform.python_version_tuple()[1]) < 10:
     raise RuntimeError("Python version is not 3.10 or greater.")
 
 try:
+    with open(".env") as env:
+        for line in env.readlines():
+            if not line.strip() or line.startswith("#"):
+                continue
+            os.environ[line.split("=")[0]] = line.split("=")[1].split("#")[0].strip()
+
+except FileNotFoundError:
+    logging.fatal("Failed to locate .env file. Please make sure it exists and contains valid secrets.")
+    exit()
+
+try:
     from config import Config
 except ImportError:
     logging.fatal(

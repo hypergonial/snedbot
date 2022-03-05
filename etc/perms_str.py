@@ -20,7 +20,7 @@ perms_str = {
 
 
 def get_perm_str(perm: hikari.Permissions) -> str:
-    if perm in perms_str:
-        return perms_str[perm]
+    if perm_str := perms_str.get(perm):
+        return perm_str
 
     return perm.name.replace("_", " ").title()

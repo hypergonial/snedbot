@@ -76,7 +76,7 @@ async def tag_cmd(ctx: SnedSlashContext) -> None:
             description="Cannot find tag by that name.",
             color=ctx.app.error_color,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     await ctx.respond(content=tag.content)
 
@@ -161,7 +161,7 @@ async def tag_info(ctx: SnedSlashContext) -> None:
             description="Cannot find tag by that name.",
             color=ctx.app.error_color,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @tag_info.autocomplete("name")

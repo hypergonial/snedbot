@@ -1,11 +1,11 @@
 from __future__ import annotations
 from difflib import get_close_matches
 import enum
+from itertools import chain
 
 import typing as t
 
 import hikari
-from more_itertools import flatten
 
 from models.errors import TagAlreadyExists, TagNotFound
 from models.tag import Tag
@@ -103,7 +103,7 @@ class TagHandler:
             names = [result.get("tag_name") for result in results] if results else []
 
             if results is not None:
-                names += list(flatten([result.get("tag_aliases") or [] for result in results]))
+                names += list(chain(*[result.get("tag_aliases") or [] for result in results]))
 
         return get_close_matches(name, names)
 
@@ -141,7 +141,7 @@ class TagHandler:
             names = [result.get("tag_name") for result in results] if results else []
 
             if results is not None:
-                names += list(flatten([result.get("tag_aliases") or [] for result in results]))
+                names += list(chain(*[result.get("tag_aliases") or [] for result in results]))
 
         return get_close_matches(name, names)
 

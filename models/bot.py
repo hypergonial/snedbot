@@ -68,13 +68,11 @@ class SnedBot(lightbulb.BotApp):
 
         if self.dev_mode:
             default_enabled_guilds = (config.DEBUG_GUILDS) if config.DEBUG_GUILDS else ()
-            db_name = "sned_exp"
         else:
             default_enabled_guilds = ()
-            db_name = "sned"
 
         super().__init__(
-            token=config.TOKEN,
+            token=os.getenv("TOKEN"),
             cache_settings=cache_settings,
             default_enabled_guilds=default_enabled_guilds,
             intents=intents,
@@ -85,7 +83,7 @@ class SnedBot(lightbulb.BotApp):
 
         # Initizaling configuration and database
         self._config = config
-        self._dsn = self.config.POSTGRES_DSN.format(db_name=db_name)
+        self._dsn = f"postgres://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}"
         self._pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self._dsn))
 
         # Startup lightbulb.ext.tasks and miru
@@ -119,7 +117,8 @@ class SnedBot(lightbulb.BotApp):
 
     @property
     def is_ready(self) -> bool:
-        """Indicates if the application is ready to accept instructions or not."""
+        """Indicates if the application is ready to accept instructions or not.
+        Alias for BotApp.is_alive"""
         return self.is_alive
 
     @property
@@ -148,9 +147,10 @@ class SnedBot(lightbulb.BotApp):
         """
         Start all listeners located in this class.
         """
-        self.subscribe(hikari.StartedEvent, self.on_startup)
+        self.subscribe(hikari.StartingEvent, self.on_starting)
+        self.subscribe(hikari.StartedEvent, self.on_started)
         self.subscribe(hikari.GuildAvailableEvent, self.on_guild_available)
-        self.subscribe(lightbulb.LightbulbStartedEvent, self.on_lightbulb_startup)
+        self.subscribe(lightbulb.LightbulbStartedEvent, self.on_lightbulb_started)
         self.subscribe(hikari.MessageCreateEvent, self.on_message)
         self.subscribe(hikari.StoppingEvent, self.on_stopping)
         self.subscribe(hikari.StoppedEvent, self.on_stop)
@@ -197,7 +197,12 @@ class SnedBot(lightbulb.BotApp):
             return
         self._initial_guilds.append(event.guild_id)
 
-    async def on_startup(self, event: hikari.StartedEvent) -> None:
+    async def on_starting(self, event: hikari.StartingEvent) -> None:
+        # Create all the initial tables if they do not exist already
+        with open(os.path.join(self.base_dir, "etc", "db_init.sql")) as file:
+            await self.pool.execute(file.read())
+
+    async def on_started(self, event: hikari.StartedEvent) -> None:
 
         user = self.get_me()
         self._user_id = user.id
@@ -224,7 +229,7 @@ class SnedBot(lightbulb.BotApp):
                     guild_id,
                 )
 
-    async def on_lightbulb_startup(self, event: lightbulb.LightbulbStartedEvent) -> None:
+    async def on_lightbulb_started(self, event: lightbulb.LightbulbStartedEvent) -> None:
 
         # Insert all guilds the bot is member of into the db global config on startup
         async with self.pool.acquire() as con:
