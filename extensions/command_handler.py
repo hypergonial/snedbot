@@ -9,6 +9,7 @@ import typing as t
 import hikari
 import lightbulb
 
+from etc import constants as const
 from etc.perms_str import get_perm_str
 from models import SnedContext
 from models.bot import SnedBot

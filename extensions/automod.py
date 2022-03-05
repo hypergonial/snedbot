@@ -7,7 +7,6 @@ import typing as t
 
 import hikari
 import lightbulb
-import miru
 import perspective
 
 import utils
