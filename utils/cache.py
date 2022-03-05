@@ -28,6 +28,7 @@ class Caching:
         """
         Creates an empty dict for every table in the database
         """
+        self.is_ready = False
 
         await self.bot.wait_until_started()
         records = await self.bot.pool.fetch(

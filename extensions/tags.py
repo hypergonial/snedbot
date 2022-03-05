@@ -251,7 +251,7 @@ async def tag_delalias(ctx: SnedSlashContext) -> None:
         await tags.d.tag_handler.update(tag)
         embed = hikari.Embed(
             title="✅ Alias removed",
-            description=f"Alias {ctx.options.alias.lower()} for tag {tag.name} has been deleted.",
+            description=f"Alias `{ctx.options.alias.lower()}` for tag `{tag.name}` has been deleted.",
             color=ctx.app.embed_green,
         )
         embed = helpers.add_embed_footer(embed, ctx.member)

@@ -210,7 +210,7 @@ class SettingsView(models.AuthorOnlyView):
         )
 
         buttons = [
-            BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enabled", disabled=not channel),
+            BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enable", disabled=not channel),
             OptionButton(label="Set Channel"),
             OptionButton(label="Add Role", disabled=not unadded_roles),
             OptionButton(label="Remove Role", disabled=not pinged_roles),
@@ -222,7 +222,7 @@ class SettingsView(models.AuthorOnlyView):
         if not self.value:
             return
 
-        if isinstance(self.value, tuple) and self.value[0] == "Enabled":
+        if isinstance(self.value, tuple) and self.value[0] == "Enable":
             await self.app.pool.execute(
                 """INSERT INTO reports (is_enabled, guild_id)
                 VALUES ($1, $2)
@@ -364,7 +364,12 @@ class SettingsView(models.AuthorOnlyView):
 
         embed = hikari.Embed(
             title="Moderation Settings",
-            description="Below you can see the current moderation settings, to change any of them, press the corresponding button!",
+            description="""Below you can see the current moderation settings, to change any of them, press the corresponding button!
+
+Enabling the DM-ing of users will notify them in a direct message when they are punished through any of Sned's moderation commands or auto-moderation.
+This does not apply to manually punishing them through Discord built-in commands/tools.
+
+Enabling **ephemeral responses** will show all moderation command responses in a manner where they will be invisible to every user except for the one who used the command.""",
             color=self.app.embed_blue,
         )
         buttons = []
@@ -424,7 +429,7 @@ class SettingsView(models.AuthorOnlyView):
             color=self.app.embed_blue,
         )
         buttons = [
-            BooleanButton(state=is_enabled, label="Enabled", disabled=not starboard_channel),
+            BooleanButton(state=is_enabled, label="Enable", disabled=not starboard_channel),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Set Channel", emoji=CHANNEL),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Limit", emoji="⭐"),
             OptionButton(
@@ -460,7 +465,7 @@ class SettingsView(models.AuthorOnlyView):
         if self.value is None:
             return
 
-        if isinstance(self.value, tuple) and self.value[0] == "Enabled":
+        if isinstance(self.value, tuple) and self.value[0] == "Enable":
             await self.app.pool.execute(
                 """INSERT INTO starboard (is_enabled, guild_id)
                 VALUES ($1, $2)

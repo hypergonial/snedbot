@@ -763,18 +763,19 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         if not entry:
             return
 
-        if entry.reason == "Automatic timeout extension applied." and entry.user_id == plugin.app.get_me().id:
+        if entry.reason == "Automatic timeout extension applied." and entry.user_id == plugin.app.user_id:
             return
 
         reason = entry.reason
         moderator: hikari.Member = plugin.app.cache.get_member(event.guild_id, entry.user_id)
 
-        if entry.user_id == plugin.app.get_me().id:
+        if entry.user_id == plugin.app.user_id:
             reason, moderator = strip_bot_reason(reason)
             moderator = moderator or plugin.app.get_me()
 
         mod = userlog.app.get_plugin("Moderation")
 
+        print(member.communication_disabled_until())
         if member.communication_disabled_until() is None:
             embed = hikari.Embed(
                 title=f"🔉 User timeout removed",

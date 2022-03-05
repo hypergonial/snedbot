@@ -1,5 +1,6 @@
 import ast
 import logging
+import os
 import subprocess
 import textwrap
 import traceback
@@ -249,3 +250,107 @@ async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
     await ctx.app.rest.trigger_typing(ctx.channel_id)
     await ctx.app.sync_application_commands()
     await ctx.respond("🔃 Synced application commands.")
+
+
+@dev.command()
+@lightbulb.command("sql", "Execute an SQL file.")
+@lightbulb.implements(lightbulb.PrefixCommand)
+async def run_sql(ctx: SnedPrefixContext) -> None:
+    if not ctx.attachments or not ctx.attachments[0].filename.endswith(".sql"):
+        embed = hikari.Embed(
+            title="❌ No valid attachment",
+            description=f"Expected a singular `.sql` file as attachment with `UTF-8` encoding!",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed)
+
+    await ctx.app.rest.trigger_typing(ctx.channel_id)
+    sql: str = (await ctx.attachments[0].read()).decode("utf-8")
+    print(sql)
+    return_value = await ctx.app.pool.execute(sql)
+    await ctx.event.message.add_reaction("✅")
+    await send_paginated(ctx, ctx.channel_id, str(return_value), prefix="```sql\n", suffix="```")
+
+
+@dev.command()
+@lightbulb.command("shutdown", "Shut down the bot.")
+@lightbulb.implements(lightbulb.PrefixCommand)
+async def shutdown_cmd(ctx: SnedPrefixContext) -> None:
+    confirm_payload = {"content": f"⚠️ Shutting down...", "components": []}
+    cancel_payload = {"content": "❌ Shutdown cancelled", "components": []}
+    confirmed = await ctx.confirm(
+        "Are you sure you want to shut down the application?",
+        confirm_payload=confirm_payload,
+        cancel_payload=cancel_payload,
+    )
+    if confirmed:
+        return await ctx.app.close()
+
+
+@dev.command()
+@lightbulb.option("--ignore-errors", "Ignore all errors.", type=bool, default=False)
+@lightbulb.command("pg_restore", "Restore database from attached dump file.")
+@lightbulb.implements(lightbulb.PrefixCommand)
+async def restore_db(ctx: SnedPrefixContext) -> None:
+    if not ctx.attachments or not ctx.attachments[0].filename.endswith(".pgdmp"):
+        embed = hikari.Embed(
+            title="❌ No valid attachment",
+            description=f"Required dump-file attachment not found. Expected a `.pgdmp` file.",
+            color=ctx.app.error_color,
+        )
+        return await ctx.respond(embed=embed)
+
+    await ctx.app.rest.trigger_typing(ctx.channel_id)
+
+    path = os.path.join(ctx.app.base_dir, "db_backup", "dev_pg_restore_snapshot.pgdmp")
+    with open(path, "wb") as file:
+        file.write((await ctx.attachments[0].read()))
+    try:
+        await ctx.event.message.delete()
+    except:
+        pass
+
+    # Invalidate the cache
+    ctx.app.db_cache.is_ready = False
+    ctx.app.db_cache.cache = {}
+
+    # Drop all tables
+    async with ctx.app.pool.acquire() as con:
+        records = await con.fetch(
+            """
+        SELECT * FROM pg_catalog.pg_tables 
+        WHERE schemaname='public'
+        """
+        )
+        for record in records:
+            await con.execute(f"""DROP TABLE IF EXISTS {record.get("tablename")} CASCADE""")
+
+    arg = "-e" if not ctx.options["--ignore-errors"] else ""
+    code = os.system(f"pg_restore {path} {arg} -n 'public' -j 4 -d {ctx.app._dsn}")
+
+    if code != 0 and not ctx.options["--ignore-errors"]:
+        embed = hikari.Embed(
+            title="❌ Fatal Error",
+            description=f"Failed to load database backup, database corrupted. Shutting down as a security measure...",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed)
+        return await ctx.app.close()
+
+    elif code != 0:
+        await ctx.event.message.add_reaction("❌")
+        embed = hikari.Embed(
+            title="❌ Fatal Error",
+            description=f"Failed to load database backup, database corrupted. Shutdown recommended.",
+            color=ctx.app.error_color,
+        )
+        await ctx.respond(embed=embed)
+
+    else:
+        await ctx.event.message.add_reaction("✅")
+        await ctx.respond("📥 Restored database from backup file.")
+
+    # Reinitialize the cache
+    await ctx.app.db_cache.startup()
+    # Restart scheduler
+    await ctx.app.scheduler.restart()

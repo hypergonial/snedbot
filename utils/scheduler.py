@@ -36,6 +36,18 @@ class Scheduler:
         self._timer_loop: IntervalLoop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
         self._timer_loop.start()
 
+    async def restart(self) -> None:
+        """
+        Restart the scheduler system.
+        """
+        if self._current_task is not None:
+            self._current_task.cancel()
+        self._current_task = None
+        self._current_timer = None
+        self._timer_loop.cancel()
+        self._timer_loop.start()
+        logger.info("The scheduler was restarted.")
+
     async def convert_time(
         self,
         timestr: str,

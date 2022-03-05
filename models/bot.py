@@ -209,7 +209,7 @@ class SnedBot(lightbulb.BotApp):
         self.db_cache = cache.Caching(self)
         self.global_config = ConfigHandler(self)
         self.scheduler = scheduler.Scheduler(self)
-        self.perspective = perspective.Client(self.config.PERSPECTIVE_API_KEY, do_not_store=True)
+        self.perspective = perspective.Client(os.getenv("PERSPECTIVE_API_KEY"), do_not_store=True)
         self._db_backup_loop.start()
 
         logging.info(f"Startup complete, initialized as {user}")
