@@ -164,7 +164,7 @@ class TagHandler:
             tag.content,
         )
 
-    async def get_all(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.List[Tag]:
+    async def get_all(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[Tag]]:
         """Returns a list of all tags for the specified guild.
 
         Parameters
@@ -295,7 +295,11 @@ class TagHandler:
         invoker_id = hikari.Snowflake(invoker)
 
         tags = await self.get_all(origin_id)
+        if not tags:
+            return
+
         tags_unpacked = []
+
         for tag in tags:
             """
             Unpack tag objects into a 2D list that contains all the info required about them,

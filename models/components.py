@@ -7,7 +7,9 @@ import miru
 class BooleanButton(miru.Button):
     """A boolean toggle button."""
 
-    def __init__(self, *, state: bool, label: str = None, disabled: bool = False, row: t.Optional[int] = None) -> None:
+    def __init__(
+        self, *, state: bool, label: t.Optional[str] = None, disabled: bool = False, row: t.Optional[int] = None
+    ) -> None:
         style = hikari.ButtonStyle.SUCCESS if state else hikari.ButtonStyle.DANGER
         emoji = "✔️" if state else "✖️"
 

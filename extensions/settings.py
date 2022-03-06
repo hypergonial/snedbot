@@ -8,7 +8,6 @@ import hikari
 import lightbulb
 import miru
 from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
-from miru.abc import *
 
 import models
 from etc import constants as const
@@ -99,6 +98,7 @@ class SettingsView(models.AuthorOnlyView):
         """
         Show an error screen with only a back button, and wait for input on it.
         """
+        assert self.last_ctx is not None
         self.clear_items()
         self.add_item(BackButton(parent=parent, **kwargs))
         await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
@@ -106,10 +106,12 @@ class SettingsView(models.AuthorOnlyView):
 
     async def on_timeout(self) -> None:
         """Stop waiting for input events after the view times out."""
+        assert self.last_ctx is not None
         self.value = None
         self.input_event.set()
 
         for item in self.children:
+            assert isinstance(item, (miru.Button, miru.Select))
             item.disabled = True
 
         try:
@@ -129,7 +131,9 @@ class SettingsView(models.AuthorOnlyView):
     async def quit_settings(self) -> None:
         """Exit settings menu."""
 
+        assert self.last_ctx is not None
         for item in self.children:
+            assert isinstance(item, (miru.Button, miru.Select))
             item.disabled = True
 
         try:
@@ -153,7 +157,7 @@ class SettingsView(models.AuthorOnlyView):
             
             Here you can configure various aspects of the bot, such as moderation settings, automoderator, logging options, permissions, and more. 
             Click one of the buttons below to get started!""",
-            color=self.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
 
         buttons = [
@@ -170,13 +174,18 @@ class SettingsView(models.AuthorOnlyView):
             message = await resp.message()
             self.start(message)
         else:
+            assert self.last_ctx is not None
             await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
 
         await self.wait_for_input()
+        if self.value is None:
+            return
+
         await self.menu_actions[self.value]()
 
     async def settings_report(self) -> None:
         """The reports menu."""
+        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
         records = await self.app.db_cache.get(table="reports", guild_id=self.last_ctx.guild_id)
 
@@ -243,7 +252,7 @@ class SettingsView(models.AuthorOnlyView):
             )
 
             options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
+                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)  # type: ignore
                 for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
                 if isinstance(channel, hikari.TextableGuildChannel)
             ]
@@ -283,12 +292,13 @@ class SettingsView(models.AuthorOnlyView):
             embed = hikari.Embed(
                 title="Reports Settings",
                 description="Select a role to add to the list of roles that will be mentioned when a new report is made.",
-                color=self.last_const.EMBED_BLUE,
+                color=const.EMBED_BLUE,
             )
 
-            options = []
-            for role in unadded_roles:
-                options.append(miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION))
+            options = [
+                miru.SelectOption(label=role.name, value=str(role.id), emoji=const.EMOJI_MENTION)
+                for role in unadded_roles
+            ]
 
             try:
                 role = await ask_settings(
@@ -300,12 +310,13 @@ class SettingsView(models.AuthorOnlyView):
                     placeholder="Select a role...",
                     ephemeral=self.ephemeral,
                 )
+                assert isinstance(role, hikari.Role)
                 pinged_roles.append(role)
             except TypeError:
                 embed = hikari.Embed(
                     title="❌ Role not found.",
                     description="Unable to locate role. Please type a role mention or ID.",
-                    color=self.last_const.ERROR_COLOR,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Reports")
 
@@ -314,12 +325,14 @@ class SettingsView(models.AuthorOnlyView):
             embed = hikari.Embed(
                 title="Reports Settings",
                 description="Remove a role from the list of roles that is mentioned when a new report is made.",
-                color=self.last_const.EMBED_BLUE,
+                color=const.EMBED_BLUE,
             )
 
-            options = []
-            for role in pinged_roles:
-                options.append(miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION))
+            options = [
+                miru.SelectOption(label=role.name, value=str(role.id), emoji=const.EMOJI_MENTION)
+                for role in pinged_roles
+                if role is not None
+            ]
 
             try:
                 role = await ask_settings(
@@ -332,6 +345,7 @@ class SettingsView(models.AuthorOnlyView):
                     ephemeral=self.ephemeral,
                 )
                 if role in pinged_roles:
+                    assert isinstance(role, hikari.Role)
                     pinged_roles.remove(role)
                 else:
                     raise TypeError
@@ -340,7 +354,7 @@ class SettingsView(models.AuthorOnlyView):
                 embed = hikari.Embed(
                     title="❌ Role not found.",
                     description="Unable to locate role. Please type a role mention or ID.",
-                    color=self.last_const.ERROR_COLOR,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Reports")
 
@@ -349,7 +363,7 @@ class SettingsView(models.AuthorOnlyView):
         VALUES ($1, $2)
         ON CONFLICT (guild_id) DO
         UPDATE SET pinged_role_ids = $1""",
-            [role.id for role in pinged_roles],
+            [role.id for role in pinged_roles if role is not None],
             self.last_ctx.guild_id,
         )
 
@@ -358,6 +372,7 @@ class SettingsView(models.AuthorOnlyView):
 
     async def settings_mod(self) -> None:
         """Show and handle Moderation menu."""
+        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
         mod = self.app.get_plugin("Moderation")
         assert mod is not None
@@ -402,6 +417,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
     async def settings_starboard(self) -> None:
 
+        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+
         records = await self.app.db_cache.get(table="starboard", guild_id=self.last_ctx.guild_id)
         settings = (
             records[0]
@@ -422,7 +439,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
             if isinstance(channel, hikari.TextableGuildChannel)
         ]
-        included_channels = list(set(all_channels) - set(excluded_channels))
+        included_channels = list(set(all_channels) - set(excluded_channels))  # type: ignore
 
         embed = hikari.Embed(
             title="Starboard Settings",
@@ -456,7 +473,9 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed.add_field("Star Limit", settings["star_limit"], inline=True)
         embed.add_field(
             "Excluded Channels",
-            " ".join([channel.mention for channel in excluded_channels])[:512] if excluded_channels else "*Not set*",
+            " ".join([channel.mention for channel in excluded_channels if channel])[:512]
+            if excluded_channels
+            else "*Not set*",
             inline=True,
         )
         self.add_buttons(buttons, parent="Main")
@@ -496,6 +515,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             if not self.value:
                 return
 
+            assert isinstance(self.value, dict)
             limit = list(self.value.values())[0]
 
             try:
@@ -530,7 +550,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             )
 
             options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
+                miru.SelectOption(label=str(channel.name), value=str(channel.id), emoji=const.EMOJI_CHANNEL)
                 for channel in all_channels
             ]
 
@@ -563,12 +583,13 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
             return await self.settings_starboard()
 
+        assert self.last_item is not None
         if self.last_item.custom_id == "add_excluded":
 
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description="Select a new channel to be added to the list of excluded channels. Users will not be able to star messages from these channels.",
-                color=self.last_const.EMBED_BLUE,
+                color=const.EMBED_BLUE,
             )
 
             options = [
@@ -586,6 +607,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     placeholder="Select a channel...",
                     ephemeral=self.ephemeral,
                 )
+                assert isinstance(channel, hikari.TextableGuildChannel)
                 excluded_channels.append(channel)
             except TypeError:
                 embed = hikari.Embed(
@@ -600,12 +622,13 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description="Remove a channel from the list of excluded channels.",
-                color=self.last_const.EMBED_BLUE,
+                color=const.EMBED_BLUE,
             )
 
             options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
+                miru.SelectOption(label=str(channel.name), value=str(channel.id), emoji=const.EMOJI_CHANNEL)
                 for channel in excluded_channels
+                if channel
             ]
 
             try:
@@ -619,6 +642,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     ephemeral=self.ephemeral,
                 )
                 if channel in excluded_channels:
+                    assert isinstance(channel, hikari.TextableGuildChannel)
                     excluded_channels.remove(channel)
                 else:
                     raise TypeError
@@ -636,7 +660,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         VALUES ($1, $2)
         ON CONFLICT (guild_id) DO
         UPDATE SET excluded_channels = $1""",
-            [channel.id for channel in excluded_channels],
+            [channel.id for channel in excluded_channels if channel],
             self.last_ctx.guild_id,
         )
 
@@ -646,9 +670,12 @@ Enabling **ephemeral responses** will show all moderation command responses in a
     async def settings_logging(self) -> None:
         """Show and handle Logging menu."""
 
-        logging = self.app.get_plugin("Logging")
+        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
-        log_channels = await logging.d.actions.get_log_channel_ids_view(self.last_ctx.guild_id)
+        userlog = self.app.get_plugin("Logging")
+        assert userlog is not None
+
+        log_channels = await userlog.d.actions.get_log_channel_ids_view(self.last_ctx.guild_id)
 
         embed = hikari.Embed(
             title="Logging Settings",
@@ -656,7 +683,9 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             color=self.app.embed_blue,
         )
 
-        perms = lightbulb.utils.permissions_for(self.app.cache.get_member(self.last_ctx.guild_id, self.app.user_id))
+        me = self.app.cache.get_member(self.last_ctx.guild_id, self.app.user_id)
+        assert me is not None
+        perms = lightbulb.utils.permissions_for(me)
         if not (perms & hikari.Permissions.VIEW_AUDIT_LOG):
             embed.add_field(
                 name="⚠️ Warning!",
@@ -676,7 +705,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             options.append(miru.SelectOption(label=log_event_strings[log_category], value=log_category))
 
         self.select_screen(OptionsSelect(options=options, placeholder="Select a category..."), parent="Main")
-        is_color = await logging.d.actions.is_color_enabled(self.last_ctx.guild_id)
+        is_color = await userlog.d.actions.is_color_enabled(self.last_ctx.guild_id)
         self.add_item(BooleanButton(state=is_color, label="Color logs"))
 
         await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
@@ -702,7 +731,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         options = []
         options.append(miru.SelectOption(label="Disable", value="disable", description="Stop logging this event."))
         options += [
-            miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
+            miru.SelectOption(label=str(channel.name), value=str(channel.id), emoji=const.EMOJI_CHANNEL)
             for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
             if isinstance(channel, hikari.TextableGuildChannel)
         ]
@@ -733,13 +762,16 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             return await self.error_screen(embed, parent="Logging")
         else:
             channel_id = channel.id if channel != "disable" else None
-            logging = self.app.get_plugin("Logging")
-            await logging.d.actions.set_log_channel(log_event, self.last_ctx.guild_id, channel_id)
+            userlog = self.app.get_plugin("Logging")
+            assert userlog is not None
+            await userlog.d.actions.set_log_channel(log_event, self.last_ctx.guild_id, channel_id)
 
             await self.settings_logging()
 
     async def settings_automod(self) -> None:
         """Open and handle automoderation main menu"""
+
+        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
         automod = self.app.get_plugin("Auto-Moderation")
 
@@ -749,7 +781,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed = hikari.Embed(
             title="Automoderation Settings",
             description="Below you can see a summary of the current automoderation settings. To see more details about a specific entry or change their settings, select it below!",
-            color=self.last_const.EMBED_BLUE,
+            color=const.EMBED_BLUE,
         )
 
         options = []
@@ -773,6 +805,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
     async def settings_automod_policy(self, policy: t.Optional[str] = None) -> None:
         """Settings for an automoderation policy"""
 
+        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+
         if not policy:
             return await self.settings_automod()
 
@@ -785,7 +819,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed = hikari.Embed(
             title=f"Options for: {policy_strings[policy]['name']}",
             description=policy_strings[policy]["description"],
-            color=self.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
 
         state = policy_data["state"]
@@ -806,9 +840,9 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             )
 
         elif state in ["flag", "notice"]:
-            channel_id = await self.app.get_plugin("Logging").d.actions.get_log_channel_id(
-                "flags", self.last_ctx.guild_id
-            )
+            userlog = self.app.get_plugin("Logging")
+            assert userlog is not None
+            channel_id = await userlog.d.actions.get_log_channel_id("flags", self.last_ctx.guild_id)
             if not channel_id:
                 embed.add_field(
                     name="⚠️ Warning:",
@@ -828,12 +862,10 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         if policy_data.get("excluded_channels") is not None and policy_data.get("excluded_roles") is not None:
             """Exclusions calculations"""
 
-            excluded_channels: t.List[hikari.TextableGuildChannel] = [
+            excluded_channels = [
                 self.app.cache.get_guild_channel(channel_id) for channel_id in policy_data["excluded_channels"]
             ]
-            excluded_roles: t.List[hikari.Role] = [
-                self.app.cache.get_role(role_id) for role_id in policy_data["excluded_roles"]
-            ]
+            excluded_roles = [self.app.cache.get_role(role_id) for role_id in policy_data["excluded_roles"]]
             excluded_channels = list(filter(None, excluded_channels))
             excluded_roles = list(filter(None, excluded_roles))
 
@@ -842,7 +874,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
                 if isinstance(channel, hikari.TextableGuildChannel)
             ]
-            included_channels = list(set(all_channels) - set(excluded_channels))
+            included_channels = list(set(all_channels) - set(excluded_channels))  # type: ignore
 
             all_roles = [
                 role
@@ -883,8 +915,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 )
 
             if policy_data.get("excluded_channels") is not None and policy_data.get("excluded_roles") is not None:
-                display_channels = ", ".join([channel.mention for channel in excluded_channels])
-                display_roles = ", ".join([role.mention for role in excluded_roles])
+                display_channels = ", ".join([channel.mention for channel in excluded_channels])  # type: ignore it's not unbound, trust me c:
+                display_roles = ", ".join([role.mention for role in excluded_roles])  # type: ignore
 
                 if len(display_channels) > 512:
                     display_channels = display_channels[: 512 - 3] + "..."
@@ -894,13 +926,13 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
                 embed.add_field(
                     name=policy_fields["excluded_channels"]["name"],
-                    value=display_channels if excluded_channels else "*None set*",
+                    value=display_channels if excluded_channels else "*None set*",  # type: ignore
                     inline=False,
                 )
 
                 embed.add_field(
                     name=policy_fields["excluded_roles"]["name"],
-                    value=display_roles if excluded_roles else "*None set*",
+                    value=display_roles if excluded_roles else "*None set*",  # type: ignore
                     inline=False,
                 )
 
@@ -911,7 +943,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         custom_id="add_channel",
                         style=hikari.ButtonStyle.SUCCESS,
                         row=4,
-                        disabled=not included_channels,
+                        disabled=not included_channels,  # type: ignore
                     )
                 )
                 buttons.append(
@@ -921,7 +953,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         custom_id="add_role",
                         style=hikari.ButtonStyle.SUCCESS,
                         row=4,
-                        disabled=not included_roles,
+                        disabled=not included_roles,  # type: ignore
                     )
                 )
                 buttons.append(
@@ -931,7 +963,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         custom_id="del_channel",
                         style=hikari.ButtonStyle.DANGER,
                         row=4,
-                        disabled=not excluded_channels,
+                        disabled=not excluded_channels,  # type: ignore
                     )
                 )
                 buttons.append(
@@ -941,7 +973,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         custom_id="del_role",
                         style=hikari.ButtonStyle.DANGER,
                         row=4,
-                        disabled=not excluded_roles,
+                        disabled=not excluded_roles,  # type: ignore
                     )
                 )
 
@@ -962,6 +994,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         UPDATE SET automod_policies = $1"""
 
         # The option that is to be changed
+        assert self.last_item is not None
         opt = self.last_item.custom_id
 
         # Question types
@@ -1032,7 +1065,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 assert isinstance(self.value, dict)
                 for key, value in self.value.items():
                     self.value[key] = float(value.replace(",", "."))
-                    if not (0.1 <= self.value[key] <= 1.0):
+                    if not (0.1 <= float(self.value[key]) <= 1.0):
                         raise ValueError
             except (ValueError, TypeError):
                 embed = hikari.Embed(
@@ -1045,6 +1078,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             policies["perspective"]["persp_bounds"] = self.value
 
         elif action == "text_input":
+            assert opt is not None
 
             modal = OptionsModal(self, f"Changing {policy_fields[opt]['label']}...")
             # Deepcopy because we store instances for convenience
@@ -1061,6 +1095,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             if not self.value:
                 return
 
+            assert isinstance(self.value, dict)
             value = list(self.value.values())[0]
 
             if opt in list_inputs:
@@ -1091,7 +1126,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     case "add_channel":
                         options = [
                             miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
-                            for channel in included_channels
+                            for channel in included_channels  # type: ignore
                         ]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
@@ -1102,7 +1137,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     case "del_channel":
                         options = [
                             miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
-                            for channel in excluded_channels
+                            for channel in excluded_channels  # type: ignore
                         ]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
@@ -1113,7 +1148,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     case "add_role":
                         options = [
                             miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION)
-                            for role in included_roles
+                            for role in included_roles  # type: ignore
                         ]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
@@ -1124,7 +1159,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     case "del_role":
                         options = [
                             miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION)
-                            for role in excluded_roles
+                            for role in excluded_roles  # type: ignore
                         ]
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
@@ -1137,9 +1172,9 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     value = await ask_settings(
                         self,
                         self.last_ctx,
-                        options=options,
+                        options=options,  # type: ignore
                         embed_or_content=embed,
-                        return_type=return_type,
+                        return_type=return_type,  # type: ignore
                         placeholder="Select a value...",
                         ephemeral=self.ephemeral,
                     )
@@ -1175,7 +1210,7 @@ async def ask_settings(
     options: t.List[miru.SelectOption],
     return_type: T,
     embed_or_content: t.Union[str, hikari.Embed],
-    placeholder: str = None,
+    placeholder: t.Optional[str] = None,
     ignore: t.Optional[t.List[t.Any]] = None,
     ephemeral: bool = False,
 ) -> t.Union[T, t.Any]:
@@ -1215,11 +1250,11 @@ async def ask_settings(
 
     if return_type not in CONVERTER_TYPE_MAPPING.keys():
         return TypeError(
-            f"return_type must be of types: {' '.join(list(CONVERTER_TYPE_MAPPING.keys()))}, not {return_type}"
+            f"return_type must be of types: {' '.join(list(CONVERTER_TYPE_MAPPING.keys()))}, not {return_type}"  # type: ignore
         )
 
     # Get appropiate converter for return type
-    converter: lightbulb.BaseConverter = CONVERTER_TYPE_MAPPING[return_type](view.lctx)
+    converter: lightbulb.BaseConverter = CONVERTER_TYPE_MAPPING[return_type](view.lctx)  # type: ignore
     flags = hikari.MessageFlag.EPHEMERAL if ephemeral else hikari.MessageFlag.NONE
 
     # If the select will result in a Bad Request or not
@@ -1264,13 +1299,17 @@ async def ask_settings(
 
         predicate = lambda e: e.author.id == ctx.user.id and e.channel_id == ctx.channel_id
 
+        assert isinstance(ctx.app, SnedBot) and ctx.guild_id is not None
+
         try:
             event = await ctx.app.wait_for(hikari.GuildMessageCreateEvent, timeout=300.0, predicate=predicate)
         except asyncio.TimeoutError:
             return await view.quit_settings()
 
         me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-        perms = lightbulb.utils.permissions_in(event.get_channel(), me)
+        channel = event.get_channel()
+        assert me is not None and channel is not None
+        perms = lightbulb.utils.permissions_in(channel, me)
 
         if helpers.includes_permissions(perms, hikari.Permissions.MANAGE_MESSAGES):
             await helpers.maybe_delete(event.message)
@@ -1289,7 +1328,9 @@ async def ask_settings(
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def settings_cmd(ctx: SnedSlashContext) -> None:
-    ephemeral = (await ctx.app.get_plugin("Moderation").d.actions.get_settings(ctx.guild_id))["is_ephemeral"]
+    mod = ctx.app.get_plugin("Moderation")
+    assert mod is not None
+    ephemeral = (await mod.d.actions.get_settings(ctx.guild_id))["is_ephemeral"]
     view = SettingsView(ctx, timeout=300, ephemeral=ephemeral)
     await view.start_settings()
 

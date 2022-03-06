@@ -58,6 +58,7 @@ class TagEditorModal(miru.Modal):
             return
 
         for item, value in ctx.values.items():
+            assert isinstance(item, miru.TextInput)
             if item.label == "Tag Name":
                 self.tag_name = value
             elif item.label == "Tag Content":
@@ -77,7 +78,8 @@ async def tag_cmd(ctx: SnedSlashContext) -> None:
             description="Cannot find tag by that name.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     await ctx.respond(content=tag.content)
 
@@ -88,6 +90,7 @@ async def tag_name_ac(
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+    return []
 
 
 @tags.command()
@@ -97,10 +100,12 @@ async def tag_group(ctx: SnedSlashContext) -> None:
     pass
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.command("create", "Create a new tag. Opens a modal to specify the details.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_create(ctx: SnedSlashContext) -> None:
+
+    assert ctx.guild_id is not None and ctx.member is not None
 
     modal = TagEditorModal()
     await modal.send(ctx.interaction)
@@ -119,7 +124,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
         return await mctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     new_tag = Tag(
-        guild_id=ctx.guild_id,
+        guild_id=hikari.Snowflake(ctx.guild_id),
         name=modal.tag_name.lower(),
         owner_id=ctx.author.id,
         aliases=None,
@@ -135,7 +140,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     await mctx.respond(embed=embed)
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("name", "The name of the tag to get information about.", autocomplete=True)
 @lightbulb.command("info", "Display information about the specified tag.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -158,18 +163,20 @@ async def tag_info(ctx: SnedSlashContext) -> None:
             description="Cannot find tag by that name.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
 
-@tag_info.autocomplete("name")
+@tag_info.autocomplete("name")  # type: ignore
 async def tag_info_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+    return []
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("alias", "The alias to add to this tag.")
 @lightbulb.option("name", "The tag to add an alias for.", autocomplete=True)
 @lightbulb.command("alias", "Adds an alias to a tag you own.")
@@ -182,7 +189,8 @@ async def tag_alias(ctx: SnedSlashContext) -> None:
             description=f"A tag or alias already exists with a same name. Try picking a different alias.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
 
@@ -198,7 +206,8 @@ async def tag_alias(ctx: SnedSlashContext) -> None:
                 description=f"Tag `{tag.name}` can only have up to **5** aliases.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
         await tags.d.tag_handler.update(tag)
         embed = hikari.Embed(
@@ -214,18 +223,20 @@ async def tag_alias(ctx: SnedSlashContext) -> None:
             description="You either do not own this tag or it does not exist.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
 
-@tag_alias.autocomplete("name")
+@tag_alias.autocomplete("name")  # type: ignore
 async def tag_alias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    return []
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("alias", "The name of the alias to remove.")
 @lightbulb.option("name", "The tag to remove the alias from.", autocomplete=True)
 @lightbulb.command("delalias", "Remove an alias from a tag you own.")
@@ -235,6 +246,7 @@ async def tag_delalias(ctx: SnedSlashContext) -> None:
     if tag and tag.owner_id == ctx.author.id:
 
         if ctx.options.alias.lower() in tag.aliases:
+            assert tag.aliases is not None
             tag.aliases.remove(ctx.options.alias.lower())
 
         else:
@@ -243,7 +255,8 @@ async def tag_delalias(ctx: SnedSlashContext) -> None:
                 description=f"Tag `{tag.name}` does not have an alias called `{ctx.options.alias.lower()}`",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
         await tags.d.tag_handler.update(tag)
         embed = hikari.Embed(
@@ -259,18 +272,20 @@ async def tag_delalias(ctx: SnedSlashContext) -> None:
             description="You either do not own this tag or it does not exist.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
 
-@tag_delalias.autocomplete("name")
+@tag_delalias.autocomplete("name")  # type: ignore
 async def tag_delalias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    return []
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("receiver", "The user to receive the tag.", type=hikari.Member)
 @lightbulb.option("name", "The name of the tag to transfer.", autocomplete=True)
 @lightbulb.command(
@@ -301,18 +316,20 @@ async def tag_transfer(ctx: SnedSlashContext) -> None:
             description="You either do not own this tag or it does not exist.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
 
-@tag_transfer.autocomplete("name")
+@tag_transfer.autocomplete("name")  # type: ignore
 async def tag_transfer_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    return []
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("name", "The name of the tag to claim.", autocomplete=True)
 @lightbulb.command(
     "claim",
@@ -320,6 +337,9 @@ async def tag_transfer_name_ac(
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_claim(ctx: SnedSlashContext) -> None:
+
+    assert ctx.guild_id is not None and ctx.member is not None
+
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
 
     if tag:
@@ -347,7 +367,8 @@ async def tag_claim(ctx: SnedSlashContext) -> None:
                 description="Tag owner is still in the server. You can only claim tags that have been abandoned.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
     else:
         embed = hikari.Embed(
@@ -355,22 +376,26 @@ async def tag_claim(ctx: SnedSlashContext) -> None:
             description="Cannot find tag by that name.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
 
-@tag_claim.autocomplete("name")
+@tag_claim.autocomplete("name")  # type: ignore
 async def tag_claim_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+    return []
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("name", "The name of the tag to edit.", autocomplete=True)
 @lightbulb.command("edit", "Edit the content of a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_edit(ctx: SnedSlashContext) -> None:
+
+    assert ctx.member is not None
 
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
 
@@ -380,7 +405,8 @@ async def tag_edit(ctx: SnedSlashContext) -> None:
             description="You either do not own this tag or it does not exist.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     modal = TagEditorModal(name=tag.name, content=tag.content)
     await modal.send(ctx.interaction)
@@ -403,24 +429,30 @@ async def tag_edit(ctx: SnedSlashContext) -> None:
     await mctx.respond(embed=embed)
 
 
-@tag_edit.autocomplete("name")
+@tag_edit.autocomplete("name")  # type: ignore
 async def tag_edit_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    return []
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("name", "The name of the tag to delete.", autocomplete=True)
 @lightbulb.command("delete", "Delete a tag you own.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_delete(ctx: SnedSlashContext) -> None:
+
+    assert ctx.member is not None
+
     tag: Tag = await tags.d.tag_handler.get(ctx.options.name.lower(), ctx.guild_id)
+
     if tag and (
         (tag.owner_id == ctx.author.id)
         or helpers.includes_permissions(lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES)
     ):
+
         await tags.d.tag_handler.delete(ctx.options.name.lower(), ctx.guild_id)
         embed = hikari.Embed(
             title="✅ Tag deleted",
@@ -436,21 +468,25 @@ async def tag_delete(ctx: SnedSlashContext) -> None:
             description="You either do not own this tag or it does not exist.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
 
-@tag_delete.autocomplete("name")
+@tag_delete.autocomplete("name")  # type: ignore
 async def tag_delete_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
         return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    return []
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.command("list", "List all tags this server has.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_list(ctx: SnedSlashContext) -> None:
+    assert ctx.member is not None
+
     tags_list: List[Tag] = await tags.d.tag_handler.get_all(ctx.guild_id)
 
     if tags_list:
@@ -482,11 +518,14 @@ async def tag_list(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed)
 
 
-@tag_group.child()
+@tag_group.child()  # type: ignore
 @lightbulb.option("query", "The tag name or alias to search for.")
 @lightbulb.command("search", "Search for a tag name or alias.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_search(ctx: SnedSlashContext) -> None:
+
+    assert ctx.member is not None
+
     tags_list = await tags.d.tag_handler.get_all(ctx.guild_id)
 
     if tags_list:

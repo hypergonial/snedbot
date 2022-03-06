@@ -5,6 +5,8 @@ import lightbulb
 import miru
 from miru.ext import nav
 
+from etc import constants as const
+
 
 class StopSelect(miru.Select):
     """
@@ -29,7 +31,7 @@ class AuthorOnlyView(miru.View):
             embed = hikari.Embed(
                 title="❌ Oops!",
                 description="A magical barrier is stopping you from interacting with this component menu!",
-                color=self.lconst.ERROR_COLOR,
+                color=const.ERROR_COLOR,
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 

@@ -71,7 +71,11 @@ PERM_DESCRIPTIONS = {
 @lightbulb.implements(lightbulb.SlashCommand)
 async def troubleshoot(ctx: SnedSlashContext) -> None:
 
+    assert ctx.guild_id is not None
+
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    assert me is not None
+
     perms = lightbulb.utils.permissions_for(me)
     missing_perms = ~perms & REQUIRED_PERMISSIONS
     content = []

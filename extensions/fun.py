@@ -33,6 +33,7 @@ class WinState(IntEnum):
 class NitroView(miru.View):
     async def on_timeout(self) -> None:
         for item in self.children:
+            assert isinstance(item, miru.Button)
             item.disabled = True
             item.style = hikari.ButtonStyle.SECONDARY
             item.label = "              Accept              "
@@ -44,6 +45,7 @@ class NitroView(miru.View):
         )
 
         embed.set_thumbnail("https://i.imgur.com/w9aiD6F.png")
+        assert self.message is not None
         await self.message.edit(embed=embed, components=self.build())
 
     @miru.button(style=hikari.ButtonStyle.SUCCESS, label="          Accept          ")
@@ -76,10 +78,10 @@ class TicTacToeButton(miru.Button):
                 view.current_player = view.playero
                 embed = hikari.Embed(
                     title="Tic Tac Toe!",
-                    description=f"It is **{view.playero.username}**'s turn!",
+                    description=f"It is **{view.playero.display_name}**'s turn!",
                     color=0x009DFF,
                 )
-                embed.set_thumbnail(helpers.get_display_avatar(view.playero))
+                embed.set_thumbnail(view.playero.display_avatar_url)
 
             else:
                 self.style = hikari.ButtonStyle.SUCCESS
@@ -89,10 +91,10 @@ class TicTacToeButton(miru.Button):
                 view.current_player = view.playerx
                 embed = hikari.Embed(
                     title="Tic Tac Toe!",
-                    description=f"It is **{view.playerx.username}**'s turn!",
+                    description=f"It is **{view.playerx.display_name}**'s turn!",
                     color=0x009DFF,
                 )
-                embed.set_thumbnail(helpers.get_display_avatar(view.playerx))
+                embed.set_thumbnail(view.playerx.display_avatar_url)
 
             winner = view.check_winner()
 
@@ -101,24 +103,25 @@ class TicTacToeButton(miru.Button):
                 if winner == WinState.PLAYER_X:
                     embed = hikari.Embed(
                         title="Tic Tac Toe!",
-                        description=f"**{view.playerx.username}** won!",
+                        description=f"**{view.playerx.display_name}** won!",
                         color=0x77B255,
                     )
-                    embed.set_thumbnail(helpers.get_display_avatar(view.playerx))
+                    embed.set_thumbnail(view.playerx.display_avatar_url)
 
                 elif winner == WinState.PLAYER_O:
                     embed = hikari.Embed(
                         title="Tic Tac Toe!",
-                        description=f"**{view.playero.username}** won!",
+                        description=f"**{view.playero.display_name}** won!",
                         color=0x77B255,
                     )
-                    embed.set_thumbnail(helpers.get_display_avatar(view.playero))
+                    embed.set_thumbnail(view.playero.display_avatar_url)
 
                 else:
                     embed = hikari.Embed(title="Tic Tac Toe!", description=f"It's a tie!", color=0x77B255)
                     embed.set_thumbnail(None)
 
                 for button in view.children:
+                    assert isinstance(button, miru.Button)
                     button.disabled = True
 
                 view.stop()
@@ -147,6 +150,7 @@ class TicTacToeView(miru.View):
 
     async def on_timeout(self) -> None:
         for item in self.children:
+            assert isinstance(item, miru.Button)
             item.disabled = True
 
         embed = hikari.Embed(
@@ -154,6 +158,7 @@ class TicTacToeView(miru.View):
             description="This game timed out! Try starting a new one!",
             color=0xFF0000,
         )
+        assert self.message is not None
         await self.message.edit(embed=embed, components=self.build())
 
     def check_blocked(self) -> bool:
@@ -262,6 +267,7 @@ class TicTacToeView(miru.View):
 async def tictactoe(ctx: SnedSlashContext) -> None:
     size: int = int(ctx.options.size or 3)
     helpers.is_member(ctx.options.user)
+    assert ctx.member is not None
 
     if ctx.options.user.id == ctx.author.id:
         embed = hikari.Embed(
@@ -269,15 +275,16 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
             description=f"I'm sorry, but how would that even work?",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     if not ctx.options.is_bot:
         embed = hikari.Embed(
             title="Tic Tac Toe!",
-            description=f"**{ctx.options.user.username}** was challenged for a round of tic tac toe by **{ctx.member.username}**!\nFirst to a row of **{size} wins!**\nIt is **{ctx.member.username}**'s turn!",
+            description=f"**{ctx.options.user.display_name}** was challenged for a round of tic tac toe by **{ctx.member.display_name}**!\nFirst to a row of **{size} wins!**\nIt is **{ctx.member.display_name}**'s turn!",
             color=const.EMBED_BLUE,
         )
-        embed.set_thumbnail(helpers.get_display_avatar(ctx.member))
+        embed.set_thumbnail(ctx.member.display_avatar_url)
 
         view = TicTacToeView(size, ctx.member, ctx.options.user)
         proxy = await ctx.respond(embed=embed, components=view.build())
@@ -289,7 +296,8 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
             description=f"Sorry, but you cannot play with a bot.. yet...",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
 
 @fun.command
@@ -416,6 +424,8 @@ async def typeracer(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def avatar(ctx: SnedSlashContext) -> None:
     member = ctx.options.user or ctx.member
+    assert member is not None
+
     if ctx.options.show_global == True:
         avatar_url = member.avatar_url
     else:
@@ -423,7 +433,6 @@ async def avatar(ctx: SnedSlashContext) -> None:
 
     embed = hikari.Embed(title=f"{member.display_name}'s avatar:", color=helpers.get_color(member))
     embed.set_image(avatar_url)
-    embed = helpers.add_embed_footer(embed, member)
     await ctx.respond(embed=embed)
 
 
@@ -448,7 +457,6 @@ async def funfact(ctx: SnedSlashContext) -> None:
         description=f"{random.choice(fun_facts)}",
         color=const.EMBED_BLUE,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
 
 
@@ -463,7 +471,6 @@ async def penguinfact(ctx: SnedSlashContext) -> None:
         description=f"{random.choice(penguin_facts)}",
         color=const.EMBED_BLUE,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
 
 
@@ -513,7 +520,6 @@ async def randomcat(ctx: SnedSlashContext) -> None:
                     color=const.ERROR_COLOR,
                 )
 
-            embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
 
 
@@ -534,8 +540,6 @@ async def randomdog(ctx: SnedSlashContext) -> None:
                     description="Oops! Looks like the dog delivery service is unavailable! Check back later.",
                     color=const.ERROR_COLOR,
                 )
-
-            embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
 
 
@@ -557,7 +561,6 @@ async def randomfox(ctx: SnedSlashContext) -> None:
                     color=const.ERROR_COLOR,
                 )
 
-            embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
 
 
@@ -579,7 +582,6 @@ async def randomotter(ctx: SnedSlashContext) -> None:
                     color=const.ERROR_COLOR,
                 )
 
-            embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
 
 
@@ -610,7 +612,6 @@ async def eightball(ctx: SnedSlashContext) -> None:
         description=f"{random.choice(answers)}",
         color=const.EMBED_BLUE,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
 
 

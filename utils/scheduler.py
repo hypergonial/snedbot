@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import enum
 import logging
 import re
 import typing
@@ -22,6 +23,13 @@ if typing.TYPE_CHECKING:
     from models.bot import SnedBot
 
 
+class ConversionMode(enum.IntEnum):
+    """All possible time conversion modes."""
+
+    RELATIVE = 0
+    ABSOLUTE = 1
+
+
 class Scheduler:
     """
     All timer-related functionality, including time conversion from strings,
@@ -31,8 +39,8 @@ class Scheduler:
 
     def __init__(self, bot: SnedBot) -> None:
         self.bot: SnedBot = bot
-        self._current_timer: Timer = None  # Currently active timer that is being awaited
-        self._current_task: asyncio.Task = None  # Current task that is handling current_timer
+        self._current_timer: t.Optional[Timer] = None  # Currently active timer that is being awaited
+        self._current_task: t.Optional[asyncio.Task] = None  # Current task that is handling current_timer
         self._timer_loop: IntervalLoop = IntervalLoop(self.wait_for_active_timers, hours=1.0)
         self._timer_loop.start()
 
@@ -53,7 +61,7 @@ class Scheduler:
         timestr: str,
         *,
         user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
-        force_mode: t.Optional[str] = None,
+        conversion_mode: t.Optional[ConversionMode] = None,
         future_time: bool = False,
     ) -> datetime.datetime:
         """Try converting a string of human-readable time to a datetime object.
@@ -86,7 +94,7 @@ class Scheduler:
         user_id = hikari.Snowflake(user) if user else None
         logger.debug(f"String passed for time conversion: {timestr}")
 
-        if not force_mode or force_mode == "relative":
+        if not conversion_mode or conversion_mode == ConversionMode.RELATIVE:
             # Relative time conversion
             # Get any pair of <number><word> with a single optional space in between, and return them as a dict (sort of)
             time_regex = re.compile(r"(\d+(?:[.,]\d+)?)\s{0,1}([a-zA-Z]+)")
@@ -136,10 +144,10 @@ class Scheduler:
             if time > 0:  # If we found time
                 return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=time)
 
-            if force_mode == "relative":
+            if conversion_mode == ConversionMode.RELATIVE:
                 raise ValueError("Failed time conversion. (relative)")
 
-        if not force_mode or force_mode == "absolute":
+        if not conversion_mode or conversion_mode == ConversionMode.ABSOLUTE:
 
             timezone = "UTC"
             if user_id:
@@ -158,7 +166,9 @@ class Scheduler:
 
             return time
 
-    async def get_latest_timer(self, days: int = 7) -> Timer:
+        raise ValueError("Time conversion failed.")
+
+    async def get_latest_timer(self, days: int = 7) -> t.Optional[Timer]:
         """
         Gets the first timer that is about to expire in the specified days and returns it
         Returns None if not found in that scope.
@@ -237,7 +247,8 @@ class Scheduler:
         except asyncio.CancelledError:
             raise
         except (OSError, hikari.GatewayServerClosedConnectionError):
-            self._current_task.cancel()
+            if self._current_task:
+                self._current_task.cancel()
             self._current_task = asyncio.create_task(self.dispatch_timers())
 
     async def update_timer(self, timer: Timer) -> None:
@@ -255,7 +266,8 @@ class Scheduler:
         )
         if self._current_timer and self._current_timer.id == timer.id:
             logger.debug("Updating timers resulted in reshuffling.")
-            self._current_task.cancel()
+            if self._current_task:
+                self._current_task.cancel()
             self._current_task = asyncio.create_task(self.dispatch_timers())
 
     async def get_timer(self, entry_id: int, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> Timer:
@@ -290,16 +302,16 @@ class Scheduler:
         event: str,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         user: hikari.SnowflakeishOr[hikari.PartialUser],
-        channel: hikari.SnowflakeishOr[hikari.TextableChannel] = None,
+        channel: t.Optional[hikari.SnowflakeishOr[hikari.TextableChannel]] = None,
         *,
-        notes: str = None,
+        notes: t.Optional[str] = None,
     ) -> Timer:
         """Create a new timer, will dispatch on_<event>_timer_complete when finished."""
 
         guild_id = hikari.Snowflake(guild)
         user_id = hikari.Snowflake(user)
-        channel_id = hikari.Snowflake(channel)
-        expires = round(expires.timestamp())
+        channel_id = hikari.Snowflake(channel) if channel else None
+        timestamp = round(expires.timestamp())
 
         records = await self.bot.pool.fetch(
             """INSERT INTO timers (guild_id, channel_id, user_id, event, expires, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *""",
@@ -307,7 +319,7 @@ class Scheduler:
             channel_id,
             user_id,
             event,
-            expires,
+            timestamp,
             notes,
         )
         record = records[0]
@@ -323,9 +335,10 @@ class Scheduler:
 
         # If there is already a timer in queue, and it has an expiry that is further than the timer we just created
         # then we restart the dispatch_timers() to re-check for the latest timer.
-        if self._current_timer and expires < self._current_timer.expires:
+        if self._current_timer and timestamp < self._current_timer.expires:
             logger.debug("Reshuffled timers, created timer is now the latest timer.")
-            self._current_task.cancel()
+            if self._current_task:
+                self._current_task.cancel()
             self._current_task = asyncio.create_task(self.dispatch_timers())
 
         elif self._current_timer is None:
@@ -345,7 +358,8 @@ class Scheduler:
                 """DELETE FROM timers WHERE id = $1 AND guild_id = $2""", timer.id, timer.guild_id
             )
             if self._current_timer and self._current_timer.id == int(timer.id):
-                self._current_task.cancel()
+                if self._current_task:
+                    self._current_task.cancel()
                 self._current_task = asyncio.create_task(self.dispatch_timers())
 
             return timer

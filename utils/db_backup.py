@@ -12,11 +12,11 @@ async def backup_database(dsn: str) -> hikari.File:
     """Attempts to back up the database via pg_dump into the db_backup directory"""
     logging.info("Performing daily database backup...")
 
-    username: str = os.getenv("POSTGRES_USER")
-    password: str = os.getenv("POSTGRES_PASSWORD")
-    hostname: str = os.getenv("POSTGRES_HOST")
-    port: str = os.getenv("POSTGRES_PORT")
-    db_name: str = os.getenv("POSTGRES_DB")
+    username: str = os.getenv("POSTGRES_USER") or "postgres"
+    password: str = os.getenv("POSTGRES_PASSWORD") or ""
+    hostname: str = os.getenv("POSTGRES_HOST") or "sned-db"
+    port: str = os.getenv("POSTGRES_PORT") or "5432"
+    db_name: str = os.getenv("POSTGRES_DB") or "sned"
 
     os.environ["PGPASSWORD"] = password
 

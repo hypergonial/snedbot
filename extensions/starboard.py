@@ -29,10 +29,10 @@ STAR_MAPPING = {
 }
 
 
-def get_image_urls(content: str) -> t.Optional[t.List[str]]:
+def get_image_url(content: str) -> t.Optional[str]:
     """Return a list of image URLs found in the message content."""
 
-    matches: re.Match = re.search(image_url_regex, content)
+    matches: t.Optional[re.Match[str]] = re.search(image_url_regex, content)
 
     if not matches:
         return None
@@ -40,7 +40,7 @@ def get_image_urls(content: str) -> t.Optional[t.List[str]]:
     return content[matches.span()[0] : matches.span()[1]]
 
 
-def get_attachment_urls(message: hikari.Message) -> t.Optional[t.List[str]]:
+def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
     """Return a list of image attachment URLs found in the message."""
 
     if not message.attachments:
@@ -49,7 +49,7 @@ def get_attachment_urls(message: hikari.Message) -> t.Optional[t.List[str]]:
     attach_urls = [attachment.url for attachment in message.attachments]
     string = " ".join(attach_urls)
 
-    matches: re.Match = re.search(image_url_regex, string)
+    matches: t.Optional[re.Match[str]] = re.search(image_url_regex, string)
 
     if not matches:
         return None
@@ -69,12 +69,13 @@ def create_starboard_payload(message: hikari.Message, stars: int) -> t.Dict[str,
     )
     attachments = message.attachments
 
-    if image_urls := get_attachment_urls(message):
+    if image_urls := get_attachment_url(message):
         embed.set_image(image_urls)
         attachments = [attachment for attachment in attachments if attachment.url != image_urls]
 
-    elif image_urls := get_image_urls(message.content):
-        embed.set_image(image_urls)
+    elif message.content:
+        if image_urls := get_image_url(message.content):
+            embed.set_image(image_urls)
 
     if attachments:
         embed.add_field(
@@ -99,6 +100,8 @@ async def handle_starboard(
 
     if not event.is_for_emoji("⭐"):
         return
+
+    assert isinstance(plugin.app, SnedBot)
 
     records = await plugin.app.db_cache.get(table="starboard", guild_id=event.guild_id)
 
@@ -140,7 +143,10 @@ async def handle_starboard(
     if event.channel_id in settings["excluded_channels"]:
         return
 
-    perms = lightbulb.utils.permissions_in(plugin.app.cache.get_guild_channel(event.channel_id), me)
+    channel = plugin.app.cache.get_guild_channel(event.channel_id)
+    assert channel is not None
+
+    perms = lightbulb.utils.permissions_in(channel, me)
     if not helpers.includes_permissions(
         perms,
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
@@ -206,11 +212,13 @@ async def star(ctx: SnedSlashContext) -> None:
     pass
 
 
-@star.child()
+@star.child()  # type: ignore
 @lightbulb.option("id", "The ID of the starboard entry. You can find this in the footer.")
 @lightbulb.command("show", "Show a starboard entry.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def star_show(ctx: SnedSlashContext) -> None:
+
+    assert ctx.guild_id is not None
 
     try:
         orig_id = abs(int(ctx.options.id))
@@ -220,7 +228,8 @@ async def star_show(ctx: SnedSlashContext) -> None:
             description="Expected an integer value for parameter `id`.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
+        return
 
     records = await ctx.app.db_cache.get(table="starboard", guild_id=ctx.guild_id)
 
@@ -230,7 +239,8 @@ async def star_show(ctx: SnedSlashContext) -> None:
             description="The starboard is not enabled on this server!",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
+        return
 
     settings = records[0]
 
@@ -242,7 +252,8 @@ async def star_show(ctx: SnedSlashContext) -> None:
 
     if not records:
         embed = hikari.Embed(title="❌ Not found", description="Starboard entry not found!", color=const.ERROR_COLOR)
-        return await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
+        return
 
     message = await ctx.app.rest.fetch_message(settings["channel_id"], records[0].get("entry_msg_id"))
     await ctx.respond(

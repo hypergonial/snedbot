@@ -55,7 +55,7 @@ class ConfigHandler:
         """
 
         try:
-            user.flags = json.dumps(user.flags) if user.flags else None
+            user.flags = json.dumps(user.flags) if user.flags else None  # type: ignore
             await self.bot.pool.execute(
                 """
             INSERT INTO users (user_id, guild_id, flags, warns, notes) 
@@ -89,18 +89,18 @@ class ConfigHandler:
             guild_id,
         )
         if result:
-            user = User(
+            db_user = User(
                 user_id=result[0].get("user_id"),
                 guild_id=result[0].get("guild_id"),
                 flags=json.loads(result[0].get("flags")) if result[0].get("flags") else {},
                 warns=result[0].get("warns"),
                 notes=result[0].get("notes"),
             )
-            return user
+            return db_user
         else:
             return User(user_id, guild_id, flags=None, notes=None, warns=0)
 
-    async def get_all_guild_users(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.List[User]:
+    async def get_all_guild_users(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[User]]:
         """
         Returns all users related to a specific guild as a list of GlobalConfig.User
         Return None if no users are contained in the database

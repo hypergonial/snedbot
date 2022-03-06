@@ -13,6 +13,7 @@ from etc import constants as const
 from etc.perms_str import get_perm_str
 from models import SnedContext
 from models.bot import SnedBot
+from models.context import SnedSlashContext
 from models.errors import (BotRoleHierarchyError, MemberExpectedError,
                            RoleHierarchyError)
 
@@ -27,11 +28,12 @@ async def log_error_to_homeguild(
 
     error_lines = error_str.split("\n")
     paginator = lightbulb.utils.StringPaginator(max_chars=2000, prefix="```py\n", suffix="```")
-
-    if ctx and ctx.get_guild():
-        paginator.add_line(
-            f"Error in '{ctx.get_guild().name}' ({ctx.guild_id}) during command '{ctx.command.name}' executed by user '{ctx.author}' ({ctx.author.id})\n"
-        )
+    if ctx:
+        if guild := ctx.get_guild():
+            assert ctx.command is not None
+            paginator.add_line(
+                f"Error in '{guild.name}' ({ctx.guild_id}) during command '{ctx.command.name}' executed by user '{ctx.author}' ({ctx.author.id})\n"
+            )
 
     elif event:
         paginator.add_line(f"Ignoring exception in listener for {event.__class__.__name__}:\n")
@@ -41,15 +43,15 @@ async def log_error_to_homeguild(
     for line in error_lines:
         paginator.add_line(line)
 
-    assert isinstance(ctx.app, SnedBot)
-    channel_id = ctx.app.config.ERROR_LOGGING_CHANNEL
+    assert isinstance(ch.app, SnedBot)
+    channel_id = ch.app.config.ERROR_LOGGING_CHANNEL
 
     if not channel_id:
         return
 
     for page in paginator.build_pages():
         try:
-            await ctx.app.rest.create_message(channel_id, page)
+            await ch.app.rest.create_message(channel_id, page)
         except Exception as error:
             logging.error(f"Failed sending traceback to error-logging channel: {error}")
 
@@ -64,14 +66,17 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
                 description=f"You require `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
         elif isinstance(error, lightbulb.BotMissingRequiredPermission):
             embed = hikari.Embed(
                 title="❌ Bot Missing Permissions",
                 description=f"The bot requires `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
     if isinstance(error, lightbulb.CommandIsOnCooldown):
         embed = hikari.Embed(
@@ -79,7 +84,8 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
             description=f"Please retry in: `{datetime.timedelta(seconds=round(error.retry_after))}`",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     if isinstance(error, lightbulb.CommandInvocationError):
 
@@ -89,21 +95,26 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
                 description=f"This command timed out.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
         elif isinstance(error.original, hikari.InternalServerError):
             embed = hikari.Embed(
                 title="❌ Discord Server Error",
                 description="This action has failed due to an issue with Discord's servers. Please try again in a few moments.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
         elif isinstance(error.original, hikari.ForbiddenError):
             embed = hikari.Embed(
                 title="❌ Forbidden",
                 description=f"This action has failed due to a lack of permissions.\n**Error:** ```{error.original}```",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
         elif isinstance(error.original, RoleHierarchyError):
             embed = hikari.Embed(
@@ -111,14 +122,17 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
                 description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
         elif isinstance(error.original, BotRoleHierarchyError):
             embed = hikari.Embed(
                 title="❌ Role Hiearchy Error",
                 description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
         if isinstance(error.original, MemberExpectedError):
             embed = hikari.Embed(
@@ -126,12 +140,15 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
                 description=f"Expected a user who is a member of this server.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
+    assert ctx.command is not None
 
     logging.error("Ignoring exception in command {}:".format(ctx.command.name))
     exception_msg = "\n".join(traceback.format_exception(type(error), error, error.__traceback__))
     logging.error(exception_msg)
-    error = error.original if hasattr(error, "original") else error
+    error = error.original if hasattr(error, "original") else error  # type: ignore
 
     embed = hikari.Embed(
         title="❌ Unhandled exception",
@@ -148,6 +165,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
 @ch.listener(lightbulb.MessageCommandErrorEvent)
 @ch.listener(lightbulb.SlashCommandErrorEvent)
 async def slash_error_handler(event: lightbulb.CommandErrorEvent) -> None:
+    assert isinstance(event.context, SnedSlashContext)
     await application_error_handler(event.context, event.exception)
 
 
@@ -165,12 +183,12 @@ async def prefix_error_handler(event: lightbulb.PrefixCommandErrorEvent) -> None
     if isinstance(event.exception, lightbulb.CheckFailure):
         return
 
-    error = event.exception.original if hasattr(event.exception, "original") else event.exception
+    error = event.exception.original if hasattr(event.exception, "original") else event.exception  # type: ignore
 
     embed = hikari.Embed(
         title="❌ Exception encountered",
         description=f"```{error}```",
-        color=event.context.app.error_color,
+        color=const.ERROR_COLOR,
     )
     await event.context.respond(embed=embed)
     raise event.exception

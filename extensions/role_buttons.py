@@ -40,7 +40,7 @@ class RoleButton(miru.Button):
         self,
         *,
         entry_id: int,
-        emoji: hikari.Emoji,
+        emoji: t.Optional[hikari.Emoji],
         style: hikari.ButtonStyle,
         label: t.Optional[str] = None,
         role: hikari.SnowflakeishOr[hikari.Role],
@@ -53,6 +53,7 @@ class RoleButton(miru.Button):
 async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.LightbulbStartedEvent) -> None:
     if not MIGRATE:
         return
+    assert isinstance(plugin.app, SnedBot)
 
     records: asyncpg.Record = await plugin.app.pool.fetch("""SELECT * FROM button_roles""")
 
@@ -77,7 +78,7 @@ async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.Lightbu
         channel_id = int(compound_id.split(":")[0])
         msg_id = int(compound_id.split(":")[1])
 
-        view = PersistentRoleView(buttons)
+        view = PersistentRoleView(buttons)  # type: ignore
         await plugin.app.rest.edit_message(channel_id, msg_id, components=view.build())
         count += 1
     logger.info(f"Migrated {count} role-buttons to stateless handling.")
@@ -87,11 +88,13 @@ async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.Lightbu
 async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInteractionCreateEvent) -> None:
     """Statelessly listen for rolebutton interactions"""
 
+    assert isinstance(plugin.app, SnedBot)
+
     if not event.interaction.custom_id.startswith("RB:"):
         return
 
     entry_id = event.interaction.custom_id.split(":")[1]
-    role_id = event.interaction.custom_id.split(":")[2]
+    role_id = int(event.interaction.custom_id.split(":")[2])
 
     if not event.context.guild_id:
         return
@@ -107,6 +110,8 @@ async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInt
         return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     me = plugin.app.cache.get_member(event.context.guild_id, plugin.app.user_id)
+    assert me is not None
+
     if not helpers.includes_permissions(lightbulb.utils.permissions_for(me), hikari.Permissions.MANAGE_ROLES):
         embed = hikari.Embed(
             title="❌ Missing Permissions",
@@ -129,6 +134,8 @@ async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInt
     )
 
     try:
+        assert event.context.member is not None
+
         if role.id in event.context.member.role_ids:
             await event.context.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
             embed = hikari.Embed(
@@ -164,11 +171,14 @@ async def rolebutton(ctx: SnedSlashContext) -> None:
     pass
 
 
-@rolebutton.child()
+@rolebutton.child()  # type: ignore
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.command("list", "List all registered rolebuttons on this server.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_list(ctx: SnedSlashContext) -> None:
+
+    assert ctx.guild_id is not None
+
     records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id)
 
     if not records:
@@ -177,7 +187,8 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
             description="There are no role-buttons for this server.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     paginator = lightbulb.utils.StringPaginator(max_chars=500)
     for record in records:
@@ -203,7 +214,7 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
     await navigator.send(ctx.interaction)
 
 
-@rolebutton.child()
+@rolebutton.child()  # type: ignore
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
     "button_id",
@@ -213,6 +224,8 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
 @lightbulb.command("delete", "Delete a rolebutton.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_del(ctx: SnedSlashContext) -> None:
+    assert ctx.guild_id is not None
+
     records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, entry_id=ctx.options.button_id)
 
     if not records:
@@ -221,7 +234,8 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
             description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     await ctx.app.pool.execute(
         """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""",
@@ -246,16 +260,16 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
         buttons = []
         # Re-sync rolebuttons with db if message still exists
         for record in records:
-            emoji = hikari.Emoji.parse(record.get("emoji"))
-            role = ctx.app.cache.get_role(record.get("role_id"))
+            emoji = hikari.Emoji.parse(record["emoji"])
+            role = ctx.app.cache.get_role(record["role_id"])
             if not role:
                 continue
             buttons.append(
                 RoleButton(
-                    entry_id=record.get("entry_id"),
-                    role=ctx.app.cache.get_role(record.get("role_id")),
+                    entry_id=record["entry_id"],
+                    role=role.id,
                     label=record.get("buttonlabel"),
-                    style=button_styles[record.get("buttonstyle")],
+                    style=button_styles[record["buttonstyle"]],
                     emoji=emoji,
                 )
             )
@@ -264,7 +278,7 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
         message = await message.edit(components=components)
 
 
-@rolebutton.child()
+@rolebutton.child()  # type: ignore
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option("buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"])
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
@@ -281,7 +295,9 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_add(ctx: SnedSlashContext) -> None:
 
-    ctx.options.buttonstyle = ctx.options.buttonstyle or "Grey"
+    assert ctx.guild_id is not None
+
+    buttonstyle = ctx.options.buttonstyle or "Grey"
 
     message = await helpers.parse_message_link(ctx, ctx.options.message_link)
     if not message:
@@ -290,7 +306,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     records = await ctx.app.pool.fetch("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC LIMIT 1""")
     entry_id = records[0].get("entry_id") + 1 if records else 1
     emoji = hikari.Emoji.parse(ctx.options.emoji) if ctx.options.emoji else None
-    button_style = button_styles[ctx.options.buttonstyle.capitalize()]
+    button_style = button_styles[buttonstyle.capitalize()]
 
     button = RoleButton(
         entry_id=entry_id,
@@ -306,13 +322,13 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     if records:
         # Account for other rolebuttons on the same message
         for record in records:
-            old_emoji = hikari.Emoji.parse(record.get("emoji"))
-            role = ctx.app.cache.get_role(record.get("role_id"))
+            old_emoji = hikari.Emoji.parse(record["emoji"])
+            role = ctx.app.cache.get_role(record["role_id"])
             if not role:
                 continue
             buttons.append(
                 RoleButton(
-                    entry_id=record.get("entry_id"),
+                    entry_id=record["entry_id"],
                     role=role,
                     label=record.get("buttonlabel"),
                     style=button_styles[record.get("buttonstyle") or "Grey"],
@@ -341,6 +357,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
 
     channel = ctx.app.cache.get_guild_channel(message.channel_id)
+    assert channel is not None
 
     embed = hikari.Embed(
         title="✅ Done!",
@@ -355,7 +372,9 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         color=const.EMBED_GREEN,
     )
     try:
-        await ctx.app.get_plugin("Logging").d.actions.log("roles", embed, ctx.guild.id)
+        userlog = ctx.app.get_plugin("Logging")
+        assert userlog is not None
+        await userlog.d.actions.log("roles", embed, ctx.guild_id)
     except AttributeError:
         pass
 

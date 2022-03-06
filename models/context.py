@@ -56,7 +56,7 @@ class SnedContext(lightbulb.Context):
         edit: bool = False,
         message: t.Optional[hikari.Message] = None,
         **kwargs,
-    ) -> bool:
+    ) -> t.Optional[bool]:
         """Confirm a given action.
 
         Parameters
@@ -94,6 +94,7 @@ class SnedContext(lightbulb.Context):
             resp = await self.respond(*args, components=view.build(), **kwargs)
             message = await resp.message()
 
+        assert message is not None
         view.start(message)
         await view.wait()
         return view.value
@@ -157,20 +158,19 @@ class SnedContext(lightbulb.Context):
         mod = self.app.get_plugin("Moderation")
 
         if mod:
-            is_ephemeral = (await self.app.get_plugin("Moderation").d.actions.get_settings(self.guild_id))[
-                "is_ephemeral"
-            ]
+            is_ephemeral = (mod.d.actions.get_settings(self.guild_id))["is_ephemeral"]
             flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
+        flags = kwargs.get("flags") or hikari.UNDEFINED
 
-        await self.respond(*args, flags=flags, **kwargs)
+        return await self.respond(*args, flags=flags, **kwargs)
 
     @property
     def app(self) -> SnedBot:
-        return super().app
+        return super().app  # type: ignore
 
     @property
     def bot(self) -> SnedBot:
-        return super().bot
+        return super().bot  # type: ignore
 
 
 class SnedSlashContext(SnedContext, lightbulb.SlashContext):

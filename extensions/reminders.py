@@ -1,7 +1,7 @@
 import datetime
 import json
 import logging
-from typing import Any, Dict
+import typing as t
 
 import hikari
 import lightbulb
@@ -24,12 +24,17 @@ class ReminderView(miru.View):
 
     async def on_timeout(self) -> None:
         for item in self.children:
+            assert isinstance(item, miru.Button)
             item.disabled = True
 
+        assert self.message is not None
         await self.message.edit(components=self.build())
 
     @miru.button(label="Remind me too!", emoji="✉️", style=hikari.ButtonStyle.PRIMARY)
     async def add_recipient(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        assert isinstance(self.app, SnedBot)
+        assert ctx.guild_id is not None
+
         try:
             timer: Timer = await self.app.scheduler.get_timer(self.timer_id, ctx.guild_id)
         except ValueError:
@@ -48,7 +53,8 @@ class ReminderView(miru.View):
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-        notes: Dict[str, Any] = json.loads(timer.notes)
+        assert timer.notes is not None
+        notes: t.Dict[str, t.Any] = json.loads(timer.notes)
 
         if ctx.user.id not in notes["additional_recipients"]:
 
@@ -88,21 +94,25 @@ async def reminder(ctx: SnedSlashContext) -> None:
     pass
 
 
+@reminder.child()  # type: ignore
 @lightbulb.option("message", "The message that should be sent to you when this reminder expires.", str)
 @lightbulb.option(
     "when", "When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'", str
 )
-@reminder.child()
 @lightbulb.command("create", "Create a new reminder.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_create(ctx: SnedSlashContext) -> None:
+
+    assert ctx.guild_id is not None
+
     if len(ctx.options.message) >= 1000:
         embed = hikari.Embed(
             title="❌ Reminder too long",
             description="Your reminder cannot exceed **1000** characters!",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     try:
         time = await ctx.app.scheduler.convert_time(ctx.options.when, user=ctx.user, future_time=True)
@@ -113,7 +123,8 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
             description=f"Your timeformat is invalid! \n**Error:** {error}",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     if (time - helpers.utcnow()).total_seconds() >= 31536000 * 5:
         embed = hikari.Embed(
@@ -121,7 +132,8 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
             description="Sorry, but that's a bit too far in the future.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     if (time - helpers.utcnow()).total_seconds() < 10:
         embed = hikari.Embed(
@@ -129,7 +141,8 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
             description="Sorry, but that's a bit too short, reminders must last longer than `10` seconds.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     embed = hikari.Embed(
         title="✅ Reminder set",
@@ -163,11 +176,14 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
     view.start(await proxy.message())
 
 
-@reminder.child()
+@reminder.child()  # type: ignore
 @lightbulb.option("id", "The ID of the timer to delete. You can get this via /reminder list", type=int)
 @lightbulb.command("delete", "Delete a currently pending reminder.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_del(ctx: SnedSlashContext) -> None:
+
+    assert ctx.guild_id is not None
+
     try:
         await ctx.app.scheduler.cancel_timer(ctx.options.id, ctx.guild_id)
     except ValueError:
@@ -176,7 +192,8 @@ async def reminder_del(ctx: SnedSlashContext) -> None:
             description=f"Cannot find reminder with ID **{ctx.options.id}**.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     embed = hikari.Embed(
         title="✅ Reminder deleted",
@@ -186,7 +203,7 @@ async def reminder_del(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed)
 
 
-@reminder.child()
+@reminder.child()  # type: ignore
 @lightbulb.command("list", "List your currently pending reminders.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_list(ctx: SnedSlashContext) -> None:
@@ -215,7 +232,8 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
             hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=const.EMBED_BLUE)
             for content in reminders
         ]
-        navigator = AuthorOnlyNavigator(ctx, pages=pages)
+        # TODO: wtf
+        navigator = AuthorOnlyNavigator(ctx, pages=pages)  # type: ignore
         await navigator.send(ctx.interaction)
 
     else:
@@ -234,6 +252,9 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
     """
     if event.timer.event == "reminder":
         guild = plugin.app.cache.get_guild(event.timer.guild_id)
+        assert guild is not None
+        assert event.timer.channel_id is not None
+
         user = guild.get_member(event.timer.user_id)
 
         if not user:
@@ -242,11 +263,12 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
         if not guild:
             return
 
+        assert event.timer.notes is not None
         notes = json.loads(event.timer.notes)
         embed = hikari.Embed(
             title=f"✉️ {user.display_name}, your reminder:",
             description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
-            color=plugin.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
 
         pings = [user.mention]

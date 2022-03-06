@@ -2,11 +2,17 @@ import asyncio
 import inspect
 import logging
 import traceback
+import typing as t
 
 
 class IntervalLoop:
     def __init__(
-        self, callback, seconds: float = None, minutes: float = None, hours: float = None, days: float = None
+        self,
+        callback,
+        seconds: t.Optional[float] = None,
+        minutes: t.Optional[float] = None,
+        hours: t.Optional[float] = None,
+        days: t.Optional[float] = None,
     ) -> None:
         if not seconds and not minutes and not hours and not days:
             raise ValueError("Expected a loop time.")
@@ -17,10 +23,10 @@ class IntervalLoop:
             days = hours or 0
 
         self._coro = callback
-        self._task = None
-        self._failed = 0
-        self._sleep = seconds + minutes * 60 + hours * 3600 + days * 24 * 3600
-        self._stop_next = False
+        self._task: t.Optional[asyncio.Task] = None
+        self._failed: int = 0
+        self._sleep: float = seconds + minutes * 60 + hours * 3600 + days * 24 * 3600
+        self._stop_next: bool = False
 
         if not inspect.iscoroutinefunction(self._coro):
             raise TypeError(f"Expected a coroutine function.")
@@ -53,7 +59,7 @@ class IntervalLoop:
             raise RuntimeError("Task is already running!")
 
         self._task = asyncio.create_task(self._loopy_loop(*args, **kwargs))
-        return self._task
+        self._task
 
     def cancel(self) -> None:
         """
@@ -69,5 +75,5 @@ class IntervalLoop:
         """
         Gracefully stop the looping of the task.
         """
-        if not self._task and not self._task.done():
+        if self._task and not self._task.done():
             self._stop_next = True

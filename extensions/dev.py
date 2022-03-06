@@ -35,6 +35,7 @@ class TrashButton(nav.NavButton):
 class OutputNav(AuthorOnlyNavigator):
     async def on_timeout(self) -> None:
         try:
+            assert self.message is not None
             return await self.message.delete()
         except hikari.NotFoundError:
             pass
@@ -43,11 +44,13 @@ class OutputNav(AuthorOnlyNavigator):
 class TrashView(AuthorOnlyView):
     @miru.button(emoji="🗑️", style=hikari.ButtonStyle.SECONDARY)
     async def trash(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        assert self.message is not None
         await self.message.delete()
         self.stop()
 
     async def on_timeout(self) -> None:
         try:
+            assert self.message is not None
             return await self.message.delete()
         except hikari.NotFoundError:
             pass
@@ -70,7 +73,6 @@ async def send_paginated(
     Send command output paginated if appropriate.
     """
     text = str(text)
-    ctx.get_guild().get_members()
     channel_id = None
     if not isinstance(messageable, hikari.User):
         channel_id = hikari.Snowflake(messageable)
@@ -83,7 +85,9 @@ async def send_paginated(
             )
             return view.start(message)
         else:
-            return await messageable.send(f"{prefix}{format_output(text)}{suffix}")
+            assert isinstance(messageable, (hikari.TextableChannel, hikari.User))
+            await messageable.send(f"{prefix}{format_output(text)}{suffix}")
+            return
 
     buttons = [
         nav.FirstButton(),
@@ -101,6 +105,7 @@ async def send_paginated(
     navmenu = OutputNav(ctx, pages=list(paginator.build_pages()), buttons=buttons, timeout=300)
 
     if not channel_id:
+        assert isinstance(messageable, hikari.User)
         channel_id = await messageable.fetch_dm_channel()
 
     await navmenu.send(channel_id)
@@ -110,9 +115,8 @@ async def run_shell(ctx: SnedPrefixContext, code: str) -> None:
     """
     Run code in shell and return output to Discord.
     """
-    code: str = str(code)
 
-    code = code.replace("```py", "").replace("`", "").strip()
+    code = str(code).replace("```py", "").replace("`", "").strip()
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
     try:
@@ -187,9 +191,9 @@ async def eval_py(ctx: SnedPrefixContext) -> None:
     node: t.List[ast.stmt] = abstract_syntax_tree.body
 
     if node and type(node[0]) is ast.Expr:
-        code = code.split("\n")
-        code[-1] = f"return {code[-1]}"
-        code = "\n".join(code)
+        code_split = code.split("\n")
+        code_split[-1] = f"return {code_split[-1]}"
+        code = "\n".join(code_split)
 
     code_func = f"async def _container():\n" + textwrap.indent(code, "   ")
 
@@ -263,7 +267,8 @@ async def run_sql(ctx: SnedPrefixContext) -> None:
             description=f"Expected a singular `.sql` file as attachment with `UTF-8` encoding!",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
+        return
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
     sql: str = (await ctx.attachments[0].read()).decode("utf-8")
@@ -308,7 +313,8 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
             description=f"Required dump-file attachment not found. Expected a `.pgdmp` file.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
+        return
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
 

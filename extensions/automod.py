@@ -57,6 +57,8 @@ escalate_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=F
 async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> t.Dict[str, t.Any]:
     """Return auto-moderation policies for the specified guild."""
 
+    assert isinstance(automod.app, SnedBot)
+
     guild_id = hikari.Snowflake(guild)
 
     records = await automod.app.db_cache.get(table="mod_config", guild_id=guild_id)
@@ -86,7 +88,7 @@ automod.d.actions.get_policies = get_policies
 
 
 async def punish(
-    message: hikari.Message,
+    message: hikari.PartialMessage,
     policies: t.Dict[str, t.Any],
     action: AutomodActionType,
     reason: str,
@@ -101,9 +103,15 @@ async def punish(
         | hikari.Permissions.KICK_MEMBERS
     )
 
-    me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
+    assert isinstance(automod.app, SnedBot)
+    assert message.guild_id
 
-    offender = offender or message.member
+    me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
+    assert me is not None
+
+    assert message.author is not hikari.UNDEFINED
+    offender = offender or automod.app.cache.get_member(message.guild_id, message.author.id)
+    assert offender is not None
 
     if not helpers.can_harm(me, offender, permission=required_perms):
         return
@@ -113,7 +121,7 @@ async def punish(
         return
 
     # Check if member has excluded role
-    role_ids = [role_id for role_id in message.member.role_ids if role_id in policies[action.value]["excluded_roles"]]
+    role_ids = [role_id for role_id in offender.role_ids if role_id in policies[action.value]["excluded_roles"]]
     if not original_action and role_ids:
         return
 
@@ -174,7 +182,8 @@ async def punish(
 
     if state == AutoModState.WARN.value:
         embed = await mod.d.actions.warn(offender, me, f"Warned by auto-moderator for {reason}.")
-        return await message.respond(embed=embed)
+        await message.respond(embed=embed)
+        return
 
     elif state == AutoModState.ESCALATE.value:
         await escalate_prewarn_ratelimiter.acquire(message)
@@ -199,7 +208,8 @@ async def punish(
                 me,
                 f"Warned by auto-moderator for previous offenses ({action.name}).",
             )
-            return await message.respond(embed=embed)
+            await message.respond(embed=embed)
+            return
 
         else:
             await escalate_ratelimiter.acquire(message)
@@ -221,17 +231,20 @@ async def punish(
             helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
             reason=f"Timed out by auto-moderator for {reason}.",
         )
-        return await message.respond(embed=embed)
+        await message.respond(embed=embed)
+        return
 
     elif state == AutoModState.KICK.value:
         embed = await mod.d.actions.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
-        return await message.respond(embed=embed)
+        await message.respond(embed=embed)
+        return
 
     elif state == AutoModState.SOFTBAN.value:
         embed = await mod.d.actions.ban(
             offender, me, soft=True, reason=f"Soft-banned by auto-moderator for {reason}.", days_to_delete=1
         )
-        return await message.respond(embed=embed)
+        await message.respond(embed=embed)
+        return
 
     elif state == AutoModState.TEMPBAN.value:
         embed = await mod.d.actions.ban(
@@ -240,17 +253,19 @@ async def punish(
             duration=helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
             reason=f"Temp-banned by auto-moderator for {reason}.",
         )
-        return await message.respond(embed=embed)
+        await message.respond(embed=embed)
+        return
 
     elif state == AutoModState.PERMABAN.value:
         embed = await mod.d.actions.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
-        return await message.respond(embed=embed)
+        await message.respond(embed=embed)
+        return
 
 
 @automod.listener(hikari.GuildMessageCreateEvent, bind=True)
 @automod.listener(hikari.GuildMessageUpdateEvent, bind=True)
 async def scan_messages(
-    plugin: lightbulb.Plugin, event: t.Union[hikari.GuildMessageCreateEvent, hikari.GuildMessageDeleteEvent]
+    plugin: lightbulb.Plugin, event: t.Union[hikari.GuildMessageCreateEvent, hikari.GuildMessageUpdateEvent]
 ) -> None:
     """Scan messages for all possible offences."""
 
@@ -259,6 +274,8 @@ async def scan_messages(
     if message.author is None:
         # Probably a partial update, ignore it
         return
+
+    assert isinstance(plugin.app, SnedBot)
 
     if not plugin.app.is_started or not plugin.app.db_cache.is_ready:
         return
@@ -271,7 +288,8 @@ async def scan_messages(
 
     policies = await get_policies(message.guild_id)
 
-    if policies["mass_mentions"]["state"] != AutoModState.DISABLED.value:
+    if policies["mass_mentions"]["state"] != AutoModState.DISABLED.value and message.mentions.users:
+        assert message.author
         mentions = sum(user.id != message.author.id and not user.is_bot for user in message.mentions.users.values())
 
         if mentions >= policies["mass_mentions"]["count"]:
@@ -367,6 +385,7 @@ async def scan_messages(
             perspective.Attribute(perspective.AttributeName.THREAT),
         ]
         try:
+            assert plugin.app.perspective is not None
             resp: perspective.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
         except perspective.wrapper.PerspectiveException:
             return

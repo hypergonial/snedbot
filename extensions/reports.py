@@ -8,6 +8,7 @@ import miru
 from etc import constants as const
 from models import SnedSlashContext
 from models.bot import SnedBot
+from models.context import SnedContext, SnedMessageContext, SnedUserContext
 from utils import helpers
 
 logger = logging.getLogger(__name__)
@@ -35,14 +36,16 @@ class ReportModal(miru.Modal):
                 max_length=1000,
             )
         )
-        self.reason: str = None
-        self.info: str = None
+        self.reason: t.Optional[str] = None
+        self.info: t.Optional[str] = None
 
     async def callback(self, ctx: miru.ModalContext) -> None:
         if not ctx.values:
             return
 
         for item, value in ctx.values.items():
+            assert isinstance(item, miru.TextInput)
+
             if item.label == "Reason for the Report":
                 self.reason = value
             elif item.label == "Additional Context":
@@ -51,8 +54,10 @@ class ReportModal(miru.Modal):
         await ctx.defer(flags=hikari.MessageFlag.EPHEMERAL)
 
 
-async def report_error(ctx: SnedSlashContext) -> None:
+async def report_error(ctx: SnedContext) -> None:
     guild = ctx.get_guild()
+    assert guild is not None
+
     embed = hikari.Embed(
         title="❌ Oops!",
         description=f"It looks like the moderators of **{guild.name}** did not enable this functionality.",
@@ -61,8 +66,7 @@ async def report_error(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-async def report_perms_error(ctx: SnedSlashContext) -> None:
-    guild = ctx.get_guild()
+async def report_perms_error(ctx: SnedContext) -> None:
     embed = hikari.Embed(
         title="❌ Oops!",
         description=f"It looks like I do not have permissions to create a message in the reports channel. Please notify a moderator!",
@@ -71,7 +75,9 @@ async def report_perms_error(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Optional[hikari.Message] = None) -> None:
+async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hikari.Message] = None) -> None:
+
+    assert ctx.member is not None and ctx.guild_id is not None
 
     if member.id == ctx.member.id or member.is_bot:
         embed = hikari.Embed(
@@ -79,7 +85,8 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
             description=f"I'm not sure how that would work...",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     records = await ctx.app.db_cache.get(table="reports", guild_id=ctx.guild_id)
 
@@ -87,6 +94,7 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
         return await report_error(ctx)
 
     channel = ctx.app.cache.get_guild_channel(records[0]["channel_id"])
+    assert isinstance(channel, hikari.TextableGuildChannel)
 
     if not channel:
         await ctx.app.pool.execute(
@@ -100,10 +108,15 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
         await ctx.app.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
         return await report_error(ctx)
 
-    perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
+    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    assert me is not None
+
+    perms = lightbulb.utils.permissions_in(channel, me)
 
     if not (perms & hikari.Permissions.SEND_MESSAGES):
         return await report_perms_error(ctx)
+
+    assert ctx.interaction is not None
 
     modal = ReportModal(member)
     await modal.send(ctx.interaction)
@@ -114,7 +127,7 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
 
     role_ids = records[0]["pinged_role_ids"] or []
     roles = filter(lambda r: r is not None, [ctx.app.cache.get_role(role_id) for role_id in role_ids])
-    role_mentions = [role.mention for role in roles]
+    role_mentions = [role.mention for role in roles if role is not None]
 
     embed = hikari.Embed(
         title="⚠️ New Report",
@@ -149,7 +162,7 @@ async def report(ctx: SnedSlashContext, member: hikari.Member, message: t.Option
 @lightbulb.option("user", "The user that is to be reported.", type=hikari.Member, required=True)
 @lightbulb.command("report", "Report a user to the moderation team of this server.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def report_cmd(ctx: lightbulb.SlashContext) -> None:
+async def report_cmd(ctx: SnedSlashContext) -> None:
     helpers.is_member(ctx.options.user)
     await report(ctx, ctx.options.user)
 
@@ -157,15 +170,17 @@ async def report_cmd(ctx: lightbulb.SlashContext) -> None:
 @reports.command()
 @lightbulb.command("Report User", "Report the targeted user to the moderation team of this server.")
 @lightbulb.implements(lightbulb.UserCommand)
-async def report_user_cmd(ctx: lightbulb.UserContext) -> None:
+async def report_user_cmd(ctx: SnedUserContext) -> None:
     await report(ctx, ctx.options.target)
 
 
 @reports.command()
 @lightbulb.command("Report Message", "Report the targeted message to the moderation team of this server.")
 @lightbulb.implements(lightbulb.MessageCommand)
-async def report_msg_cmd(ctx: lightbulb.MessageContext) -> None:
+async def report_msg_cmd(ctx: SnedMessageContext) -> None:
+    assert ctx.guild_id is not None
     member = ctx.app.cache.get_member(ctx.guild_id, ctx.options.target.author)
+    assert member is not None
     await report(ctx, member, ctx.options.target)
 
 

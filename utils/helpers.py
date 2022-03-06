@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import re
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 
 import hikari
 import lightbulb
@@ -11,7 +11,7 @@ import lightbulb
 from etc import constants as const
 from models import errors
 from models.components import *
-from models.context import SnedSlashContext
+from models.context import SnedContext, SnedSlashContext
 from models.db_user import User
 
 MESSAGE_LINK_REGEX = re.compile(
@@ -56,31 +56,7 @@ def add_embed_footer(embed: hikari.Embed, invoker: hikari.Member) -> hikari.Embe
     return embed
 
 
-def get_display_avatar(member: hikari.Member) -> str:
-    """
-    Gets the currently displayed avatar for the member, returns the URL.
-    """
-    if member.guild_avatar_url:
-        return member.guild_avatar_url
-
-    elif member.avatar_url:
-        return member.avatar_url
-
-    else:
-        return member.default_avatar_url
-
-
-def get_avatar(user: Union[hikari.User, hikari.Member]) -> str:
-    """
-    Return the avatar of the specified user, fallback to default_avatar if not found.
-    """
-    if user.avatar_url:
-        return user.avatar_url
-    else:
-        return user.default_avatar_url
-
-
-def get_color(member: hikari.Member) -> hikari.Color:
+def get_color(member: hikari.Member) -> t.Optional[hikari.Color]:
     roles = member.get_roles().__reversed__()
     if roles:
         for role in roles:
@@ -90,7 +66,7 @@ def get_color(member: hikari.Member) -> hikari.Color:
     return None
 
 
-def sort_roles(roles: List[hikari.Role]) -> List[hikari.Role]:
+def sort_roles(roles: Sequence[hikari.Role]) -> Sequence[hikari.Role]:
     """Sort a list of roles in a descending order based on position."""
     return sorted(roles, key=lambda r: r.position, reverse=True)
 
@@ -121,7 +97,10 @@ def get_badges(ctx: lightbulb.Context, user: hikari.User) -> List[str]:
     return badges
 
 
-async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embed:
+async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
+
+    if not ctx.guild_id:
+        raise RuntimeError("Cannot use get_userinfo outside of a guild.")
 
     db_user: User = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
 
@@ -131,6 +110,7 @@ async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embe
         roles = [role.mention for role in sort_roles(member.get_roles())]
         roles.remove(f"<@&{ctx.guild_id}>")
         roles = ", ".join(roles) if roles else "`-`"
+        comms_disabled_until = member.communication_disabled_until()
 
         embed = hikari.Embed(
             title=f"**User information:** {member.display_name}",
@@ -142,9 +122,9 @@ async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embe
 **• Join date:** {format_dt(member.joined_at)} ({format_dt(member.joined_at, style='R')})
 **• Badges:** {"   ".join(get_badges(ctx, member)) or "`-`"}
 **• Warns:** `{db_user.warns}`
-**• Timed out:** {f"Until: {format_dt(member.communication_disabled_until())}" if member.communication_disabled_until() else "`-`"}
+**• Timed out:** {f"Until: {format_dt(comms_disabled_until)}" if comms_disabled_until is not None else "`-`"}
 **• Flags:** `{",".join(list(db_user.flags.keys())) if db_user.flags and len(db_user.flags) > 0 else "-"}`
-**• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}`
+**• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}` 
 **• Roles:** {roles}""",
             color=get_color(member),
         )
@@ -175,6 +155,8 @@ async def get_userinfo(ctx: lightbulb.Context, user: hikari.User) -> hikari.Embe
         user = await ctx.app.rest.fetch_user(user.id)
         if user.banner_url:
             embed.set_image(user.banner_url)
+
+    assert ctx.member is not None
 
     if ctx.member.id in ctx.app.owner_ids:
         records = await ctx.app.db_cache.get(table="blacklist", guild_id=0, user_id=user.id)
@@ -231,7 +213,13 @@ def is_above(me: hikari.Member, member: hikari.Member) -> bool:
     """
     Returns True if me's top role's position is higher than the specified member's.
     """
-    if me.get_top_role().position > member.get_top_role().position:
+    me_top_role = me.get_top_role()
+    member_top_role = member.get_top_role()
+
+    assert me_top_role is not None
+    assert member_top_role is not None
+
+    if me_top_role.position > member_top_role.position:
         return True
     return False
 
@@ -295,6 +283,8 @@ def is_member(user: hikari.PartialUser) -> bool:  # Such useful
 async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Optional[hikari.Message]:
     """Parse a message_link string into a message object."""
 
+    assert ctx.guild_id is not None
+
     if not MESSAGE_LINK_REGEX.fullmatch(message_link):
         embed = hikari.Embed(
             title="❌ Invalid link",
@@ -319,8 +309,10 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
         return None
 
     channel = ctx.app.cache.get_guild_channel(channel_id)
+    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    assert channel is not None and me is not None and isinstance(channel, hikari.TextableGuildChannel)
 
-    perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
+    perms = lightbulb.utils.permissions_in(channel, me)
     if not (perms & hikari.Permissions.READ_MESSAGE_HISTORY):
         raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)
 
@@ -338,22 +330,22 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
     return message
 
 
-async def maybe_delete(message: hikari.Message) -> None:
+async def maybe_delete(message: hikari.PartialMessage) -> None:
     try:
         await message.delete()
     except (hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         pass
 
 
-async def maybe_edit(message: hikari.Message, *args, **kwargs) -> None:
+async def maybe_edit(message: hikari.PartialMessage, *args, **kwargs) -> None:
     try:
-        return await message.edit(*args, **kwargs)
+        await message.edit(*args, **kwargs)
     except (hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         pass
 
 
 def format_reason(
-    reason: str = None, moderator: Optional[hikari.Member] = None, *, max_length: Optional[int] = 512
+    reason: t.Optional[str] = None, moderator: Optional[hikari.Member] = None, *, max_length: Optional[int] = 512
 ) -> str:
     """
     Format a reason for a moderation action

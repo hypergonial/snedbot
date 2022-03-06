@@ -23,4 +23,5 @@ def get_perm_str(perm: hikari.Permissions) -> str:
     if perm_str := perms_str.get(perm):
         return perm_str
 
+    assert perm.name is not None
     return perm.name.replace("_", " ").title()

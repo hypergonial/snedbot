@@ -26,6 +26,7 @@ async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[
     """
     Get custom prefix for guild to show prefix command deprecation warn
     """
+    assert isinstance(bot, SnedBot)
     if message.guild_id is None:
         return "sn "
 
@@ -71,8 +72,13 @@ class SnedBot(lightbulb.BotApp):
         else:
             default_enabled_guilds = ()
 
+        token = os.getenv("TOKEN")
+
+        if not token:
+            raise RuntimeError("TOKEN not found in environment.")
+
         super().__init__(
-            token=os.getenv("TOKEN"),
+            token=token,
             cache_settings=cache_settings,
             default_enabled_guilds=default_enabled_guilds,
             intents=intents,
@@ -169,7 +175,7 @@ class SnedBot(lightbulb.BotApp):
         command: lightbulb.SlashCommand,
         cls: t.Type[lightbulb.SlashContext] = SnedSlashContext,
     ) -> SnedSlashContext:
-        return await super().get_slash_context(event, command, cls)
+        return await super().get_slash_context(event, command, cls)  # type: ignore
 
     async def get_user_context(
         self,
@@ -177,7 +183,7 @@ class SnedBot(lightbulb.BotApp):
         command: lightbulb.UserCommand,
         cls: t.Type[lightbulb.UserContext] = SnedUserContext,
     ) -> SnedUserContext:
-        return await super().get_user_context(event, command, cls)
+        return await super().get_user_context(event, command, cls)  # type: ignore
 
     async def get_message_context(
         self,
@@ -185,12 +191,12 @@ class SnedBot(lightbulb.BotApp):
         command: lightbulb.MessageCommand,
         cls: t.Type[lightbulb.MessageContext] = SnedMessageContext,
     ) -> SnedMessageContext:
-        return await super().get_message_context(event, command, cls)
+        return await super().get_message_context(event, command, cls)  # type: ignore
 
     async def get_prefix_context(
         self, event: hikari.MessageCreateEvent, cls: t.Type[lightbulb.PrefixContext] = SnedPrefixContext
     ) -> t.Optional[SnedPrefixContext]:
-        return await super().get_prefix_context(event, cls)
+        return await super().get_prefix_context(event, cls)  # type: ignore
 
     async def on_guild_available(self, event: hikari.GuildAvailableEvent) -> None:
         if self.is_started:
@@ -205,11 +211,15 @@ class SnedBot(lightbulb.BotApp):
     async def on_started(self, event: hikari.StartedEvent) -> None:
 
         user = self.get_me()
-        self._user_id = user.id
+        self._user_id = user.id if user else None
         self.db_cache = cache.Caching(self)
         self.global_config = ConfigHandler(self)
         self.scheduler = scheduler.Scheduler(self)
-        self.perspective = perspective.Client(os.getenv("PERSPECTIVE_API_KEY"), do_not_store=True)
+        if perspective_api_key := os.getenv("PERSPECTIVE_API_KEY"):
+            self.perspective = perspective.Client(perspective_api_key, do_not_store=True)
+        else:
+            self.perspective = None
+
         self._db_backup_loop.start()
 
         logging.info(f"Startup complete, initialized as {user}")
@@ -267,8 +277,10 @@ class SnedBot(lightbulb.BotApp):
                     description="Use `/` to access my commands and see what I can do!",
                     color=0xFEC01D,
                 )
-                embed.set_thumbnail(self.get_me().avatar_url)
-                return await event.message.respond(embed=embed)
+                user = self.get_me()
+                embed.set_thumbnail(user.avatar_url if user else None)
+                await event.message.respond(embed=embed)
+                return
 
             elif event.content.startswith(await get_prefix(self, event.message)):
                 embed = hikari.Embed(
@@ -276,8 +288,10 @@ class SnedBot(lightbulb.BotApp):
                     description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!",
                     color=self.error_color,
                 )
-                embed.set_thumbnail(self.get_me().avatar_url)
-                return await event.message.respond(embed=embed)
+                user = self.get_me()
+                embed.set_thumbnail(user.avatar_url if user else None)
+                await event.message.respond(embed=embed)
+                return
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
         """Guild join behaviour"""
@@ -288,6 +302,9 @@ class SnedBot(lightbulb.BotApp):
 
         me = event.guild.get_my_member()
         channel = event.guild.get_channel(event.guild.system_channel_id)
+
+        assert me is not None
+        assert isinstance(channel, hikari.TextableGuildChannel)
 
         if not channel or not (hikari.Permissions.SEND_MESSAGES & lightbulb.utils.permissions_in(channel, me)):
             return

@@ -21,7 +21,6 @@ class BucketType(enum.IntEnum):
     CHANNEL = 2
     USER = 3
     MEMBER = 4
-    TOP_ROLE = 5
 
 
 class RateLimiter:
@@ -51,8 +50,10 @@ class RateLimiter:
         self._queue: t.Deque[asyncio.Event] = deque()
         self._task: t.Optional[asyncio.Task[t.Any]] = None
 
-    def _get_key(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> str:
+    def _get_key(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> str:
         """Get key for cooldown bucket"""
+
+        assert ctx_or_message.member and ctx_or_message.author
 
         keys = {
             BucketType.GLOBAL: 0,
@@ -60,12 +61,11 @@ class RateLimiter:
             BucketType.CHANNEL: ctx_or_message.channel_id,
             BucketType.USER: ctx_or_message.author.id,
             BucketType.MEMBER: int(str(ctx_or_message.guild_id) + str(ctx_or_message.member.id)),
-            BucketType.TOP_ROLE: ctx_or_message.member.get_top_role().id,
         }
 
         return keys[self.bucket]
 
-    def is_rate_limited(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> bool:
+    def is_rate_limited(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> bool:
         """Returns a boolean determining if the ratelimiter is ratelimited or not."""
         now = time.monotonic()
         key = self._get_key(ctx_or_message)
@@ -80,7 +80,7 @@ class RateLimiter:
         self._bucket_data[key] = {"reset_at": now + self.period, "remaining": self.limit}
         return False
 
-    async def acquire(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> None:
+    async def acquire(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> None:
         """Acquire a ratelimit, block execution if ratelimited and wait is True."""
         event = asyncio.Event()
 
@@ -92,7 +92,7 @@ class RateLimiter:
         if self.wait:
             await event.wait()
 
-    async def _iter_queue(self, ctx: t.Union[lightbulb.Context, miru.Context, hikari.Message]) -> None:
+    async def _iter_queue(self, ctx: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> None:
         try:
             if not self._queue:
                 self._task = None
@@ -101,7 +101,7 @@ class RateLimiter:
             if self.is_rate_limited(ctx):
                 # Sleep until ratelimit expires
                 key = self._get_key(ctx)
-                bucket_item = self._bucket_data.get(key)
+                bucket_item = self._bucket_data[key]
                 sleep_time = bucket_item["reset_at"] - time.monotonic()
                 await asyncio.sleep(sleep_time)
 

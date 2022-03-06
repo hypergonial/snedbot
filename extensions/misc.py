@@ -12,6 +12,7 @@ from etc import constants as const
 from models import SnedBot
 from models.context import SnedMessageContext, SnedSlashContext
 from utils import helpers
+from utils.scheduler import ConversionMode
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,6 @@ async def ping(ctx: SnedSlashContext) -> None:
         description="Latency: `{latency}ms`".format(latency=round(ctx.app.heartbeat_latency * 1000)),
         color=const.MISC_COLOR,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     await ctx.respond(embed=embed)
 
 
@@ -81,7 +81,8 @@ async def embed(ctx: SnedSlashContext) -> None:
                 description=f"Provided an invalid URL.",
                 color=const.ERROR_COLOR,
             )
-            return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
     embed = hikari.Embed(
         title=ctx.options.title,
@@ -100,7 +101,7 @@ async def embed(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed)
 
 
-@embed.set_error_handler()
+@embed.set_error_handler()  # type: ignore
 async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
     if isinstance(event.exception, lightbulb.CommandInvocationError) and isinstance(
         event.exception.original, ValueError
@@ -108,9 +109,10 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
         embed = hikari.Embed(
             title="❌ Parsing error",
             description=f"An error occurred parsing parameters.\n**Error:** ```{event.exception.original}```",
-            color=event.context.app.error_color,
+            color=const.ERROR_COLOR,
         )
-        return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
     raise
 
 
@@ -119,6 +121,8 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def about(ctx: SnedSlashContext) -> None:
     me = ctx.app.get_me()
+    assert me is not None
+
     embed = hikari.Embed(
         title=f"ℹ️ About {me.username}",
         description=f"""**• Made by:** `Hyper#0001`
@@ -128,7 +132,6 @@ async def about(ctx: SnedSlashContext) -> None:
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
         color=const.EMBED_BLUE,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     embed.set_thumbnail(me.avatar_url)
     embed.add_field(
         name="CPU utilization",
@@ -153,6 +156,7 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
 @lightbulb.command("invite", "Invite the bot to your server!")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def invite(ctx: SnedSlashContext) -> None:
+
     if not ctx.app.dev_mode:
         invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.user_id}&permissions=1494984682710&scope=applications.commands%20bot"
         embed = hikari.Embed(
@@ -160,7 +164,6 @@ async def invite(ctx: SnedSlashContext) -> None:
             description=f"[Click here]({invite_url}) for an invite link!",
             color=const.MISC_COLOR,
         )
-        embed = helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
     else:
         embed = hikari.Embed(
@@ -168,7 +171,6 @@ async def invite(ctx: SnedSlashContext) -> None:
             description=f"It looks like this bot is in developer mode, and not intended to be invited!",
             color=const.MISC_COLOR,
         )
-        embed = helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
 
 
@@ -182,6 +184,8 @@ async def invite(ctx: SnedSlashContext) -> None:
 @lightbulb.command("setnick", "Set the bot's nickname!")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def setnick(ctx: SnedSlashContext) -> None:
+    assert ctx.guild_id is not None
+
     nickname = ctx.options.nickname[:32] if not ctx.options.nickname.lower() == "none" else None
 
     await ctx.app.rest.edit_my_member(
@@ -209,7 +213,9 @@ async def source(ctx: SnedSlashContext) -> None:
 @lightbulb.command("serverinfo", "Provides detailed information about this server.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def serverinfo(ctx: SnedSlashContext) -> None:
+    assert ctx.guild_id is not None
     guild = ctx.app.cache.get_available_guild(ctx.guild_id)
+    assert guild is not None
 
     embed = hikari.Embed(
         title=f"ℹ️ Server Information",
@@ -233,7 +239,6 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
         color=const.EMBED_BLUE,
     )
 
-    embed = helpers.add_embed_footer(embed, ctx.member)
     embed.set_thumbnail(guild.icon_url)
     embed.set_image(guild.banner_url)
 
@@ -262,7 +267,12 @@ async def echo(ctx: SnedSlashContext) -> None:
     else:
         channel = ctx.get_channel()
 
-    perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
+    assert ctx.guild_id is not None
+
+    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    assert isinstance(channel, hikari.TextableGuildChannel) and me is not None
+
+    perms = lightbulb.utils.permissions_in(channel, me)
     if not helpers.includes_permissions(perms, hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL):
         raise lightbulb.BotMissingRequiredPermission(
             perms=hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
@@ -290,9 +300,14 @@ async def edit(ctx: SnedSlashContext) -> None:
     if not message:
         return
 
-    channel = ctx.app.cache.get_guild_channel(message.channel_id) or ctx.get_channel()
+    assert ctx.guild_id is not None
 
-    perms = lightbulb.utils.permissions_in(channel, ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id))
+    channel = ctx.app.cache.get_guild_channel(message.channel_id) or ctx.get_channel()
+    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+
+    assert isinstance(channel, hikari.TextableGuildChannel) and me is not None
+
+    perms = lightbulb.utils.permissions_in(channel, me)
     if not helpers.includes_permissions(
         perms,
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
@@ -309,7 +324,8 @@ async def edit(ctx: SnedSlashContext) -> None:
             description="The bot did not author this message, thus it cannot edit it.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     modal = miru.Modal(f"Editing message in #{channel.name}")
     modal.add_item(
@@ -365,7 +381,8 @@ async def set_timezone(ctx: SnedSlashContext) -> None:
             description="Oops! This does not look like a valid timezone! Specify your timezone as a valid `Continent/City` combination.",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     await ctx.app.pool.execute(
         """
@@ -390,7 +407,7 @@ async def tz_opts(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
-        return get_close_matches(option.value, pytz.common_timezones, 25)
+        return get_close_matches(str(option.value), pytz.common_timezones, 25)
     return pytz.common_timezones[:25]
 
 
@@ -414,14 +431,17 @@ async def tz_opts(
 @lightbulb.implements(lightbulb.SlashCommand)
 async def timestamp_gen(ctx: SnedSlashContext) -> None:
     try:
-        time = await ctx.app.scheduler.convert_time(ctx.options.time, force_mode="absolute", user=ctx.user)
+        time = await ctx.app.scheduler.convert_time(
+            ctx.options.time, conversion_mode=ConversionMode.ABSOLUTE, user=ctx.user
+        )
     except ValueError as error:
         embed = hikari.Embed(
             title="❌ Error: Invalid data entered",
             description=f"Your timeformat is invalid! \n**Error:** {error}",
             color=const.ERROR_COLOR,
         )
-        return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
     style = ctx.options.style.split(" -")[0] if ctx.options.style else "f"
 
     await ctx.respond(f"`{helpers.format_dt(time, style=style)}` --> {helpers.format_dt(time, style=style)}")

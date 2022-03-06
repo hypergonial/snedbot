@@ -84,7 +84,7 @@ async def navtest(ctx: SnedSlashContext) -> None:
 
     navigator = nav.NavigatorView(pages=["1", "2", "3"])
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-    await navigator.send(ctx.interaction, deferred=True)
+    await navigator.send(ctx.interaction, responded=True)
 
 
 @test.command()
@@ -97,6 +97,7 @@ async def testmultiple_cmd(ctx: SnedSlashContext) -> None:
     for i in range(1, 80):
         try:
             print(f"REQUEST {i}")
+            assert ctx.app.perspective is not None
             resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(
                 text, perspective.Attribute(perspective.AttributeName.TOXICITY)
             )
@@ -125,7 +126,7 @@ async def test_cmd(ctx: SnedSlashContext) -> None:
         perspective.Attribute(perspective.AttributeName.INSULT),
         perspective.Attribute(perspective.AttributeName.THREAT),
     ]
-
+    assert ctx.app.perspective is not None
     resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(text, attribs)
 
     content = "```"
