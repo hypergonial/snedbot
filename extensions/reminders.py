@@ -41,7 +41,7 @@ class ReminderView(miru.View):
             embed = hikari.Embed(
                 title="❌ Invalid interaction",
                 description="Oops! It looks like this reminder is no longer valid!",
-                color=self.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -49,7 +49,7 @@ class ReminderView(miru.View):
             embed = hikari.Embed(
                 title="❌ Invalid interaction",
                 description="You cannot do this on your own reminder.",
-                color=self.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -62,7 +62,7 @@ class ReminderView(miru.View):
                 embed = hikari.Embed(
                     title="❌ Invalid interaction",
                     description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -72,7 +72,7 @@ class ReminderView(miru.View):
             embed = hikari.Embed(
                 title="✅ Signed up to reminder",
                 description="You will be notified when this reminder is due!",
-                color=self.app.embed_green,
+                color=const.EMBED_GREEN,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         else:
@@ -82,7 +82,7 @@ class ReminderView(miru.View):
             embed = hikari.Embed(
                 title="✅ Removed from reminder",
                 description="Removed you from the list of recipients!",
-                color=self.app.embed_green,
+                color=const.EMBED_GREEN,
             )
             return await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 

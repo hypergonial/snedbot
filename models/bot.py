@@ -15,6 +15,7 @@ from lightbulb.ext import tasks
 
 import utils.db_backup as db_backup
 from config import Config
+from etc import constants as const
 from utils import cache, helpers, scheduler
 from utils.config_handler import ConfigHandler
 from utils.tasks import IntervalLoop
@@ -102,14 +103,6 @@ class SnedBot(lightbulb.BotApp):
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
         self._initial_guilds: t.List[Snowflake] = []
-
-        # Color scheme
-        self.error_color = 0xFF0000
-        self.warn_color = 0xFFCC4D
-        self.embed_blue = 0x009DFF
-        self.embed_green = 0x77B255
-        self.unknown_color = 0xBE1931
-        self.misc_color = 0xC2C2C2
 
         self.start_listeners()
 
@@ -286,7 +279,7 @@ class SnedBot(lightbulb.BotApp):
                 embed = hikari.Embed(
                     title="Uh Oh!",
                     description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!",
-                    color=self.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 user = self.get_me()
                 embed.set_thumbnail(user.avatar_url if user else None)

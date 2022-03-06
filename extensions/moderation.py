@@ -284,12 +284,12 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: t.Option
     embed = hikari.Embed(
         title="⚠️ Warning issued",
         description=f"**{member}** has been warned by **{moderator}**.\n**Reason:** ```{reason}```",
-        color=mod.app.warn_color,
+        color=const.WARN_COLOR,
     )
     log_embed = hikari.Embed(
         title="⚠️ Warning issued",
         description=f"**{member}** has been warned by **{moderator}**.\n**Warns:** {db_user.warns}\n**Reason:** ```{reason}```",
-        color=mod.app.warn_color,
+        color=const.WARN_COLOR,
     )
     await pre_mod_actions(member.guild_id, member, ActionType.WARN, reason)
 
@@ -471,7 +471,7 @@ async def timeout(
     embed = hikari.Embed(
         title="🔇 " + "User timed out",
         description=f"**{member}** has been timed out until {helpers.format_dt(duration)}.\n**Reason:** ```{raw_reason}```",
-        color=mod.app.error_color,
+        color=const.ERROR_COLOR,
     )
     return embed
 
@@ -565,7 +565,7 @@ async def ban(
         embed = hikari.Embed(
             title="🔨 User banned",
             description=f"**{user}** has been banned.\n**Reason:** ```{raw_reason}```",
-            color=mod.app.error_color,
+            color=const.ERROR_COLOR,
         )
 
         if soft:
@@ -581,7 +581,7 @@ async def ban(
         embed = hikari.Embed(
             title="❌ Ban failed",
             description="This could be due to a configuration or network error. Please try again later.",
-            color=mod.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return embed
 
@@ -647,7 +647,7 @@ async def unban(user: hikari.User, moderator: hikari.Member, reason: t.Optional[
         embed = hikari.Embed(
             title="🔨 User unbanned",
             description=f"**{user}** has been unbanned.\n**Reason:** ```{raw_reason}```",
-            color=mod.app.embed_green,
+            color=const.EMBED_GREEN,
         )
         return embed
     except (hikari.HTTPError, hikari.ForbiddenError, hikari.NotFoundError) as e:
@@ -655,13 +655,13 @@ async def unban(user: hikari.User, moderator: hikari.Member, reason: t.Optional[
             embed = hikari.Embed(
                 title="❌ Unban failed",
                 description="This user does not appear to be banned!",
-                color=mod.app.error_color,
+                color=const.ERROR_COLOR,
             )
         else:
             embed = hikari.Embed(
                 title="❌ Unban failed",
                 description="This could be due to a configuration or network error. Please try again later.",
-                color=mod.app.error_color,
+                color=const.ERROR_COLOR,
             )
         return embed
 
@@ -709,7 +709,7 @@ async def kick(
         embed = hikari.Embed(
             title="🚪👈 User kicked",
             description=f"**{member}** has been kicked.\n**Reason:** ```{raw_reason}```",
-            color=mod.app.error_color,
+            color=const.ERROR_COLOR,
         )
         await post_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
         return embed
@@ -718,7 +718,7 @@ async def kick(
         embed = hikari.Embed(
             title="❌ Kick failed",
             description="This could be due to a configuration or network error. Please try again later.",
-            color=mod.app.error_color,
+            color=const.ERROR_COLOR,
         )
         return embed
 

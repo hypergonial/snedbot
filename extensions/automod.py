@@ -10,6 +10,7 @@ import lightbulb
 import perspective
 
 import utils
+from etc import constants as const
 from etc.settings_static import default_automod_policies, notices
 from models.bot import SnedBot
 from utils import helpers
@@ -173,7 +174,7 @@ async def punish(
         embed = hikari.Embed(
             title="💬 Auto-Moderation Notice",
             description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
-            color=automod.app.warn_color,
+            color=const.WARN_COLOR,
         )
         await message.respond(content=offender.mention, embed=embed, user_mentions=True)
         await mod.d.actions.flag_user(
@@ -192,7 +193,7 @@ async def punish(
             embed = hikari.Embed(
                 title="💬 Auto-Moderation Notice",
                 description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
-                color=automod.app.warn_color,
+                color=const.WARN_COLOR,
             )
             await message.respond(content=offender.mention, embed=embed, user_mentions=True)
             return await mod.d.actions.flag_user(

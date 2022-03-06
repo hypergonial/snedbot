@@ -211,7 +211,7 @@ class SettingsView(models.AuthorOnlyView):
         embed = hikari.Embed(
             title="Reports Settings",
             description="Below you can see all settings for configuring the reporting of other users or messages. This allows other users to flag suspicious content for review.",
-            color=self.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         embed.add_field("Channel", value=channel.mention if channel else "*Not set*", inline=True)
         embed.add_field(name="​", value="​", inline=True)  # Spacer
@@ -248,7 +248,7 @@ class SettingsView(models.AuthorOnlyView):
             embed = hikari.Embed(
                 title="Reports Settings",
                 description=f"Please select a channel where reports will be sent.",
-                color=self.app.embed_blue,
+                color=const.EMBED_BLUE,
             )
 
             options = [
@@ -271,7 +271,7 @@ class SettingsView(models.AuthorOnlyView):
                 embed = hikari.Embed(
                     title="❌ Channel not found.",
                     description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Reports")
 
@@ -386,7 +386,7 @@ Enabling the DM-ing of users will notify them in a direct message when they are 
 This does not apply to manually punishing them through Discord built-in commands/tools.
 
 Enabling **ephemeral responses** will show all moderation command responses in a manner where they will be invisible to every user except for the one who used the command.""",
-            color=self.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         buttons = []
         for key, value in mod_settings.items():
@@ -444,7 +444,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed = hikari.Embed(
             title="Starboard Settings",
             description="Below you can see the current settings for this server's starboard! If enabled, users can star messages by reacting with ⭐, and if the number of reactions reaches the specified limit, the message will be sent into the specified starboard channel.",
-            color=self.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         buttons = [
             BooleanButton(state=is_enabled, label="Enable", disabled=not starboard_channel),
@@ -527,7 +527,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
                     description=f"Expected a non-zero **number**.",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Starboard")
 
@@ -546,7 +546,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description=f"Please select a channel where starred messages will be sent.",
-                color=self.app.embed_blue,
+                color=const.EMBED_BLUE,
             )
 
             options = [
@@ -568,7 +568,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 embed = hikari.Embed(
                     title="❌ Channel not found.",
                     description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Starboard")
             else:
@@ -613,7 +613,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 embed = hikari.Embed(
                     title="❌ Channel not found.",
                     description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Starboard")
 
@@ -651,7 +651,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 embed = hikari.Embed(
                     title="❌ Channel not found.",
                     description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Starboard")
 
@@ -680,7 +680,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed = hikari.Embed(
             title="Logging Settings",
             description="Below you can see a list of logging events and channels associated with them. To change where a certain event's logs should be sent, click on the corresponding button.",
-            color=self.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
 
         me = self.app.cache.get_member(self.last_ctx.guild_id, self.app.user_id)
@@ -739,7 +739,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed = hikari.Embed(
             title="Logging Settings",
             description=f"Please select a channel where the following event should be logged: `{log_event_strings[log_event]}`",
-            color=self.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
 
         try:
@@ -757,7 +757,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed = hikari.Embed(
                 title="❌ Channel not found.",
                 description="Unable to locate channel. Please type a channel mention or ID.",
-                color=self.app.error_color,
+                color=const.ERROR_COLOR,
             )
             return await self.error_screen(embed, parent="Logging")
         else:
@@ -1039,7 +1039,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 parent="Auto-Moderation",
             )
             embed = hikari.Embed(
-                title="Select state...", description="Select a new state for this policy...", color=self.app.embed_blue
+                title="Select state...", description="Select a new state for this policy...", color=const.EMBED_BLUE
             )
             await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
             await self.wait_for_input()
@@ -1071,7 +1071,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
                     description=f"One or more values were not floating-point numbers, or were not between `0.1`-`1.0`!",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
 
@@ -1113,7 +1113,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
                     description=f"Expected a **number** (that is not zero) for option `{policy_fields[opt]['label']}`.",
-                    color=self.app.error_color,
+                    color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
 
@@ -1131,7 +1131,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
                             description="Choose a channel to add to excluded channels!",
-                            color=self.app.embed_blue,
+                            color=const.EMBED_BLUE,
                         )
                         return_type = hikari.TextableGuildChannel
                     case "del_channel":
@@ -1142,7 +1142,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
                             description="Choose a channel to remove from excluded channels!",
-                            color=self.app.embed_blue,
+                            color=const.EMBED_BLUE,
                         )
                         return_type = hikari.TextableGuildChannel
                     case "add_role":
@@ -1153,7 +1153,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
                             description="Choose a role to add to excluded roles!",
-                            color=self.app.embed_blue,
+                            color=const.EMBED_BLUE,
                         )
                         return_type = hikari.Role
                     case "del_role":
@@ -1164,7 +1164,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         embed = hikari.Embed(
                             title="Auto-Moderation Settings",
                             description="Choose a role to remove from excluded roles!",
-                            color=self.app.embed_blue,
+                            color=const.EMBED_BLUE,
                         )
                         return_type = hikari.Role
 
@@ -1187,7 +1187,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     embed = hikari.Embed(
                         title="❌ Invalid Type",
                         description=f"Cannot find the channel/role specified or it is not in the excluded roles/channels.",
-                        color=self.app.error_color,
+                        color=const.ERROR_COLOR,
                     )
                     return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
 

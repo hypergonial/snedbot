@@ -823,7 +823,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             embed = hikari.Embed(
                 title=f"🔉 User timeout removed",
                 description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
-                color=plugin.app.embed_green,
+                color=const.EMBED_GREEN,
             )
             if mod:
                 await mod.d.actions.add_note(
@@ -840,7 +840,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 **Moderator:** `{moderator}` 
 **Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style='R')})
 **Reason:** ```{reason}```""",
-                color=plugin.app.error_color,
+                color=const.ERROR_COLOR,
             )
             if mod:
                 await mod.d.actions.add_note(
@@ -856,7 +856,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         embed = hikari.Embed(
             title=f"🖊️ Nickname changed",
             description=f"**User:** `{member} ({member.id})`\nNickname before: `{old_member.nickname}`\nNickname after: `{member.nickname}`",
-            color=plugin.app.embed_blue,
+            color=const.EMBED_BLUE,
         )
         await log("nickname", embed, event.guild_id)
 
@@ -886,7 +886,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             embed = hikari.Embed(
                 title=f"🖊️ Member roles updated",
                 description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role added:** {role.mention}",
-                color=plugin.app.embed_blue,
+                color=const.EMBED_BLUE,
             )
             await log("roles", embed, event.guild_id)
 
@@ -896,7 +896,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             embed = hikari.Embed(
                 title=f"🖊️ Member roles updated",
                 description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role removed:** {role.mention}",
-                color=plugin.app.embed_blue,
+                color=const.EMBED_BLUE,
             )
             await log("roles", embed, event.guild_id)
 
