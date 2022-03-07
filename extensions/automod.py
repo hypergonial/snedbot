@@ -13,6 +13,7 @@ import utils
 from etc import constants as const
 from etc.settings_static import default_automod_policies, notices
 from models.bot import SnedBot
+from models.events import AutoModMessageFlagEvent
 from utils import helpers
 from utils.ratelimiter import BucketType
 
@@ -105,7 +106,7 @@ async def punish(
     )
 
     assert isinstance(automod.app, SnedBot)
-    assert message.guild_id
+    assert message.guild_id and isinstance(automod.app, SnedBot)
 
     me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
     assert me is not None
@@ -166,8 +167,10 @@ async def punish(
         return
 
     if state == AutoModState.FLAG.value:
-        await mod.d.actions.flag_user(
-            offender.id, message.guild_id, message, reason=f"Message flagged by auto-moderator for {reason}."
+        return await mod.app.dispatch(
+            AutoModMessageFlagEvent(
+                automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
+            )
         )
 
     if state == AutoModState.NOTICE.value:
@@ -177,8 +180,10 @@ async def punish(
             color=const.WARN_COLOR,
         )
         await message.respond(content=offender.mention, embed=embed, user_mentions=True)
-        await mod.d.actions.flag_user(
-            offender.id, message.guild_id, message, reason=f"Message flagged by auto-moderator for {reason}."
+        return await mod.app.dispatch(
+            AutoModMessageFlagEvent(
+                automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
+            )
         )
 
     if state == AutoModState.WARN.value:
@@ -196,11 +201,14 @@ async def punish(
                 color=const.WARN_COLOR,
             )
             await message.respond(content=offender.mention, embed=embed, user_mentions=True)
-            return await mod.d.actions.flag_user(
-                offender.id,
-                message.guild_id,
-                message,
-                reason=f"Message flagged by auto-moderator for {reason} ({action.name}).",
+            return await mod.app.dispatch(
+                AutoModMessageFlagEvent(
+                    automod.app,
+                    message,
+                    offender,
+                    message.guild_id,
+                    f"Message flagged by auto-moderator for {reason} ({action.name}).",
+                )
             )
 
         elif escalate_prewarn_ratelimiter.is_rate_limited(message):

@@ -211,7 +211,7 @@ class Scheduler:
         for this event to fire. This function is not documented, so if anything breaks, it
         is probably in here. It passes on the Timer
         """
-        event = TimerCompleteEvent(app=self.bot, timer=timer, guild_id=timer.guild_id)
+        event = TimerCompleteEvent(self.bot, timer, timer.guild_id)
 
         self.bot.dispatch(event)
         logger.info(f"Dispatched TimerCompleteEvent for {timer.event}")

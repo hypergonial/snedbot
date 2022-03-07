@@ -15,7 +15,7 @@ try:
         for line in env.readlines():
             if not line.strip() or line.startswith("#"):
                 continue
-            os.environ[line.split("=")[0]] = line.split("=")[1].split("#")[0].strip()
+            os.environ[line.split("=", maxsplit=1)[0]] = line.split("=", maxsplit=1)[1].split("#")[0].strip()
 
 except FileNotFoundError:
     logging.info(".env file not found, using secrets from the environment instead.")

@@ -251,7 +251,7 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
     Listener for expired reminders
     """
     if event.timer.event == "reminder":
-        guild = plugin.app.cache.get_guild(event.timer.guild_id)
+        guild = event.get_guild()
         assert guild is not None
         assert event.timer.channel_id is not None
 

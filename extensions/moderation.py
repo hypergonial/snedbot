@@ -14,6 +14,8 @@ from models.bot import SnedBot
 from models.context import SnedContext, SnedUserContext
 from models.db_user import User
 from models.errors import BotRoleHierarchyError, RoleHierarchyError
+from models.events import (AutoModMessageFlagEvent, MassBanEvent,
+                           WarnCreateEvent, WarnRemoveEvent, WarnsClearEvent)
 from models.timer import Timer
 from utils import helpers
 
@@ -181,39 +183,6 @@ async def get_notes(
 mod.d.actions.get_notes = get_notes
 
 
-async def flag_user(
-    user: hikari.SnowflakeishOr[hikari.PartialUser],
-    guild: hikari.SnowflakeishOr[hikari.Guild],
-    message: hikari.Message,
-    reason: str,
-) -> None:
-    """Flag a message from a user, creating a log entry in the designated log channel."""
-
-    user_id = hikari.Snowflake(user)
-    guild_id = hikari.Snowflake(guild)
-
-    reason = helpers.format_reason(reason, max_length=1500)
-
-    user = (
-        user
-        if isinstance(user, hikari.User)
-        else (mod.app.cache.get_member(guild_id, user_id) or (await mod.app.rest.fetch_user(user_id)))
-    )
-    content = helpers.format_reason(message.content, max_length=2000) if message.content else "No content found."
-
-    embed = hikari.Embed(
-        title="❗🚩 Message flagged",
-        description=f"**{user}** `({user.id})` was flagged by auto-moderator for suspicious behaviour.\n**Reason:**```{reason}```\n**Content:** ```{content}```\n\n[Jump to message!]({message.make_link(guild_id)})",
-        color=const.ERROR_COLOR,
-    )
-    userlog = mod.app.get_plugin("Logging")
-    assert userlog is not None
-    await userlog.d.actions.log("flags", embed, guild_id)
-
-
-mod.d.actions.flag_user = flag_user
-
-
 async def add_note(
     user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild], note: str
 ) -> None:
@@ -296,9 +265,9 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: t.Option
     userlog = mod.app.get_plugin("Logging")
     assert userlog is not None
 
-    await userlog.d.actions.log("warn", log_embed, member.guild_id)
+    await mod.app.dispatch(WarnCreateEvent(mod.app, member.guild_id, member, moderator, db_user.warns, reason))
     await post_mod_actions(member.guild_id, member, ActionType.WARN, reason)
-    await add_note(member, member.guild_id, f"⚠️ **Warned by {moderator}:** {reason}")
+    # await add_note(member, member.guild_id, f"⚠️ **Warned by {moderator}:** {reason}")
     return embed
 
 
@@ -316,6 +285,9 @@ async def timeout_extend(event: models.TimerCompleteEvent) -> None:
     timer: Timer = event.timer
 
     if timer.event != "timeout_extend":
+        return
+
+    if not event.get_guild():
         return
 
     member = event.app.cache.get_member(timer.guild_id, timer.user_id)
@@ -592,16 +564,15 @@ mod.d.actions.ban = ban
 @mod.listener(models.TimerCompleteEvent)
 async def tempban_expire(event: models.TimerCompleteEvent) -> None:
     """Handle tempban timer expiry"""
-    timer = event.timer
 
     # Ensure the guild still exists
-    guild = mod.app.cache.get_guild(timer.guild_id)
+    guild = event.get_guild()
 
     if not guild:
         return
 
     try:
-        await guild.unban(timer.user_id, reason="User unbanned: Tempban expired.")
+        await guild.unban(event.timer.user_id, reason="User unbanned: Tempban expired.")
     except:
         return
 
@@ -965,13 +936,13 @@ async def warns_list(ctx: SnedSlashContext) -> None:
 @warns.child()  # type: ignore
 @lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
-@lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
+@lightbulb.option("user", "The user to clear warnings for.", type=hikari.Member)
 @lightbulb.command("clear", "Clear warnings for the specified user.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def warns_clear(ctx: SnedSlashContext) -> None:
     helpers.is_member(ctx.options.user)
 
-    assert ctx.guild_id is not None
+    assert ctx.guild_id is not None and ctx.member is not None
 
     db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
     db_user.warns = 0
@@ -990,10 +961,44 @@ async def warns_clear(ctx: SnedSlashContext) -> None:
         color=const.EMBED_GREEN,
     )
 
-    await add_note(ctx.options.user, ctx.guild_id, f"⚠️ **Warnings cleared by {ctx.author}:** {reason}")
-    userlog = mod.app.get_plugin("Logging")
-    assert userlog is not None
-    await userlog.d.actions.log("warn", log_embed, ctx.guild_id)
+    await mod.app.dispatch(WarnsClearEvent(ctx.app, ctx.guild_id, ctx.options.user, ctx.member, db_user.warns, reason))
+    await ctx.mod_respond(embed=embed)
+
+
+@warns.child()  # type: ignore
+@lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
+@lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
+@lightbulb.command("remove", "Remove a single warning from the specified user.")
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def warns_remove(ctx: SnedSlashContext) -> None:
+    helpers.is_member(ctx.options.user)
+
+    assert ctx.guild_id is not None and ctx.member is not None
+
+    db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
+
+    if db_user.warns == 0:
+        embed = hikari.Embed(
+            title="❌ No Warnings",
+            description=f"This user has no warnings!",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.mod_respond(embed=embed)
+        return
+
+    db_user.warns -= 1
+    await ctx.app.global_config.update_user(db_user)
+
+    reason = helpers.format_reason(ctx.options.reason)
+
+    embed = hikari.Embed(
+        title="✅ Warning removed",
+        description=f"Warning removed from **{ctx.options.user}**.\n**Current count:** `{db_user.warns}`\n**Reason:** ```{reason}```",
+        color=const.EMBED_GREEN,
+    )
+
+    await mod.app.dispatch(WarnRemoveEvent(ctx.app, ctx.guild_id, ctx.options.user, ctx.member, db_user.warns, reason))
     await ctx.mod_respond(embed=embed)
 
 
@@ -1259,7 +1264,7 @@ async def kick_cmd(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.option("joined-before", "Only match users that joined before this user.", type=hikari.Member, required=False)
 @lightbulb.option("joined-after", "Only match users that joined after this user.", type=hikari.Member, required=False)
-@lightbulb.command("massban", "Ban a large number of users based on a set of criteria. Useful for handling raids.")
+@lightbulb.command("massban", "Ban a large number of users based on a set of criteria. Useful for handling raids")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def massban(ctx: SnedSlashContext) -> None:
 
@@ -1277,9 +1282,11 @@ async def massban(ctx: SnedSlashContext) -> None:
     guild = ctx.get_guild()
     assert guild is not None
 
-    def is_above_member(member: hikari.Member, me=guild.get_member(ctx.app.user_id)) -> bool:
+    me = guild.get_member(ctx.app.user_id)
+    assert me is not None
+
+    def is_above_member(member: hikari.Member, me: hikari.Member = me) -> bool:
         # Check if the bot's role is above the member's or not to reduce invalid requests.
-        assert me is not None
         return helpers.is_above(me, member)
 
     predicates.append(is_above_member)
@@ -1396,12 +1403,13 @@ async def massban(ctx: SnedSlashContext) -> None:
         confirm_payload={"embed": confirm_embed, "flags": flags, "components": []},
         attachment=file,
     )
+
     if not confirmed:
         return
 
     userlog = ctx.app.get_plugin("Logging")
-    assert userlog is not None
-    await userlog.d.actions.freeze_logging(guild.id)
+    if userlog:
+        await userlog.d.actions.freeze_logging(guild.id)
 
     count = 0
 
@@ -1413,13 +1421,10 @@ async def massban(ctx: SnedSlashContext) -> None:
         else:
             count += 1
 
-    log_embed = hikari.Embed(
-        title="🔨 Smartban concluded",
-        description=f"Banned **{count}/{len(to_ban)}** users.\n**Moderator:** `{ctx.author} ({ctx.author.id if ctx.author else '0'})`\n**Reason:** ```{reason}```",
-        color=const.ERROR_COLOR,
-    )
     file = hikari.Bytes(content.encode("utf-8"), "members_banned.txt")
-    await userlog.d.actions.log("ban", log_embed, ctx.guild_id, file=file, bypass=True)
+
+    assert ctx.guild_id is not None and ctx.member is not None
+    await ctx.app.dispatch(MassBanEvent(ctx.app, ctx.guild_id, ctx.member, len(to_ban), count, file, reason))
 
     embed = hikari.Embed(
         title="✅ Smartban finished",
@@ -1428,4 +1433,5 @@ async def massban(ctx: SnedSlashContext) -> None:
     )
     await ctx.mod_respond(embed=embed)
 
-    await userlog.d.actions.unfreeze_logging(ctx.guild_id)
+    if userlog:
+        await userlog.d.actions.unfreeze_logging(ctx.guild_id)

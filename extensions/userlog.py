@@ -9,6 +9,8 @@ import lightbulb
 from etc import constants as const
 from etc import get_perm_str
 from models import SnedBot
+from models.events import (AutoModMessageFlagEvent, MassBanEvent,
+                           WarnCreateEvent, WarnRemoveEvent, WarnsClearEvent)
 from utils import helpers
 
 userlog = lightbulb.Plugin("Logging", include_datastore=True)
@@ -120,7 +122,7 @@ async def log(
     log_event: str,
     log_content: hikari.Embed,
     guild_id: int,
-    file: hikari.UndefinedOr[hikari.File] = hikari.UNDEFINED,
+    file: hikari.UndefinedOr[hikari.Resourceish] = hikari.UNDEFINED,
     bypass: bool = False,
 ) -> None:
     """Log log_content into the channel assigned to log_event, if any.
@@ -899,6 +901,95 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
                 color=const.EMBED_BLUE,
             )
             await log("roles", embed, event.guild_id)
+
+
+@userlog.listener(WarnCreateEvent, bind=True)
+async def warn_create(plugin: lightbulb.Plugin, event: WarnCreateEvent) -> None:
+
+    embed = hikari.Embed(
+        title="⚠️ Warning issued",
+        description=f"**{event.member}** has been warned by **{event.moderator}**.\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
+        color=const.WARN_COLOR,
+    )
+
+    await log("warn", embed, event.guild_id)
+
+    mod = plugin.app.get_plugin("Moderation")
+    assert mod is not None
+    await mod.d.actions.add_note(
+        event.member, event.member.guild_id, f"⚠️ **Warned by {event.moderator}:** {event.reason}"
+    )
+
+
+@userlog.listener(WarnRemoveEvent, bind=True)
+async def warn_remove(plugin: lightbulb.Plugin, event: WarnRemoveEvent) -> None:
+
+    embed = hikari.Embed(
+        title="⚠️ Warning removed",
+        description=f"A warning was removed from **{event.member}** by **{event.moderator}**.\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
+        color=const.EMBED_GREEN,
+    )
+
+    await log("warn", embed, event.guild_id)
+
+    mod = plugin.app.get_plugin("Moderation")
+    assert mod is not None
+    await mod.d.actions.add_note(
+        event.member, event.member.guild_id, f"⚠️ **1 Warning removed by {event.moderator}:** {event.reason}"
+    )
+
+
+@userlog.listener(WarnsClearEvent, bind=True)
+async def warns_clear(plugin: lightbulb.Plugin, event: WarnsClearEvent) -> None:
+
+    embed = hikari.Embed(
+        title="⚠️ Warnings cleared",
+        description=f"Warnings cleared for **{event.member}** by **{event.moderator}**.\n**Reason:** ```{event.reason}```",
+        color=const.EMBED_GREEN,
+    )
+
+    await log("warn", embed, event.guild_id)
+
+    mod = plugin.app.get_plugin("Moderation")
+    assert mod is not None
+    await mod.d.actions.add_note(
+        event.member, event.member.guild_id, f"⚠️ **Warnings cleared for {event.moderator}:** {event.reason}"
+    )
+
+
+@userlog.listener(AutoModMessageFlagEvent, bind=True)
+async def flag_message(plugin: lightbulb.Plugin, event: AutoModMessageFlagEvent) -> None:
+
+    user_id = hikari.Snowflake(event.user)
+
+    reason = helpers.format_reason(event.reason, max_length=1500)
+
+    user = (
+        event.user
+        if isinstance(event.user, hikari.PartialUser)
+        else (plugin.app.cache.get_member(event.guild_id, user_id) or (await plugin.app.rest.fetch_user(user_id)))
+    )
+    content = (
+        helpers.format_reason(event.message.content, max_length=2000) if event.message.content else "No content found."
+    )
+
+    embed = hikari.Embed(
+        title="❗🚩 Message flagged",
+        description=f"**{user}** `({user.id})` was flagged by auto-moderator for suspicious behaviour.\n**Reason:**```{reason}```\n**Content:** ```{content}```\n\n[Jump to message!]({event.message.make_link(event.guild_id)})",
+        color=const.ERROR_COLOR,
+    )
+    await log("flags", embed, event.guild_id)
+
+
+@userlog.listener(MassBanEvent, bind=True)
+async def massban_execute(plugin: lightbulb.Plugin, event: MassBanEvent) -> None:
+
+    log_embed = hikari.Embed(
+        title="🔨 Smartban concluded",
+        description=f"Banned **{event.successful}/{event.total}** users.\n**Moderator:** `{event.moderator} ({event.moderator.id})`\n**Reason:** ```{event.reason}```",
+        color=const.ERROR_COLOR,
+    )
+    await log("ban", log_embed, event.guild_id, file=event.users_file, bypass=True)
 
 
 def load(bot: SnedBot) -> None:
