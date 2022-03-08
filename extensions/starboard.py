@@ -214,14 +214,14 @@ async def star(ctx: SnedSlashContext) -> None:
 
 @star.child()  # type: ignore
 @lightbulb.option("id", "The ID of the starboard entry. You can find this in the footer.")
-@lightbulb.command("show", "Show a starboard entry.")
+@lightbulb.command("show", "Show a starboard entry.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def star_show(ctx: SnedSlashContext) -> None:
+async def star_show(ctx: SnedSlashContext, id: str) -> None:
 
     assert ctx.guild_id is not None
 
     try:
-        orig_id = abs(int(ctx.options.id))
+        orig_id = abs(int(id))
     except (TypeError, ValueError):
         embed = hikari.Embed(
             title="❌ Invalid value",

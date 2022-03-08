@@ -74,10 +74,10 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
     required=False,
     choices=["time-formatting", "permissions", "configuration"],
 )
-@lightbulb.command("help", "Get help regarding various subjects of the bot's functionality.")
+@lightbulb.command("help", "Get help regarding various subjects of the bot's functionality.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def help_cmd(ctx: SnedSlashContext) -> None:
-    await ctx.respond(embed=help_embeds[ctx.options.topic])
+async def help_cmd(ctx: SnedSlashContext, topic: t.Optional[str] = None) -> None:
+    await ctx.respond(embed=help_embeds[topic])
 
 
 def load(bot: SnedBot) -> None:

@@ -1,11 +1,11 @@
 import asyncio
 import logging
 import random
+import typing as t
 from enum import IntEnum
 from io import BytesIO
 from pathlib import Path
 from textwrap import fill
-from typing import Optional
 
 import aiohttp
 import hikari
@@ -216,7 +216,7 @@ class TicTacToeView(miru.View):
 
         return False
 
-    def check_winner(self) -> Optional[WinState]:
+    def check_winner(self) -> t.Optional[WinState]:
         """
         Check if there is a winner
         """
@@ -262,14 +262,14 @@ class TicTacToeView(miru.View):
 @fun.command()
 @lightbulb.option("size", "The size of the board. Default is 3.", required=False, choices=["3", "4", "5"])
 @lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
-@lightbulb.command("tictactoe", "Play tic tac toe with someone!")
+@lightbulb.command("tictactoe", "Play tic tac toe with someone!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def tictactoe(ctx: SnedSlashContext) -> None:
-    size: int = int(ctx.options.size or 3)
-    helpers.is_member(ctx.options.user)
+async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional[str] = None) -> None:
+    size_int = int(size or 3)
+    helpers.is_member(user)
     assert ctx.member is not None
 
-    if ctx.options.user.id == ctx.author.id:
+    if user.id == ctx.author.id:
         embed = hikari.Embed(
             title="❌ Invoking self",
             description=f"I'm sorry, but how would that even work?",
@@ -278,15 +278,15 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    if not ctx.options.is_bot:
+    if not user.is_bot:
         embed = hikari.Embed(
             title="Tic Tac Toe!",
-            description=f"**{ctx.options.user.display_name}** was challenged for a round of tic tac toe by **{ctx.member.display_name}**!\nFirst to a row of **{size} wins!**\nIt is **{ctx.member.display_name}**'s turn!",
+            description=f"**{user.display_name}** was challenged for a round of tic tac toe by **{ctx.member.display_name}**!\nFirst to a row of **{size_int} wins!**\nIt is **{ctx.member.display_name}**'s turn!",
             color=const.EMBED_BLUE,
         )
         embed.set_thumbnail(ctx.member.display_avatar_url)
 
-        view = TicTacToeView(size, ctx.member, ctx.options.user)
+        view = TicTacToeView(size_int, ctx.member, user)
         proxy = await ctx.respond(embed=embed, components=view.build())
         view.start(await proxy.message())
 
@@ -306,11 +306,11 @@ async def tictactoe(ctx: SnedSlashContext) -> None:
 @lightbulb.option(
     "difficulty", "The difficulty of the words provided.", choices=["easy", "medium", "hard"], required=False
 )
-@lightbulb.command("typeracer", "Start a typerace to see who can type the fastest!")
+@lightbulb.command("typeracer", "Start a typerace to see who can type the fastest!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def typeracer(ctx: SnedSlashContext) -> None:
-    length = ctx.options.length or 5
-    difficulty = ctx.options.difficulty or "medium"
+async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, length: t.Optional[int] = None) -> None:
+    length = length or 5
+    difficulty = difficulty or "medium"
 
     file = open(Path(ctx.app.base_dir, "etc", "text", f"words_{difficulty}.txt"), "r")
     words = [word.strip() for word in file.readlines()]
@@ -420,13 +420,17 @@ async def typeracer(ctx: SnedSlashContext) -> None:
     required=False,
 )
 @lightbulb.option("user", "The user to show the avatar for.", hikari.Member, required=False)
-@lightbulb.command("avatar", "Displays a user's avatar for your viewing pleasure.")
+@lightbulb.command("avatar", "Displays a user's avatar for your viewing pleasure.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def avatar(ctx: SnedSlashContext) -> None:
-    member = ctx.options.user or ctx.member
+async def avatar(
+    ctx: SnedSlashContext, user: t.Optional[hikari.Member] = None, show_global: t.Optional[bool] = None
+) -> None:
+    if user:
+        helpers.is_member(user)
+    member = user or ctx.member
     assert member is not None
 
-    if ctx.options.show_global == True:
+    if show_global == True:
         avatar_url = member.avatar_url
     else:
         avatar_url = member.display_avatar_url
@@ -437,12 +441,12 @@ async def avatar(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
-@lightbulb.command("Show Avatar", "Displays the target's avatar for your viewing pleasure.")
+@lightbulb.command("Show Avatar", "Displays the target's avatar for your viewing pleasure.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
-async def avatar_context(ctx: SnedUserContext) -> None:
-    member: hikari.Member = ctx.options.target
-    embed = hikari.Embed(title=f"{member.display_name}'s avatar:", color=helpers.get_color(member))
-    embed.set_image(member.display_avatar_url)
+async def avatar_context(ctx: SnedUserContext, target: hikari.Member) -> None:
+    helpers.is_member(target)
+    embed = hikari.Embed(title=f"{target.display_name}'s avatar:", color=helpers.get_color(target))
+    embed.set_image(target.display_avatar_url)
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
@@ -486,11 +490,11 @@ async def penguinfact(ctx: SnedSlashContext) -> None:
     min_value=6,
     max_value=100,
 )
-@lightbulb.command("dice", "Roll the dice!")
+@lightbulb.command("dice", "Roll the dice!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def dice(ctx: SnedSlashContext) -> None:
-    amount = ctx.options.amount or 1
-    sides = ctx.options.sides or 6
+async def dice(ctx: SnedSlashContext, sides: t.Optional[int] = None, amount: t.Optional[int] = None) -> None:
+    amount = amount or 1
+    sides = sides or 6
 
     calc = " ".join([f"`[{i+1}: {random.randint(1, sides)}]`" for i in range(0, amount)])
 
@@ -602,13 +606,13 @@ async def nitro(ctx: SnedSlashContext) -> None:
 
 @fun.command
 @lightbulb.option("question", "The question you want to ask of the mighty 8ball.")
-@lightbulb.command("8ball", "Ask a question, and the answers shall reveal themselves.")
+@lightbulb.command("8ball", "Ask a question, and the answers shall reveal themselves.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def eightball(ctx: SnedSlashContext) -> None:
+async def eightball(ctx: SnedSlashContext, question: str) -> None:
     ball_path = Path(ctx.app.base_dir, "etc", "text", "8ball.txt")
     answers = open(ball_path, "r").readlines()
     embed = hikari.Embed(
-        title=f"🎱 {ctx.options.question}",
+        title=f"🎱 {question}",
         description=f"{random.choice(answers)}",
         color=const.EMBED_BLUE,
     )
@@ -617,13 +621,13 @@ async def eightball(ctx: SnedSlashContext) -> None:
 
 @fun.command
 @lightbulb.option("query", "The query you want to search for on Wikipedia.")
-@lightbulb.command("wiki", "Search Wikipedia for articles!", auto_defer=True)
+@lightbulb.command("wiki", "Search Wikipedia for articles!", auto_defer=True, pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def wiki(ctx: SnedSlashContext) -> None:
+async def wiki(ctx: SnedSlashContext, query: str) -> None:
     link = "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5"
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(link.format(query=ctx.options.query.replace(" ", "+"))) as response:
+        async with session.get(link.format(query=query.replace(" ", "+"))) as response:
             results = await response.json()
             results_text = results[1]
             results_link = results[3]
@@ -633,7 +637,7 @@ async def wiki(ctx: SnedSlashContext) -> None:
             for i, result in enumerate(results_text):
                 desc = f"{desc}[{result}]({results_link[i]})\n"
             embed = hikari.Embed(
-                title=f"Wikipedia: {ctx.options.query}",
+                title=f"Wikipedia: {query}",
                 description=desc,
                 color=const.MISC_COLOR,
             )

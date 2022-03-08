@@ -221,12 +221,12 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
     "The ID of the rolebutton to delete. You can get this via /rolebutton list",
     type=int,
 )
-@lightbulb.command("delete", "Delete a rolebutton.")
+@lightbulb.command("delete", "Delete a rolebutton.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_del(ctx: SnedSlashContext) -> None:
+async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
     assert ctx.guild_id is not None
 
-    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, entry_id=ctx.options.button_id)
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, entry_id=button_id)
 
     if not records:
         embed = hikari.Embed(
@@ -240,7 +240,7 @@ async def rolebutton_del(ctx: SnedSlashContext) -> None:
     await ctx.app.pool.execute(
         """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""",
         ctx.guild_id,
-        ctx.options.button_id,
+        button_id,
     )
     await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
 

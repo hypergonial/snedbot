@@ -95,17 +95,18 @@ async def reminder(ctx: SnedSlashContext) -> None:
 
 
 @reminder.child()  # type: ignore
-@lightbulb.option("message", "The message that should be sent to you when this reminder expires.", str)
+@lightbulb.option("message", "The message that should be sent to you when this reminder expires.", required=False)
 @lightbulb.option(
-    "when", "When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'", str
+    "when", "When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'"
 )
-@lightbulb.command("create", "Create a new reminder.")
+@lightbulb.command("create", "Create a new reminder.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_create(ctx: SnedSlashContext) -> None:
+async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[str] = None) -> None:
 
     assert ctx.guild_id is not None
+    message = message or "*Not specified.*"
 
-    if len(ctx.options.message) >= 1000:
+    if message and len(message) >= 1000:
         embed = hikari.Embed(
             title="❌ Reminder too long",
             description="Your reminder cannot exceed **1000** characters!",
@@ -115,7 +116,7 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
         return
 
     try:
-        time = await ctx.app.scheduler.convert_time(ctx.options.when, user=ctx.user, future_time=True)
+        time = await ctx.app.scheduler.convert_time(when, user=ctx.user, future_time=True)
 
     except ValueError as error:
         embed = hikari.Embed(
@@ -146,12 +147,12 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
 
     embed = hikari.Embed(
         title="✅ Reminder set",
-        description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{ctx.options.message}",
+        description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{message}",
         color=const.EMBED_GREEN,
     )
 
     reminder_data = {
-        "message": ctx.options.message,
+        "message": message,
         "jump_url": None,
         "additional_recipients": [],
     }
@@ -178,18 +179,18 @@ async def reminder_create(ctx: SnedSlashContext) -> None:
 
 @reminder.child()  # type: ignore
 @lightbulb.option("id", "The ID of the timer to delete. You can get this via /reminder list", type=int)
-@lightbulb.command("delete", "Delete a currently pending reminder.")
+@lightbulb.command("delete", "Delete a currently pending reminder.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_del(ctx: SnedSlashContext) -> None:
+async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
 
     assert ctx.guild_id is not None
 
     try:
-        await ctx.app.scheduler.cancel_timer(ctx.options.id, ctx.guild_id)
+        await ctx.app.scheduler.cancel_timer(id, ctx.guild_id)
     except ValueError:
         embed = hikari.Embed(
             title="❌ Reminder not found",
-            description=f"Cannot find reminder with ID **{ctx.options.id}**.",
+            description=f"Cannot find reminder with ID **{id}**.",
             color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -197,7 +198,7 @@ async def reminder_del(ctx: SnedSlashContext) -> None:
 
     embed = hikari.Embed(
         title="✅ Reminder deleted",
-        description=f"Reminder **{ctx.options.id}** has been deleted.",
+        description=f"Reminder **{id}** has been deleted.",
         color=const.EMBED_GREEN,
     )
     await ctx.respond(embed=embed)

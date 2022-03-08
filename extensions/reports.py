@@ -160,27 +160,38 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
 
 @reports.command()
 @lightbulb.option("user", "The user that is to be reported.", type=hikari.Member, required=True)
-@lightbulb.command("report", "Report a user to the moderation team of this server.")
+@lightbulb.command("report", "Report a user to the moderation team of this server.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def report_cmd(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options.user)
-    await report(ctx, ctx.options.user)
+async def report_cmd(ctx: SnedSlashContext, user: hikari.Member) -> None:
+    helpers.is_member(user)
+    await report(ctx, user)
 
 
 @reports.command()
-@lightbulb.command("Report User", "Report the targeted user to the moderation team of this server.")
+@lightbulb.command("Report User", "Report the targeted user to the moderation team of this server.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
-async def report_user_cmd(ctx: SnedUserContext) -> None:
+async def report_user_cmd(ctx: SnedUserContext, target: hikari.Member) -> None:
+    helpers.is_member(target)
     await report(ctx, ctx.options.target)
 
 
 @reports.command()
-@lightbulb.command("Report Message", "Report the targeted message to the moderation team of this server.")
+@lightbulb.command(
+    "Report Message", "Report the targeted message to the moderation team of this server.", pass_options=True
+)
 @lightbulb.implements(lightbulb.MessageCommand)
-async def report_msg_cmd(ctx: SnedMessageContext) -> None:
+async def report_msg_cmd(ctx: SnedMessageContext, target: hikari.Message) -> None:
     assert ctx.guild_id is not None
-    member = ctx.app.cache.get_member(ctx.guild_id, ctx.options.target.author)
-    assert member is not None
+    member = ctx.app.cache.get_member(ctx.guild_id, target.author)
+    if not member:
+        embed = hikari.Embed(
+            title="❌ Oops!",
+            description="It looks like the author of this message already left the server!",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
     await report(ctx, member, ctx.options.target)
 
 

@@ -64,7 +64,7 @@ async def ping(ctx: SnedSlashContext) -> None:
 @lightbulb.option("footer", "The footer of the embed.", required=False)
 @lightbulb.option("description", "The description of the embed.", required=False)
 @lightbulb.option("title", "The title of the embed. Required.")
-@lightbulb.command("embed", "Generates a new embed with the parameters specified.")
+@lightbulb.command("embed", "Generates a new embed with the parameters specified")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def embed(ctx: SnedSlashContext) -> None:
     url_options = [
@@ -181,12 +181,12 @@ async def invite(ctx: SnedSlashContext) -> None:
     lightbulb.bot_has_guild_permissions(hikari.Permissions.CHANGE_NICKNAME),
 )
 @lightbulb.option("nickname", "The nickname to set the bot's nickname to. Type 'None' to reset it!")
-@lightbulb.command("setnick", "Set the bot's nickname!")
+@lightbulb.command("setnick", "Set the bot's nickname!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def setnick(ctx: SnedSlashContext) -> None:
+async def setnick(ctx: SnedSlashContext, nickname: t.Optional[str] = None) -> None:
     assert ctx.guild_id is not None
 
-    nickname = ctx.options.nickname[:32] if not ctx.options.nickname.lower() == "none" else None
+    nickname = nickname[:32] if nickname and not nickname.casefold() == "none" else None
 
     await ctx.app.rest.edit_my_member(
         ctx.guild_id, nickname=nickname, reason=f"Nickname changed via /setnick by {ctx.author}"
@@ -258,27 +258,27 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
     channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
 )
 @lightbulb.option("text", "The text to echo.")
-@lightbulb.command("echo", "Repeat the provided text as the bot.")
+@lightbulb.command("echo", "Repeat the provided text as the bot.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def echo(ctx: SnedSlashContext) -> None:
+async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.InteractionChannel] = None) -> None:
     # InteractionChannel has no overrides data
-    if ctx.options.channel:
-        channel = ctx.app.cache.get_guild_channel(ctx.options.channel.id) or ctx.get_channel()
+    if channel:
+        send_to = ctx.app.cache.get_guild_channel(channel.id) or ctx.get_channel()
     else:
-        channel = ctx.get_channel()
+        send_to = ctx.get_channel()
 
     assert ctx.guild_id is not None
 
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-    assert isinstance(channel, hikari.TextableGuildChannel) and me is not None
+    assert isinstance(send_to, hikari.TextableGuildChannel) and me is not None
 
-    perms = lightbulb.utils.permissions_in(channel, me)
+    perms = lightbulb.utils.permissions_in(send_to, me)
     if not helpers.includes_permissions(perms, hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL):
         raise lightbulb.BotMissingRequiredPermission(
             perms=hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
         )
 
-    await channel.send(ctx.options.text)
+    await send_to.send(text)
 
     embed = hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN)
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -292,11 +292,11 @@ async def echo(ctx: SnedSlashContext) -> None:
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option("message_link", "You can get this by right-clicking a message.", type=str)
-@lightbulb.command("edit", "Edit a message that was sent by the bot.")
+@lightbulb.command("edit", "Edit a message that was sent by the bot.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def edit(ctx: SnedSlashContext) -> None:
+async def edit(ctx: SnedSlashContext, message_link: str) -> None:
 
-    message = await helpers.parse_message_link(ctx, ctx.options.message_link)
+    message = await helpers.parse_message_link(ctx, message_link)
     if not message:
         return
 
@@ -356,11 +356,11 @@ async def edit(ctx: SnedSlashContext) -> None:
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY
     )
 )
-@lightbulb.command("Raw Content", "Show raw content for this message.")
+@lightbulb.command("Raw Content", "Show raw content for this message.", pass_options=True)
 @lightbulb.implements(lightbulb.MessageCommand)
-async def raw(ctx: SnedMessageContext) -> None:
-    if ctx.options.target.content:
-        await ctx.respond(f"```{ctx.options.target.content}```", flags=hikari.MessageFlag.EPHEMERAL)
+async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
+    if target.content:
+        await ctx.respond(f"```{target.content}```", flags=hikari.MessageFlag.EPHEMERAL)
     else:
         embed = hikari.Embed(
             title="❌ Missing Content",
@@ -372,10 +372,12 @@ async def raw(ctx: SnedMessageContext) -> None:
 
 @misc.command()
 @lightbulb.option("timezone", "The timezone to set as your default. Example: 'Europe/Kiev'", autocomplete=True)
-@lightbulb.command("timezone", "Sets your preferred timezone for other time-related commands to use.")
+@lightbulb.command(
+    "timezone", "Sets your preferred timezone for other time-related commands to use.", pass_options=True
+)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def set_timezone(ctx: SnedSlashContext) -> None:
-    if ctx.options.timezone not in pytz.common_timezones:
+async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
+    if timezone not in pytz.common_timezones:
         embed = hikari.Embed(
             title="❌ Invalid Timezone",
             description="Oops! This does not look like a valid timezone! Specify your timezone as a valid `Continent/City` combination.",
@@ -391,12 +393,12 @@ async def set_timezone(ctx: SnedSlashContext) -> None:
     ON CONFLICT (user_id) DO 
     UPDATE SET timezone = $2""",
         ctx.user.id,
-        ctx.options.timezone,
+        timezone,
     )
 
     embed = hikari.Embed(
         title="✅ Timezone set!",
-        description=f"Your preferred timezone has been set to `{ctx.options.timezone}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
+        description=f"Your preferred timezone has been set to `{timezone}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
         color=const.EMBED_GREEN,
     )
     await ctx.respond(embed=embed)
@@ -427,12 +429,14 @@ async def tz_opts(
     required=False,
 )
 @lightbulb.option("time", "The time to create the timestamp from. Examples: 'in 20 minutes', '2022-04-03', '21:43'")
-@lightbulb.command("timestamp", "Create a Discord timestamp from human-readable time formats and dates.")
+@lightbulb.command(
+    "timestamp", "Create a Discord timestamp from human-readable time formats and dates.", pass_options=True
+)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def timestamp_gen(ctx: SnedSlashContext) -> None:
+async def timestamp_gen(ctx: SnedSlashContext, time: str, style: t.Optional[str] = None) -> None:
     try:
-        time = await ctx.app.scheduler.convert_time(
-            ctx.options.time, conversion_mode=ConversionMode.ABSOLUTE, user=ctx.user
+        converted_time = await ctx.app.scheduler.convert_time(
+            time, conversion_mode=ConversionMode.ABSOLUTE, user=ctx.user
         )
     except ValueError as error:
         embed = hikari.Embed(
@@ -442,9 +446,11 @@ async def timestamp_gen(ctx: SnedSlashContext) -> None:
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
-    style = ctx.options.style.split(" -")[0] if ctx.options.style else "f"
+    style = style.split(" -")[0] if style else "f"
 
-    await ctx.respond(f"`{helpers.format_dt(time, style=style)}` --> {helpers.format_dt(time, style=style)}")
+    await ctx.respond(
+        f"`{helpers.format_dt(converted_time, style=style)}` --> {helpers.format_dt(converted_time, style=style)}"
+    )
 
 
 def load(bot: SnedBot) -> None:

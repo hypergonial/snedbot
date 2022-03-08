@@ -142,36 +142,36 @@ async def run_shell(ctx: SnedPrefixContext, code: str) -> None:
 
 @dev.command()
 @lightbulb.option("extension_name", "The name of the extension to reload.")
-@lightbulb.command("reload", "Reload an extension.")
+@lightbulb.command("reload", "Reload an extension.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
-async def reload_cmd(ctx: SnedPrefixContext) -> None:
-    ctx.app.reload_extensions(ctx.options.extension_name)
-    await ctx.respond(f"🔃 `{ctx.options.extension_name}`")
+async def reload_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
+    ctx.app.reload_extensions(extension_name)
+    await ctx.respond(f"🔃 `{extension_name}`")
 
 
 @dev.command()
 @lightbulb.option("extension_name", "The name of the extension to load.")
-@lightbulb.command("load", "Load an extension.")
+@lightbulb.command("load", "Load an extension.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
-async def load_cmd(ctx: SnedPrefixContext) -> None:
-    ctx.app.load_extensions(ctx.options.extension_name)
-    await ctx.respond(f"📥 `{ctx.options.extension_name}`")
+async def load_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
+    ctx.app.load_extensions(extension_name)
+    await ctx.respond(f"📥 `{extension_name}`")
 
 
 @dev.command()
 @lightbulb.option("extension_name", "The name of the extension to unload.")
-@lightbulb.command("unload", "Unload an extension.")
+@lightbulb.command("unload", "Unload an extension.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
-async def unload_cmd(ctx: SnedPrefixContext) -> None:
-    ctx.app.unload_extensions(ctx.options.extension_name)
-    await ctx.respond(f"📤 `{ctx.options.extension_name}`")
+async def unload_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
+    ctx.app.unload_extensions(extension_name)
+    await ctx.respond(f"📤 `{extension_name}`")
 
 
 @dev.command()
 @lightbulb.option("code", "Code to execute.", modifier=lightbulb.OptionModifier.CONSUME_REST)
-@lightbulb.command("py", "Run code.")
+@lightbulb.command("py", "Run code.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
-async def eval_py(ctx: SnedPrefixContext) -> None:
+async def eval_py(ctx: SnedPrefixContext, code: str) -> None:
 
     globals_dict = {
         "_author": ctx.author,
@@ -182,7 +182,6 @@ async def eval_py(ctx: SnedPrefixContext) -> None:
         "_message": ctx.event.message,
         "_ctx": ctx,
     }
-    code: str = ctx.options.code
 
     code = code.replace("```py", "").replace("`", "").strip()
 
@@ -233,19 +232,19 @@ def unload(bot: SnedBot) -> None:
 
 @dev.command()
 @lightbulb.option("code", "Code to execute.", modifier=lightbulb.OptionModifier.CONSUME_REST)
-@lightbulb.command("sh", "Run code.")
+@lightbulb.command("sh", "Run code.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
-async def eval_sh(ctx: SnedPrefixContext) -> None:
+async def eval_sh(ctx: SnedPrefixContext, code: str) -> None:
 
-    await run_shell(ctx, ctx.options.code)
+    await run_shell(ctx, code)
 
 
 @dev.command()
 @lightbulb.option("code", "Code to execute.", modifier=lightbulb.OptionModifier.CONSUME_REST)
-@lightbulb.command("git", "Run git commands.")
+@lightbulb.command("git", "Run git commands.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
-async def dev_git_pull(ctx: SnedPrefixContext) -> None:
-    await run_shell(ctx, f"git {ctx.options.code}")
+async def dev_git_pull(ctx: SnedPrefixContext, code: str) -> None:
+    await run_shell(ctx, f"git {code}")
 
 
 @dev.command()
@@ -258,7 +257,7 @@ async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
 
 
 @dev.command()
-@lightbulb.command("sql", "Execute an SQL file.")
+@lightbulb.command("sql", "Execute an SQL file")
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def run_sql(ctx: SnedPrefixContext) -> None:
     if not ctx.attachments or not ctx.attachments[0].filename.endswith(".sql"):
@@ -272,7 +271,6 @@ async def run_sql(ctx: SnedPrefixContext) -> None:
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
     sql: str = (await ctx.attachments[0].read()).decode("utf-8")
-    print(sql)
     return_value = await ctx.app.pool.execute(sql)
     await ctx.event.message.add_reaction("✅")
     await send_paginated(ctx, ctx.channel_id, str(return_value), prefix="```sql\n", suffix="```")

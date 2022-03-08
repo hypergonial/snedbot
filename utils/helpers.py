@@ -273,7 +273,8 @@ def is_invite(string: str, *, fullmatch: bool = True) -> bool:
 
 
 def is_member(user: hikari.PartialUser) -> bool:  # Such useful
-    """Determine if the passed object is a member or not, otherwise raise an error."""
+    """Determine if the passed object is a member or not, otherwise raise an error.
+    Basically equivalent to `assert isinstance(user, hikari.Member)` but with a fancier error."""
     if isinstance(user, hikari.Member):
         return True
 

@@ -698,19 +698,19 @@ mod.d.actions.kick = kick
 
 
 @mod.command()
-@lightbulb.option("user", "The user to show information about.", type=hikari.User, required=True)
-@lightbulb.command("whois", "Show user information about the specified user.")
+@lightbulb.option("user", "The user to show information about.", type=hikari.User)
+@lightbulb.command("whois", "Show user information about the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def whois(ctx: SnedSlashContext) -> None:
-    embed = await helpers.get_userinfo(ctx, ctx.options.user)
+async def whois(ctx: SnedSlashContext, user: hikari.User) -> None:
+    embed = await helpers.get_userinfo(ctx, user)
     await ctx.mod_respond(embed=embed)
 
 
 @mod.command()
-@lightbulb.command("Show Userinfo", "Show user information about the target user.")
+@lightbulb.command("Show Userinfo", "Show user information about the target user.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
-async def whois_user_command(ctx: SnedUserContext) -> None:
-    embed = await helpers.get_userinfo(ctx, ctx.options.target)
+async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
+    embed = await helpers.get_userinfo(ctx, target)
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
@@ -836,12 +836,12 @@ async def journal(ctx: SnedSlashContext) -> None:
 @journal.child()  # type: ignore
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("user", "The user to retrieve the journal for.", type=hikari.User)
-@lightbulb.command("get", "Retrieve the journal for the specified user.")
+@lightbulb.command("get", "Retrieve the journal for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def journal_get(ctx: SnedSlashContext) -> None:
+async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
 
     assert ctx.guild_id is not None
-    notes = await get_notes(ctx.options.user.id, ctx.guild_id)
+    notes = await get_notes(user, ctx.guild_id)
     paginator = lightbulb.utils.StringPaginator(max_chars=1500)
 
     if notes:
@@ -879,16 +879,16 @@ async def journal_get(ctx: SnedSlashContext) -> None:
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("note", "The journal note to add.")
 @lightbulb.option("user", "The user to add a journal entry for.", type=hikari.User)
-@lightbulb.command("add", "Add a new journal entry for the specified user.")
+@lightbulb.command("add", "Add a new journal entry for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def journal_add(ctx: SnedSlashContext) -> None:
+async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> None:
 
     assert ctx.guild_id is not None
 
-    await add_note(ctx.options.user.id, ctx.guild_id, f"💬 **Note by {ctx.author}:** {ctx.options.note}")
+    await add_note(user, ctx.guild_id, f"💬 **Note by {ctx.author}:** {note}")
     embed = hikari.Embed(
         title="✅ Journal entry added!",
-        description=f"Added a new journal entry to user **{ctx.options.user}**. You can view this user's journal via the command `/journal get {ctx.options.user}`.",
+        description=f"Added a new journal entry to user **{user}**. You can view this user's journal via the command `/journal get {ctx.options.user}`.",
         color=const.EMBED_GREEN,
     )
     await ctx.mod_respond(embed=embed)
@@ -898,12 +898,14 @@ async def journal_add(ctx: SnedSlashContext) -> None:
 @lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for this warn", required=False)
 @lightbulb.option("user", "The user to be warned.", type=hikari.Member)
-@lightbulb.command("warn", "Warn a user. This gets added to their journal and their warn counter is incremented.")
+@lightbulb.command(
+    "warn", "Warn a user. This gets added to their journal and their warn counter is incremented.", pass_options=True
+)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def warn_cmd(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options.user)
+async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+    helpers.is_member(user)
     assert ctx.member is not None
-    embed = await warn(ctx.options.user, ctx.member, reason=ctx.options.reason)
+    embed = await warn(user, ctx.member, reason=reason)
     await ctx.mod_respond(embed=embed)
 
 
@@ -916,20 +918,20 @@ async def warns(ctx: SnedSlashContext) -> None:
 
 @warns.child()  # type: ignore
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
-@lightbulb.command("list", "List the current warning count for a user.")
+@lightbulb.command("list", "List the current warning count for a user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def warns_list(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options.user)
+async def warns_list(ctx: SnedSlashContext, user: hikari.Member) -> None:
+    helpers.is_member(user)
     assert ctx.guild_id is not None
 
-    db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
+    db_user: User = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
     warns = db_user.warns
     embed = hikari.Embed(
-        title=f"{ctx.options.user}'s warnings",
+        title=f"{user}'s warnings",
         description=f"**Warnings:** `{warns}`",
         color=const.WARN_COLOR,
     )
-    embed.set_thumbnail(ctx.options.user.display_avatar_url)
+    embed.set_thumbnail(user.display_avatar_url)
     await ctx.mod_respond(embed=embed)
 
 
@@ -937,31 +939,31 @@ async def warns_list(ctx: SnedSlashContext) -> None:
 @lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to clear warnings for.", type=hikari.Member)
-@lightbulb.command("clear", "Clear warnings for the specified user.")
+@lightbulb.command("clear", "Clear warnings for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def warns_clear(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options.user)
+async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+    helpers.is_member(user)
 
     assert ctx.guild_id is not None and ctx.member is not None
 
-    db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
+    db_user: User = await ctx.app.global_config.get_user(user, ctx.guild_id)
     db_user.warns = 0
     await ctx.app.global_config.update_user(db_user)
 
-    reason = helpers.format_reason(ctx.options.reason)
+    reason = helpers.format_reason(reason)
 
     embed = hikari.Embed(
         title="✅ Warnings cleared",
-        description=f"**{ctx.options.user}**'s warnings have been cleared.\n**Reason:** ```{reason}```",
+        description=f"**{user}**'s warnings have been cleared.\n**Reason:** ```{reason}```",
         color=const.EMBED_GREEN,
     )
     log_embed = hikari.Embed(
         title="⚠️ Warnings cleared.",
-        description=f"{ctx.options.user.mention}'s warnings have been cleared by {ctx.author.mention}.\n**Reason:** ```{reason}```",
+        description=f"{user.mention}'s warnings have been cleared by {ctx.author.mention}.\n**Reason:** ```{reason}```",
         color=const.EMBED_GREEN,
     )
 
-    await mod.app.dispatch(WarnsClearEvent(ctx.app, ctx.guild_id, ctx.options.user, ctx.member, db_user.warns, reason))
+    await mod.app.dispatch(WarnsClearEvent(ctx.app, ctx.guild_id, user, ctx.member, db_user.warns, reason))
     await ctx.mod_respond(embed=embed)
 
 
@@ -969,14 +971,14 @@ async def warns_clear(ctx: SnedSlashContext) -> None:
 @lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
-@lightbulb.command("remove", "Remove a single warning from the specified user.")
+@lightbulb.command("remove", "Remove a single warning from the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def warns_remove(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options.user)
+async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+    helpers.is_member(user)
 
     assert ctx.guild_id is not None and ctx.member is not None
 
-    db_user: User = await ctx.app.global_config.get_user(ctx.options.user.id, ctx.guild_id)
+    db_user: User = await ctx.app.global_config.get_user(user, ctx.guild_id)
 
     if db_user.warns == 0:
         embed = hikari.Embed(
@@ -990,15 +992,15 @@ async def warns_remove(ctx: SnedSlashContext) -> None:
     db_user.warns -= 1
     await ctx.app.global_config.update_user(db_user)
 
-    reason = helpers.format_reason(ctx.options.reason)
+    reason = helpers.format_reason(reason)
 
     embed = hikari.Embed(
         title="✅ Warning removed",
-        description=f"Warning removed from **{ctx.options.user}**.\n**Current count:** `{db_user.warns}`\n**Reason:** ```{reason}```",
+        description=f"Warning removed from **{user}**.\n**Current count:** `{db_user.warns}`\n**Reason:** ```{reason}```",
         color=const.EMBED_GREEN,
     )
 
-    await mod.app.dispatch(WarnRemoveEvent(ctx.app, ctx.guild_id, ctx.options.user, ctx.member, db_user.warns, reason))
+    await mod.app.dispatch(WarnRemoveEvent(ctx.app, ctx.guild_id, user, ctx.member, db_user.warns, reason))
     await ctx.mod_respond(embed=embed)
 
 
@@ -1022,15 +1024,16 @@ def unload(bot: SnedBot) -> None:
     "duration", "The duration to time the user out for. Example: '10 minutes', '2022-03-01', 'tomorrow 20:00'"
 )
 @lightbulb.option("user", "The user to time out.", type=hikari.Member)
-@lightbulb.command("timeout", "Timeout a user, supports durations longer than 28 days.")
+@lightbulb.command("timeout", "Timeout a user, supports durations longer than 28 days.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def timeout_cmd(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options.user)
-    member: hikari.Member = ctx.options.user
-    reason: str = helpers.format_reason(ctx.options.reason, max_length=1024)
+async def timeout_cmd(
+    ctx: SnedSlashContext, user: hikari.Member, duration: str, reason: t.Optional[str] = None
+) -> None:
+    helpers.is_member(user)
+    reason = helpers.format_reason(reason, max_length=1024)
     assert ctx.member is not None
 
-    if member.communication_disabled_until() is not None:
+    if user.communication_disabled_until() is not None:
         embed = hikari.Embed(
             title="❌ User already timed out",
             description="User is already timed out. Use `/timeouts remove` to remove it.",
@@ -1040,8 +1043,8 @@ async def timeout_cmd(ctx: SnedSlashContext) -> None:
         return
 
     try:
-        duration: datetime.datetime = await ctx.app.scheduler.convert_time(
-            ctx.options.duration, user=ctx.user, future_time=True
+        communication_disabled_until: datetime.datetime = await ctx.app.scheduler.convert_time(
+            duration, user=ctx.user, future_time=True
         )
     except ValueError:
         embed = hikari.Embed(
@@ -1054,11 +1057,11 @@ async def timeout_cmd(ctx: SnedSlashContext) -> None:
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    await timeout(member, ctx.member, duration, reason)
+    await timeout(user, ctx.member, communication_disabled_until, reason)
 
     embed = hikari.Embed(
         title="🔇 " + "User timed out",
-        description=f"**{member}** has been timed out until {helpers.format_dt(duration)}.\n**Reason:** ```{reason}```",
+        description=f"**{user}** has been timed out until {helpers.format_dt(communication_disabled_until)}.\n**Reason:** ```{reason}```",
         color=const.EMBED_GREEN,
     )
     await ctx.mod_respond(embed=embed)
@@ -1080,16 +1083,15 @@ async def timeouts(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.option("reason", "The reason for timing out this user.", required=False)
 @lightbulb.option("user", "The user to time out.", type=hikari.Member)
-@lightbulb.command("remove", "Remove timeout from a user.")
+@lightbulb.command("remove", "Remove timeout from a user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
-    helpers.is_member(ctx.options.user)
-    member: hikari.Member = ctx.options.user
-    reason: str = helpers.format_reason(ctx.options.reason, max_length=1024)
+async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+    helpers.is_member(user)
+    reason = helpers.format_reason(reason, max_length=1024)
 
     assert ctx.member is not None
 
-    if member.communication_disabled_until() is None:
+    if user.communication_disabled_until() is None:
         embed = hikari.Embed(
             title="❌ User not timed out",
             description="This user is not timed out.",
@@ -1099,11 +1101,11 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
         return
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-    await remove_timeout(member, ctx.member, reason)
+    await remove_timeout(user, ctx.member, reason)
 
     embed = hikari.Embed(
         title="🔉 " + "Timeout removed",
-        description=f"**{member}**'s timeout was removed.\n**Reason:** ```{reason}```",
+        description=f"**{user}**'s timeout was removed.\n**Reason:** ```{reason}```",
         color=const.EMBED_GREEN,
     )
     await ctx.mod_respond(embed=embed)
@@ -1130,33 +1132,42 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.option("reason", "The reason why this ban was performed", required=False)
 @lightbulb.option("user", "The user to be banned", type=hikari.User)
-@lightbulb.command("ban", "Bans a user from the server. Optionally specify a duration to make this a tempban.")
+@lightbulb.command(
+    "ban", "Bans a user from the server. Optionally specify a duration to make this a tempban.", pass_options=True
+)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def ban_cmd(ctx: SnedSlashContext) -> None:
+async def ban_cmd(
+    ctx: SnedSlashContext,
+    user: hikari.User,
+    reason: t.Optional[str] = None,
+    duration: t.Optional[str] = None,
+    days_to_delete: t.Optional[str] = None,
+) -> None:
 
     assert ctx.member is not None
 
-    try:
-        duration: datetime.datetime = await ctx.app.scheduler.convert_time(
-            ctx.options.duration, user=ctx.user, future_time=True
-        )
-    except ValueError:
-        embed = hikari.Embed(
-            title="❌ Invalid data entered",
-            description="Your entered timeformat is invalid.",
-            color=const.ERROR_COLOR,
-        )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-        return
+    if duration:
+        try:
+            banned_until = await ctx.app.scheduler.convert_time(duration, user=ctx.user, future_time=True)
+        except ValueError:
+            embed = hikari.Embed(
+                title="❌ Invalid data entered",
+                description="Your entered timeformat is invalid.",
+                color=const.ERROR_COLOR,
+            )
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+    else:
+        banned_until = None
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
     embed = await ban(
-        ctx.options.user,
+        user,
         ctx.member,
-        duration=duration,
-        days_to_delete=int(ctx.options.days_to_delete) or 0,
-        reason=ctx.options.reason,
+        duration=banned_until,
+        days_to_delete=int(days_to_delete) if days_to_delete else 0,
+        reason=reason,
     )
     await ctx.mod_respond(embed=embed)
 
@@ -1164,7 +1175,7 @@ async def ban_cmd(ctx: SnedSlashContext) -> None:
 @mod.command()
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
+    lightbulb.has_guild_permissions(hikari.Permissions.KICK_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -1175,21 +1186,27 @@ async def ban_cmd(ctx: SnedSlashContext) -> None:
     required=False,
     default=0,
 )
-@lightbulb.option("reason", "The reason why this ban was performed", required=False)
-@lightbulb.option("user", "The user to be banned", type=hikari.User)
-@lightbulb.command("softban", "Bans a user from the server. Optionally specify a duration to make this a tempban.")
+@lightbulb.option("reason", "The reason why this softban was performed", required=False)
+@lightbulb.option("user", "The user to be softbanned", type=hikari.Member)
+@lightbulb.command(
+    "softban",
+    "Softban a user from the server, removing their messages while immediately unbanning them.",
+    pass_options=True,
+)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def softban_cmd(ctx: SnedSlashContext) -> None:
-
+async def softban_cmd(
+    ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None, days_to_delete: t.Optional[str] = None
+) -> None:
+    helpers.is_member(user)
     assert ctx.member is not None
 
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     embed = await ban(
-        ctx.options.user,
+        user,
         ctx.member,
         soft=True,
-        days_to_delete=int(ctx.options.days_to_delete) or 0,
-        reason=ctx.options.reason,
+        days_to_delete=int(days_to_delete) if days_to_delete else 0,
+        reason=reason,
     )
     await ctx.mod_respond(embed=embed)
 
@@ -1203,14 +1220,14 @@ async def softban_cmd(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.option("reason", "The reason why this ban was performed", required=False)
 @lightbulb.option("user", "The user to be banned", type=hikari.User)
-@lightbulb.command("unban", "Unban a user who was previously banned.")
+@lightbulb.command("unban", "Unban a user who was previously banned.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def unban_cmd(ctx: SnedSlashContext) -> None:
+async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional[str] = None) -> None:
 
     assert ctx.member is not None
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-    embed = await unban(ctx.options.user, ctx.member, reason=ctx.options.reason)
+    embed = await unban(user, ctx.member, reason=reason)
     await ctx.mod_respond(embed=embed)
 
 
@@ -1223,15 +1240,15 @@ async def unban_cmd(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.option("reason", "The reason why this kick was performed.", required=False)
 @lightbulb.option("user", "The user to be banned", type=hikari.Member)
-@lightbulb.command("kick", "Kick a user from this server.")
+@lightbulb.command("kick", "Kick a user from this server.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def kick_cmd(ctx: SnedSlashContext) -> None:
+async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
 
-    helpers.is_member(ctx.options.user)
+    helpers.is_member(user)
     assert ctx.member is not None
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-    embed = await kick(ctx.options.user, ctx.member, reason=ctx.options.reason)
+    embed = await kick(user, ctx.member, reason=reason)
     await ctx.mod_respond(embed=embed)
 
 
