@@ -326,7 +326,7 @@ class SnedBot(lightbulb.BotApp):
             self.skip_first_db_backup = False
             return
 
-        file = await db_backup.backup_database(self._dsn)
+        file = await db_backup.backup_database()
         await self.wait_until_started()
 
         if self.config.DB_BACKUP_CHANNEL:

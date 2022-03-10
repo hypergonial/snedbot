@@ -112,6 +112,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     await modal.wait()
     if not modal.values:
         return
+
     mctx = modal.get_response_context()
 
     tag: Tag = await tags.d.tag_handler.get(modal.tag_name.casefold(), ctx.guild_id)
@@ -136,7 +137,6 @@ async def tag_create(ctx: SnedSlashContext) -> None:
         description=f"You can now call it with `/tag {modal.tag_name.casefold()}`",
         color=const.EMBED_GREEN,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     await mctx.respond(embed=embed)
 
 
@@ -359,7 +359,6 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
                 description=f"Tag `{tag.name}` now belongs to you.",
                 color=const.EMBED_GREEN,
             )
-            embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
 
         else:
@@ -426,7 +425,6 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
         description=f"Tag `{tag.name}` has been successfully edited.",
         color=const.EMBED_GREEN,
     )
-    embed = helpers.add_embed_footer(embed, ctx.member)
     await mctx.respond(embed=embed)
 
 
@@ -460,7 +458,6 @@ async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
             description=f"Tag `{tag.name}` has been deleted.",
             color=const.EMBED_GREEN,
         )
-        embed = helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
 
     else:
@@ -503,7 +500,6 @@ async def tag_list(ctx: SnedSlashContext) -> None:
                 description="\n".join(contents),
                 color=const.EMBED_BLUE,
             )
-            helpers.add_embed_footer(embed, ctx.member)
             embeds.append(embed)
 
         navigator = AuthorOnlyNavigator(ctx, pages=embeds)
@@ -515,7 +511,6 @@ async def tag_list(ctx: SnedSlashContext) -> None:
             description="There are no tags on this server yet! You can create one via `/tags create`",
             color=const.EMBED_BLUE,
         )
-        helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
 
 
@@ -545,8 +540,7 @@ async def tag_search(ctx: SnedSlashContext, query: str) -> None:
         response += [f"*{alias}*" for alias in alias_matches]
 
         if response:
-            embed = hikari.Embed(title="🔎 Search results:", description="\n".join(response[:10]))
-            embed = helpers.add_embed_footer(embed, ctx.member)
+            embed = hikari.Embed(title=f"🔎 Search results for '{query}':", description="\n".join(response[:10]))
             await ctx.respond(embed=embed)
 
         else:
@@ -555,7 +549,6 @@ async def tag_search(ctx: SnedSlashContext, query: str) -> None:
                 description="Unable to find tags with that name.",
                 color=const.WARN_COLOR,
             )
-            embed = helpers.add_embed_footer(embed, ctx.member)
             await ctx.respond(embed=embed)
 
     else:
@@ -564,7 +557,6 @@ async def tag_search(ctx: SnedSlashContext, query: str) -> None:
             description="There are no tags on this server yet! You can create one via `/tags create`",
             color=const.WARN_COLOR,
         )
-        helpers.add_embed_footer(embed, ctx.member)
         await ctx.respond(embed=embed)
 
 

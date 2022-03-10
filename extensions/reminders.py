@@ -47,13 +47,16 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
     if event.interaction.custom_id.startswith("RMSS:"):  # Snoozes
         author_id = hikari.Snowflake(event.interaction.custom_id.split(":")[1])
 
-        if author_id != event.context.author.id:
+        if author_id != event.context.user.id:
             embed = hikari.Embed(
                 title="❌ Invalid interaction",
                 description="You cannot snooze someone else's reminder!",
                 color=const.ERROR_COLOR,
             )
             return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+        if not event.interaction.message.embeds:
+            return
 
         expiry = helpers.utcnow() + datetime.timedelta(minutes=int(event.interaction.values[0]))
         assert event.interaction.message.embeds[0].description is not None
@@ -93,6 +96,9 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
         timer_id = int(event.interaction.custom_id.split(":")[1])
         try:
             timer: Timer = await plugin.app.scheduler.get_timer(timer_id, event.context.guild_id)
+            if timer.channel_id != event.context.channel_id or timer.event != "reminder":
+                raise ValueError
+
         except ValueError:
             embed = hikari.Embed(
                 title="❌ Invalid interaction",
@@ -175,7 +181,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
 
     except ValueError as error:
         embed = hikari.Embed(
-            title="❌ Error: Invalid data entered",
+            title="❌ Invalid data entered",
             description=f"Your timeformat is invalid! \n**Error:** {error}",
             color=const.ERROR_COLOR,
         )
@@ -184,7 +190,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
 
     if (time - helpers.utcnow()).total_seconds() >= 31536000 * 5:
         embed = hikari.Embed(
-            title="❌ Error: Invalid data entered",
+            title="❌ Invalid data entered",
             description="Sorry, but that's a bit too far in the future.",
             color=const.ERROR_COLOR,
         )
@@ -193,7 +199,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
 
     if (time - helpers.utcnow()).total_seconds() < 10:
         embed = hikari.Embed(
-            title="❌ Error: Invalid data entered",
+            title="❌ Invalid data entered",
             description="Sorry, but that's a bit too short, reminders must last longer than `10` seconds.",
             color=const.ERROR_COLOR,
         )
@@ -272,36 +278,36 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
         ctx.author.id,
     )
 
-    if records:
-        reminders = []
-
-        for record in records:
-            time = datetime.datetime.fromtimestamp(record.get("expires"))
-            notes = json.loads(record["notes"])["message"].replace("\n", " ")
-            if len(notes) > 50:
-                notes = notes[:47] + "..."
-
-            reminders.append(
-                f"**ID: {record.get('id')}** - {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n{notes}\n"
-            )
-
-        reminders = [reminders[i * 10 : (i + 1) * 10] for i in range((len(reminders) + 10 - 1) // 10)]
-
-        pages = [
-            hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=const.EMBED_BLUE)
-            for content in reminders
-        ]
-        # TODO: wtf
-        navigator = AuthorOnlyNavigator(ctx, pages=pages)  # type: ignore
-        await navigator.send(ctx.interaction)
-
-    else:
+    if not records:
         embed = hikari.Embed(
             title="✉️ No pending reminders!",
             description="You have no pending reminders. You can create one via `/reminder create`!",
             color=const.WARN_COLOR,
         )
         await ctx.respond(embed=embed)
+        return
+
+    reminders = []
+
+    for record in records:
+        time = datetime.datetime.fromtimestamp(record.get("expires"))
+        notes = json.loads(record["notes"])["message"].replace("\n", " ")
+        if len(notes) > 50:
+            notes = notes[:47] + "..."
+
+        reminders.append(
+            f"**ID: {record.get('id')}** - {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n{notes}\n"
+        )
+
+    reminders = [reminders[i * 10 : (i + 1) * 10] for i in range((len(reminders) + 10 - 1) // 10)]
+
+    pages = [
+        hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=const.EMBED_BLUE)
+        for content in reminders
+    ]
+    # TODO: wtf
+    navigator = AuthorOnlyNavigator(ctx, pages=pages)  # type: ignore
+    await navigator.send(ctx.interaction)
 
 
 @reminders.listener(events.TimerCompleteEvent, bind=True)
@@ -309,56 +315,61 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
     """
     Listener for expired reminders
     """
-    if event.timer.event == "reminder":
-        guild = event.get_guild()
-        assert guild is not None
-        assert event.timer.channel_id is not None
+    if event.timer.event != "reminder":
+        return
 
-        user = guild.get_member(event.timer.user_id)
+    guild = event.get_guild()
 
-        if not user:
-            return
+    if not guild:
+        return
 
-        if not guild:
-            return
+    assert event.timer.channel_id is not None
 
-        assert event.timer.notes is not None
-        notes = json.loads(event.timer.notes)
-        embed = hikari.Embed(
-            title=f"✉️ {user.display_name}, your {'snoozed' if notes.get('is_snoozed') else ''} reminder:",
-            description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
-            color=const.EMBED_BLUE,
+    user = guild.get_member(event.timer.user_id)
+
+    if not user:
+        return
+
+    if not guild:
+        return
+
+    assert event.timer.notes is not None
+    notes = json.loads(event.timer.notes)
+    embed = hikari.Embed(
+        title=f"✉️ {user.display_name}, your {'snoozed' if notes.get('is_snoozed') else ''} reminder:",
+        description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
+        color=const.EMBED_BLUE,
+    )
+
+    pings = [user.mention]
+
+    if len(notes["additional_recipients"]) > 0:
+        for user_id in notes["additional_recipients"]:
+            member = guild.get_member(user_id)
+            if member:
+                pings.append(member.mention)
+
+    try:
+        await plugin.app.rest.create_message(
+            event.timer.channel_id,
+            content=" ".join(pings),
+            embed=embed,
+            components=miru.View().add_item(SnoozeSelect(event.timer.user_id)).build(),
+            user_mentions=True,
         )
-
-        pings = [user.mention]
-
-        if len(notes["additional_recipients"]) > 0:
-            for user_id in notes["additional_recipients"]:
-                member = guild.get_member(user_id)
-                if member:
-                    pings.append(member.mention)
-
+    except (
+        hikari.ForbiddenError,
+        hikari.NotFoundError,
+        hikari.HTTPError,
+    ):
         try:
-            await plugin.app.rest.create_message(
-                event.timer.channel_id,
-                content=" ".join(pings),
+            await user.send(
+                content="I lost access to the channel this reminder was sent from, so here it is!",
                 embed=embed,
-                components=miru.View().add_item(SnoozeSelect(event.timer.user_id)).build(),
-                user_mentions=True,
             )
-        except (
-            hikari.ForbiddenError,
-            hikari.NotFoundError,
-            hikari.InternalServerError,
-        ):
-            try:
-                await user.send(
-                    content="I lost access to the channel this reminder was sent from, so here it is!",
-                    embed=embed,
-                )
 
-            except hikari.ForbiddenError:
-                logger.info(f"Failed to deliver a reminder to user {user}.")
+        except hikari.ForbiddenError:
+            logger.info(f"Failed to deliver a reminder to user {user}.")
 
 
 def load(bot: SnedBot) -> None:

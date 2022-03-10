@@ -36,16 +36,14 @@ class IntervalLoop:
             try:
                 await self._coro(*args, **kwargs)
             except Exception as e:
+                logging.error(f"Task encountered exception: {e}")
+                traceback_msg = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))
+                logging.error(traceback_msg)
+
                 if self._failed < 3:
                     self._failed += 1
-                    logging.error(f"Task encountered exception: {e}")
-                    traceback_msg = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))
-                    logging.error(traceback_msg)
                     await asyncio.sleep(self._sleep)
                 else:
-                    logging.error(f"Task encountered exception: {e}")
-                    traceback_msg = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))
-                    logging.error(traceback_msg)
                     raise RuntimeError(f"Task failed repeatedly, stopping it. Exception: {e}")
             else:
                 await asyncio.sleep(self._sleep)

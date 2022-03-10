@@ -1,14 +1,11 @@
 import datetime
 import logging
 import os
-import platform
-from io import TextIOWrapper
-from pathlib import Path
 
 import hikari
 
 
-async def backup_database(dsn: str) -> hikari.File:
+async def backup_database() -> hikari.File:
     """Attempts to back up the database via pg_dump into the db_backup directory"""
     logging.info("Performing daily database backup...")
 
@@ -30,10 +27,13 @@ async def backup_database(dsn: str) -> hikari.File:
     filename: str = f"{now.year}-{now.month}-{now.day}_{now.hour}_{now.minute}_{now.second}.pgdmp"
     backup_path: str = os.path.join(filepath, "db_backup", filename)
 
-    os.system(
+    return_code = os.system(
         f"pg_dump -Fc -c -U {username} -d {db_name} -h {hostname} -p {port} --quote-all-identifiers -w > {backup_path}"
     )
     os.environ["PGPASSWORD"] = ""
+
+    if return_code != 0:
+        raise RuntimeError("pg_dump failed to create a database backup file!")
 
     logging.info("Database backup complete!")
     return hikari.File(backup_path)
