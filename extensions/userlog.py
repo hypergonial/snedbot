@@ -267,9 +267,8 @@ async def find_auditlog_data(
     takes_an_obscene_amount_of_time = [hikari.AuditLogEventType.MESSAGE_BULK_DELETE]
 
     assert isinstance(userlog.app, SnedBot)
-    assert isinstance(event, hikari.GuildEvent)
 
-    guild = userlog.app.cache.get_guild(event.guild_id)
+    guild = userlog.app.cache.get_guild(event.guild_id)  # type: ignore
     sleep_time = 5.0 if event_type not in takes_an_obscene_amount_of_time else 15.0
     await asyncio.sleep(sleep_time)  # Wait for auditlog to hopefully fill in
 

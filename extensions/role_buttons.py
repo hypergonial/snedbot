@@ -28,7 +28,7 @@ button_styles = {
 role_button_ratelimiter = RateLimiter(2, 1, BucketType.MEMBER, wait=False)
 
 
-class PersistentRoleView(miru.View):
+class PersistentRoleView(miru.View):  # TODO: Remove me after migration
     def __init__(self, buttons: t.List[miru.Button]) -> None:
         super().__init__(timeout=None)
         for button in buttons:
@@ -255,27 +255,14 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
         message = await ctx.app.rest.fetch_message(records[0]["channel_id"], records[0]["msg_id"])
     except hikari.NotFoundError:
         pass
-    else:
-        records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message.id) or []
-        buttons = []
-        # Re-sync rolebuttons with db if message still exists
-        for record in records:
-            emoji = hikari.Emoji.parse(record["emoji"])
-            role = ctx.app.cache.get_role(record["role_id"])
-            if not role:
-                continue
-            buttons.append(
-                RoleButton(
-                    entry_id=record["entry_id"],
-                    role=role.id,
-                    label=record.get("buttonlabel"),
-                    style=button_styles[record["buttonstyle"]],
-                    emoji=emoji,
-                )
-            )
-        view = PersistentRoleView(buttons)
-        components = view.build() if len(buttons) > 0 else []
-        message = await message.edit(components=components)
+    else:  # Remove button if message still exists
+        view = miru.View.from_message(message, timeout=None)
+
+        for item in view.children:
+            if item.custom_id == f"RB:{button_id}:{records[0]['role_id']}":
+                view.remove_item(item)
+
+        message = await message.edit(components=view.build())
 
 
 @rolebutton.child()  # type: ignore
@@ -316,28 +303,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         style=button_style,
     )
 
-    buttons = []
-
-    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, msg_id=message.id)
-    if records:
-        # Account for other rolebuttons on the same message
-        for record in records:
-            old_emoji = hikari.Emoji.parse(record["emoji"])
-            role = ctx.app.cache.get_role(record["role_id"])
-            if not role:
-                continue
-            buttons.append(
-                RoleButton(
-                    entry_id=record["entry_id"],
-                    role=role,
-                    label=record.get("buttonlabel"),
-                    style=button_styles[record.get("buttonstyle") or "Grey"],
-                    emoji=old_emoji,
-                )
-            )
-
-    buttons.append(button)
-    view = PersistentRoleView(buttons=buttons)
+    view = miru.View.from_message(message, timeout=None).add_item(button)
     message = await message.edit(components=view.build())
 
     await ctx.app.pool.execute(
