@@ -43,7 +43,7 @@ class Caching:
             self._cache[record.get("tablename")] = []
         logger.info("Cache initialized!")
         self.is_ready = True
-    
+
     # Leaving this as async for potential future functionality
     async def disable(self) -> None:
         """
@@ -52,9 +52,8 @@ class Caching:
         self.is_ready = False
         self._cache = {}
 
-
     async def get(
-        self, table: str, *, cache_only: bool = False, limit: t.Optional[int] = None, **kwargs: t.Any,
+        self, table: str, *, cache_only: bool = False, limit: t.Optional[int] = None, **kwargs: t.Any
     ) -> t.Optional[t.List[t.Dict[str, t.Any]]]:
         """Get a value from the database cache, lazily fetches from the database if the value is not cached.
 
@@ -86,10 +85,10 @@ class Caching:
             # Check if all kwargs match what is in the row
             if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
                 rows.append(row)
-        
+
         if not rows and not cache_only:
             await self.refresh(table, **kwargs)
-            
+
             for row in self._cache[table]:
                 if limit and len(rows) >= limit:
                     break
@@ -98,7 +97,6 @@ class Caching:
                     rows.append(row)
         if rows:
             return rows
-
 
     async def refresh(self, table: str, *, **kwargs) -> None:
         """
@@ -110,10 +108,11 @@ class Caching:
         if not self._cache.get(table):
             raise ValueError("Invalid table specified.")
 
-
         sql_args = [f"{kwarg} = ${i+1}" for i, kwarg in enumerate(kwargs)]
 
-        records = await self.bot.pool.fetch(f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values())
+        records = await self.bot.pool.fetch(
+            f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values()
+        )
 
         for i, row in enumerate(self._cache[table]):
             # Pop old values that match the kwargs
@@ -122,7 +121,6 @@ class Caching:
 
         for record in records:
             self._cache[table].append(dict(record))
-
 
     async def wipe(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
         """
