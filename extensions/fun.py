@@ -30,32 +30,6 @@ class WinState(IntEnum):
     TIE = 2
 
 
-class NitroView(miru.View):
-    async def on_timeout(self) -> None:
-        for item in self.children:
-            assert isinstance(item, miru.Button)
-            item.disabled = True
-            item.style = hikari.ButtonStyle.SECONDARY
-            item.label = "              Accept              "
-
-        embed = hikari.Embed(
-            title="You've been gifted a subscription!",
-            description="Hmm, it seems someone already claimed this gift.",
-            color=0x2F3136,
-        )
-
-        embed.set_thumbnail("https://i.imgur.com/w9aiD6F.png")
-        assert self.message is not None
-        await self.message.edit(embed=embed, components=self.build())
-
-    @miru.button(style=hikari.ButtonStyle.SUCCESS, label="          Accept          ")
-    async def nitro_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
-        await ctx.respond(
-            "https://images-ext-1.discordapp.net/external/AoV9l5YhsWBj92gcKGkzyJAAXoYpGiN6BdtfzM-00SU/https/i.imgur.com/NQinKJB.mp4",
-            flags=hikari.MessageFlag.EPHEMERAL,
-        )
-
-
 class TicTacToeButton(miru.Button):
     def __init__(self, x: int, y: int) -> None:
         super().__init__(style=hikari.ButtonStyle.SECONDARY, label="\u200b", row=y)
@@ -587,21 +561,6 @@ async def randomotter(ctx: SnedSlashContext) -> None:
                 )
 
             await ctx.respond(embed=embed)
-
-
-@fun.command
-@lightbulb.command("nitro", 'Gives you "free" nitro.')
-@lightbulb.implements(lightbulb.SlashCommand)
-async def nitro(ctx: SnedSlashContext) -> None:
-    embed = hikari.Embed(
-        title="You've been gifted a subscription!",
-        description="You've been gifted Nitro for **1 month!**",
-        color=0x2F3136,
-    )
-    embed.set_thumbnail("https://i.imgur.com/w9aiD6F.png")
-    view = NitroView()
-    proxy = await ctx.respond(embed=embed, components=view.build())
-    view.start(await proxy.message())
 
 
 @fun.command

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import typing as t
 
+import asyncpg
 import hikari
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class Caching:
 
     def __init__(self, bot: SnedBot) -> None:
         self.bot: SnedBot = bot
-        self.cache: t.Dict[str, t.Any] = {}
+        self._cache: t.Dict[str, t.List[t.Dict[str, t.Any]]] = {}
         self.is_ready: bool = False
         self.bot.loop.create_task(self.startup())
 
@@ -29,110 +30,110 @@ class Caching:
         Creates an empty dict for every table in the database
         """
         self.is_ready = False
+        self._cache = {}
 
         await self.bot.wait_until_started()
         records = await self.bot.pool.fetch(
             """
-        SELECT * FROM pg_catalog.pg_tables 
+        SELECT tablename FROM pg_catalog.pg_tables 
         WHERE schemaname='public'
         """
         )
         for record in records:
-            self.cache[record.get("tablename")] = {}
+            self._cache[record.get("tablename")] = []
         logger.info("Cache initialized!")
         self.is_ready = True
-
-    async def format_records(self, records: dict) -> t.List[t.Dict[str, t.Any]]:
+    
+    # Leaving this as async for potential future functionality
+    async def disable(self) -> None:
         """
-        Helper function that transforms a record into an easier to use format.
-        Returns a list of dicts, each representing a row in the database.
+        Disable the cache and wipe all of it's contents.
         """
-        first_key = list(records.keys())[0]
-        records_fmt = []
+        self.is_ready = False
+        self._cache = {}
 
-        for i, value in enumerate(records[first_key]):
-            record = {}
-            for key in records.keys():
-
-                record[key] = records[key][i]
-
-            records_fmt.append(record)
-
-        return records_fmt
 
     async def get(
-        self, table: str, guild_id: t.Union[int, hikari.Snowflake], **kwargs
+        self, table: str, *, cache_only: bool = False, limit: t.Optional[int] = None, **kwargs: t.Any,
     ) -> t.Optional[t.List[t.Dict[str, t.Any]]]:
+        """Get a value from the database cache, lazily fetches from the database if the value is not cached.
+
+        Parameters
+        ----------
+        table : str
+            The table to get values from
+        cache_only : bool, optional
+            Set to True if fetching from the database is undesirable, by default False
+        limit : Optional[int], optional
+            The maximum amount of rows to return, by default None
+        **kwargs: t.Any, optional
+            Keyword-only arguments that denote columns to filter values.
+
+        Returns
+        -------
+        Optional[List[Dict[str, Any]]]
+            A list of dicts representing the rows in the specified table.
         """
-        Finds a value based on criteria provided as keyword arguments.
-        If no keyword arguments are present, returns all values for that guild_id.
-        Tries getting the value from cache, if it is not present,
-        goes to the database & retrieves it. Lazy-loads the cache.
+        if not self.is_ready:
+            return
 
-        Returns a list of dicts with each dict being a row, and the dict-keys being the columns.
+        rows = []
 
-        Example:
-        await Caching.get(table="mytable", guild_id=1234, my_column=my_value)
+        for row in self._cache[table]:
+            if limit and len(rows) >= limit:
+                break
 
-        This is practically equivalent to an SQL 'SELECT * FROM table WHERE' statement.
-        """
-        if guild_id in self.cache[table].keys():
+            # Check if all kwargs match what is in the row
+            if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
+                rows.append(row)
+        
+        if not rows and not cache_only:
+            await self.refresh(table, **kwargs)
+            
+            for row in self._cache[table]:
+                if limit and len(rows) >= limit:
+                    break
 
-            if kwargs:
-                logger.debug("Loading data from cache and filtering...")
-                matches = {}
-                records = self.cache[table][guild_id]
+                if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
+                    rows.append(row)
+        if rows:
+            return rows
 
-                if not records:
-                    return
 
-                for (key, value) in kwargs.items():
-                    if key in records.keys():  # If the key is found in cache
-                        matches[key] = [i for i, x in enumerate(records[key]) if x == value]
-                    else:
-                        raise ValueError(f"Key {key} could not be found in cache.")
-
-                # Find common elements present in all match lists
-                intersection = list(set.intersection(*map(set, matches.values())))
-                if len(intersection) > 0:
-
-                    filtered_records = {key: [] for key in records.keys()}
-
-                    for match in intersection:  # Go through every list, and check the matched positions,
-                        for (key, value) in records.items():
-                            filtered_records[key].append(value[match])  # Then filter them out
-
-                    if len(filtered_records) > 0:
-                        return await self.format_records(filtered_records)
-
-            else:
-                logger.debug("Loading data from cache...")
-                if len(self.cache[table][guild_id]) > 0:
-                    return await self.format_records(self.cache[table][guild_id])
-
-        else:
-            logger.debug("Loading data from database and loading into cache...")
-            await self.refresh(table, guild_id)
-            return await self.get(table, guild_id, **kwargs)
-
-    async def refresh(self, table: str, guild_id: t.Union[int, hikari.Snowflake]) -> None:
+    async def refresh(self, table: str, *, **kwargs) -> None:
         """
         Discards and reloads a specific part of the cache, should be called after modifying database values.
         """
-        self.cache[table][guild_id] = {}
-        records = await self.bot.pool.fetch(f"""SELECT * FROM {table} WHERE guild_id = $1""", guild_id)
+        if not self.is_ready:
+            return
+
+        if not self._cache.get(table):
+            raise ValueError("Invalid table specified.")
+
+
+        sql_args = [f"{kwarg} = ${i+1}" for i, kwarg in enumerate(kwargs)]
+
+        records = await self.bot.pool.fetch(f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values())
+
+        for i, row in enumerate(self._cache[table]):
+            # Pop old values that match the kwargs
+            if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
+                self._cache[table].pop(i)
+
         for record in records:
-            for (field, value) in record.items():
-                if self.cache[table][guild_id].get(field):
-                    self.cache[table][guild_id][field].append(value)
-                else:
-                    self.cache[table][guild_id][field] = [value]
+            self._cache[table].append(dict(record))
 
-        logger.debug(f"Refreshed cache for table {table}, guild {guild_id}!")
 
-    async def wipe(self, guild_id: t.Union[int, hikari.Snowflake]) -> None:
+    async def wipe(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
         """
         Discards the entire cache for a guild.
         """
-        for table in self.cache.keys():
-            self.cache[table][guild_id] = {}
+        if not self.is_ready:
+            return
+
+        guild_id = hikari.Snowflake(guild)
+
+        for table in self._cache.keys():
+            for i, row in enumerate(self._cache[table]):
+                if row.get("guild_id") == guild_id:
+                    self._cache[table].pop(i)

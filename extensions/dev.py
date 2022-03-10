@@ -324,9 +324,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     except:
         pass
 
-    # Invalidate the cache
-    ctx.app.db_cache.is_ready = False
-    ctx.app.db_cache.cache = {}
+    await ctx.app.db_cache.disable()
 
     # Drop all tables
     async with ctx.app.pool.acquire() as con:

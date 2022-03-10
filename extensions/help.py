@@ -32,7 +32,7 @@ Thank you for using Sned!""",
     "time-formatting": hikari.Embed(
         title="ℹ️ __Help: Time Formatting__",
         description="""This help article aims to familiarize you with the various ways you can input time into bot commands.
-        
+
 **Dates:**
 `2022-03-04 23:43`
 `04/03/2022 23:43`
@@ -45,7 +45,7 @@ Thank you for using Sned!""",
 `next week`
 `2 days ago`
 `...`
-        
+
 **ℹ️ Note:**
 Relative time-conversion may require the bot to be aware of your timezone. You can set your timezone via the `/timezone` command, if you wish.
 """,
