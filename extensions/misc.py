@@ -27,13 +27,14 @@ psutil.cpu_percent(interval=1)  # Call so subsequent calls for CPU % will not be
 async def ping(ctx: SnedSlashContext) -> None:
     embed = hikari.Embed(
         title="🏓 Pong!",
-        description="Latency: `{latency}ms`".format(latency=round(ctx.app.heartbeat_latency * 1000)),
+        description=f"Latency: `{round(ctx.app.heartbeat_latency * 1000)}ms`",
         color=const.MISC_COLOR,
     )
     await ctx.respond(embed=embed)
 
 
 @misc.command()
+@lightbulb.option("detach", "Send the embed in a detached manner from the slash command.", type=bool, required=False)
 @lightbulb.option(
     "color",
     "The color of the embed. Expects three space-separated values for an RGB value.",
@@ -98,8 +99,37 @@ async def embed(ctx: SnedSlashContext) -> None:
         url=ctx.options.author_url,
         icon=ctx.options.author_image_url,
     )
+    if not ctx.options.detach:
+        await ctx.respond(embed=embed)
+        return
 
-    await ctx.respond(embed=embed)
+    if ctx.member and not helpers.includes_permissions(
+        lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
+    ):
+        embed = hikari.Embed(
+            title="❌ Missing Permissions",
+            description=f"Sending embeds detached requires `Manage Messages` permissions!",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    if ctx.guild_id:
+        me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+        channel = ctx.get_channel()
+        assert me and isinstance(channel, hikari.TextableGuildChannel)
+
+        if not helpers.includes_permissions(
+            lightbulb.utils.permissions_in(channel, me),
+            hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL,
+        ):
+            raise lightbulb.BotMissingRequiredPermission(
+                perms=hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.SEND_MESSAGES
+            )
+
+    await ctx.app.rest.create_message(ctx.channel_id, embed=embed)
+    embed = hikari.Embed(title="✅ Embed created!", color=const.EMBED_GREEN)
+    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @embed.set_error_handler()  # type: ignore
