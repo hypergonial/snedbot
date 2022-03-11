@@ -8,7 +8,8 @@ from itertools import chain
 import hikari
 import Levenshtein as lev
 
-from models.errors import TagAlreadyExists, TagNotFound
+from models.errors import TagAlreadyExists
+from models.errors import TagNotFound
 from models.tag import Tag
 
 if t.TYPE_CHECKING:

@@ -12,10 +12,13 @@ import hikari
 import Levenshtein as lev
 import lightbulb
 import miru
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
 
 from etc import constants as const
-from models import SnedBot, SnedSlashContext
+from models import SnedBot
+from models import SnedSlashContext
 from models.context import SnedUserContext
 from utils import helpers
 

@@ -10,7 +10,8 @@ import pytz
 
 from etc import constants as const
 from models import SnedBot
-from models.context import SnedMessageContext, SnedSlashContext
+from models.context import SnedMessageContext
+from models.context import SnedSlashContext
 from utils import helpers
 from utils.scheduler import ConversionMode
 

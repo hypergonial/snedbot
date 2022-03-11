@@ -3,7 +3,10 @@ from __future__ import annotations
 import asyncio
 import datetime
 import re
-from typing import List, Optional, Sequence, Union
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Union
 
 import hikari
 import lightbulb
@@ -11,7 +14,8 @@ import lightbulb
 from etc import constants as const
 from models import errors
 from models.components import *
-from models.context import SnedContext, SnedSlashContext
+from models.context import SnedContext
+from models.context import SnedSlashContext
 from models.db_user import User
 
 MESSAGE_LINK_REGEX = re.compile(

@@ -16,7 +16,9 @@ from lightbulb.ext import tasks
 import utils.db_backup as db_backup
 from config import Config
 from etc import constants as const
-from utils import cache, helpers, scheduler
+from utils import cache
+from utils import helpers
+from utils import scheduler
 from utils.config_handler import ConfigHandler
 from utils.tasks import IntervalLoop
 

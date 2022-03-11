@@ -9,8 +9,11 @@ import lightbulb
 from etc import constants as const
 from etc import get_perm_str
 from models import SnedBot
-from models.events import (AutoModMessageFlagEvent, MassBanEvent,
-                           WarnCreateEvent, WarnRemoveEvent, WarnsClearEvent)
+from models.events import AutoModMessageFlagEvent
+from models.events import MassBanEvent
+from models.events import WarnCreateEvent
+from models.events import WarnRemoveEvent
+from models.events import WarnsClearEvent
 from utils import helpers
 
 userlog = lightbulb.Plugin("Logging", include_datastore=True)

@@ -11,7 +11,8 @@ import perspective
 
 import utils
 from etc import constants as const
-from etc.settings_static import default_automod_policies, notices
+from etc.settings_static import default_automod_policies
+from etc.settings_static import notices
 from models.bot import SnedBot
 from models.events import AutoModMessageFlagEvent
 from utils import helpers

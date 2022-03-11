@@ -9,9 +9,12 @@ import lightbulb
 import miru
 
 from etc import constants as const
-from models import AuthorOnlyNavigator, SnedSlashContext, Tag
+from models import AuthorOnlyNavigator
+from models import SnedSlashContext
+from models import Tag
 from models.bot import SnedBot
-from utils import TagHandler, helpers
+from utils import TagHandler
+from utils import helpers
 
 logger = logging.getLogger(__name__)
 

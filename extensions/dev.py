@@ -13,7 +13,8 @@ import miru
 from miru.ext import nav
 
 from etc import constants as const
-from models import AuthorOnlyNavigator, SnedPrefixContext
+from models import AuthorOnlyNavigator
+from models import SnedPrefixContext
 from models.bot import SnedBot
 from models.views import AuthorOnlyView
 

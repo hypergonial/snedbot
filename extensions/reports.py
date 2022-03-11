@@ -8,7 +8,9 @@ import miru
 from etc import constants as const
 from models import SnedSlashContext
 from models.bot import SnedBot
-from models.context import SnedContext, SnedMessageContext, SnedUserContext
+from models.context import SnedContext
+from models.context import SnedMessageContext
+from models.context import SnedUserContext
 from utils import helpers
 
 logger = logging.getLogger(__name__)

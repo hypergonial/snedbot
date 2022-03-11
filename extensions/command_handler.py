@@ -14,8 +14,9 @@ from etc.perms_str import get_perm_str
 from models import SnedContext
 from models.bot import SnedBot
 from models.context import SnedSlashContext
-from models.errors import (BotRoleHierarchyError, MemberExpectedError,
-                           RoleHierarchyError)
+from models.errors import BotRoleHierarchyError
+from models.errors import MemberExpectedError
+from models.errors import RoleHierarchyError
 
 logger = logging.getLogger(__name__)
 
