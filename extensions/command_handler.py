@@ -187,7 +187,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
 @ch.listener(lightbulb.UserCommandErrorEvent)
 @ch.listener(lightbulb.MessageCommandErrorEvent)
 @ch.listener(lightbulb.SlashCommandErrorEvent)
-async def slash_error_handler(event: lightbulb.CommandErrorEvent) -> None:
+async def application_command_error_handler(event: lightbulb.CommandErrorEvent) -> None:
     assert isinstance(event.context, SnedSlashContext)
     await application_error_handler(event.context, event.exception)
 
