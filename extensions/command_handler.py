@@ -23,9 +23,20 @@ logger = logging.getLogger(__name__)
 ch = lightbulb.Plugin("Command Handler")
 
 
-async def log_error_to_homeguild(
-    error_str: str, ctx: t.Optional[lightbulb.Context] = None, event: t.Optional[hikari.Event] = None
+async def log_exc_to_channel(
+    error_str: str, ctx: t.Optional[lightbulb.Context] = None, event: t.Optional[hikari.ExceptionEvent] = None
 ) -> None:
+    """Log an exception traceback to the specified logging channel.
+
+    Parameters
+    ----------
+    error_str : str
+        The exception message to print.
+    ctx : t.Optional[lightbulb.Context], optional
+        The context to use for additional information, by default None
+    event : t.Optional[hikari.ExceptionEvent], optional
+        The event to use for additional information, by default None
+    """
 
     error_lines = error_str.split("\n")
     paginator = lightbulb.utils.StringPaginator(max_chars=2000, prefix="```py\n", suffix="```")
@@ -37,7 +48,9 @@ async def log_error_to_homeguild(
             )
 
     elif event:
-        paginator.add_line(f"Ignoring exception in listener for {event.__class__.__name__}:\n")
+        paginator.add_line(
+            f"Ignoring exception in listener for {event.failed_event.__class__.__name__}, callback {event.failed_callback.__name__}:\n"
+        )
     else:
         paginator.add_line(f"Uncaught exception:")
 
@@ -166,7 +179,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         color=const.ERROR_COLOR,
     )
     embed.set_footer(text=f"Guild: {ctx.guild_id}")
-    await log_error_to_homeguild(exception_msg, ctx)
+    await log_exc_to_channel(exception_msg, ctx)
 
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
@@ -209,6 +222,14 @@ async def command_invoke_listener(event: lightbulb.events.CommandInvocationEvent
     logger.info(
         f"Command {event.command.name} was invoked by {event.context.author} in guild {event.context.guild_id}."
     )
+
+
+@ch.listener(hikari.ExceptionEvent)
+async def event_error_handler(event: hikari.ExceptionEvent) -> None:
+    logging.error("Ignoring exception in listener {}:".format(event.failed_event.__class__.__name__))
+    exception_msg = "\n".join(traceback.format_exception(*event.exc_info))
+    logging.error(exception_msg)
+    await log_exc_to_channel(exception_msg, event=event)
 
 
 def load(bot: SnedBot) -> None:
