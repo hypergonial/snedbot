@@ -800,6 +800,8 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 
     if old_member.communication_disabled_until() != member.communication_disabled_until():
         """Timeout logging"""
+        comms_disabled_until = member.communication_disabled_until()
+
         entry = await find_auditlog_data(
             event, event_type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id
         )
@@ -819,8 +821,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 
         mod = userlog.app.get_plugin("Moderation")
 
-        print(member.communication_disabled_until())
-        if member.communication_disabled_until() is None:
+        if comms_disabled_until is None:
             embed = hikari.Embed(
                 title=f"🔉 User timeout removed",
                 description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
@@ -832,7 +833,6 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
                 )
 
         else:
-            comms_disabled_until = member.communication_disabled_until()
             assert comms_disabled_until is not None
 
             embed = hikari.Embed(
@@ -866,7 +866,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         add_diff = list(set(member.role_ids) - set(old_member.role_ids))
         rem_diff = list(set(old_member.role_ids) - set(member.role_ids))
 
-        if len(add_diff) == 0 and len(rem_diff) == 0:
+        if not add_diff and not rem_diff:
             # No idea why this is needed, but otherwise I get empty role updates
             return
 
@@ -881,7 +881,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             # Do not log role updates done by ourselves or other bots
             return
 
-        if len(add_diff) != 0:
+        if add_diff:
             role = plugin.app.cache.get_role(add_diff[0])
             assert role is not None
             embed = hikari.Embed(
@@ -891,7 +891,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             )
             await log("roles", embed, event.guild_id)
 
-        elif len(rem_diff) != 0:
+        elif rem_diff:
             role = plugin.app.cache.get_role(rem_diff[0])
             assert role is not None
             embed = hikari.Embed(
