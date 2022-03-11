@@ -55,9 +55,10 @@ class RoleButton(miru.Button):
 async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.LightbulbStartedEvent) -> None:
     if not MIGRATE:
         return
+
     assert isinstance(plugin.app, SnedBot)
 
-    records: asyncpg.Record = await plugin.app.pool.fetch("""SELECT * FROM button_roles""")
+    records: t.List[asyncpg.Record] = await plugin.app.pool.fetch("""SELECT * FROM button_roles""")
 
     msg_button_mapping: t.Dict[str, t.List[RoleButton]] = {}
 

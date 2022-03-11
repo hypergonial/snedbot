@@ -1257,6 +1257,24 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 
 
 @mod.command()
+@lightbulb.add_checks(
+    lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS, hikari.Permissions.MANAGE_MESSAGES),
+    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
+)
+@lightbulb.option("interval", "The slowmode interval in seconds, use 0 to disable it.", min_value=0, max_value=21600)
+@lightbulb.command("slowmode", "Set slowmode interval for this channel.", pass_options=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
+    await ctx.app.rest.edit_channel(ctx.channel_id, rate_limit_per_user=interval)
+    embed = hikari.Embed(
+        title="✅ Slowmode updated",
+        description=f"{const.EMOJI_SLOWMODE} Slowmode is now set to 1 message per `{interval}` seconds.",
+        color=const.EMBED_GREEN,
+    )
+    await ctx.mod_respond(embed=embed)
+
+
+@mod.command()
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_cooldown(60.0, 1, bucket=lightbulb.GuildBucket)
 @lightbulb.add_checks(

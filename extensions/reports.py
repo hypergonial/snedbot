@@ -150,9 +150,9 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
     components = hikari.UNDEFINED
 
     if message:
-        view = miru.View()
-        view.add_item(miru.Button(label="Associated Message", url=message.make_link(ctx.guild_id)))
-        components = view.build()
+        components = (
+            miru.View().add_item(miru.Button(label="Associated Message", url=message.make_link(ctx.guild_id))).build()
+        )
 
     await channel.send(
         " ".join(role_mentions) or hikari.UNDEFINED, embed=embed, components=components, role_mentions=True
