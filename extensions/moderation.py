@@ -11,11 +11,15 @@ import models
 from etc import constants as const
 from models import SnedSlashContext
 from models.bot import SnedBot
-from models.context import SnedContext, SnedUserContext
+from models.context import SnedContext
+from models.context import SnedUserContext
 from models.db_user import User
-from models.errors import BotRoleHierarchyError, RoleHierarchyError
-from models.events import (AutoModMessageFlagEvent, MassBanEvent,
-                           WarnCreateEvent, WarnRemoveEvent, WarnsClearEvent)
+from models.errors import BotRoleHierarchyError
+from models.errors import RoleHierarchyError
+from models.events import MassBanEvent
+from models.events import WarnCreateEvent
+from models.events import WarnRemoveEvent
+from models.events import WarnsClearEvent
 from models.timer import Timer
 from utils import helpers
 
