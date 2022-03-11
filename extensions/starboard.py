@@ -103,7 +103,7 @@ async def handle_starboard(
 
     assert isinstance(plugin.app, SnedBot)
 
-    records = await plugin.app.db_cache.get(table="starboard", guild_id=event.guild_id)
+    records = await plugin.app.db_cache.get(table="starboard", guild_id=event.guild_id, limit=1)
 
     if not records:
         return
@@ -231,7 +231,7 @@ async def star_show(ctx: SnedSlashContext, id: str) -> None:
         await ctx.respond(embed=embed)
         return
 
-    records = await ctx.app.db_cache.get(table="starboard", guild_id=ctx.guild_id)
+    records = await ctx.app.db_cache.get(table="starboard", guild_id=ctx.guild_id, limit=1)
 
     if not records or not records[0]["is_enabled"]:
         embed = hikari.Embed(

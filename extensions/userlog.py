@@ -53,7 +53,7 @@ async def get_log_channel_id(log_event: str, guild_id: int) -> t.Optional[int]:
 
     assert isinstance(userlog.app, SnedBot)
 
-    records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id)
+    records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
 
     log_channels = json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else None
 
@@ -70,7 +70,7 @@ async def get_log_channel_ids_view(guild_id: int) -> t.Dict[str, t.Optional[int]
 
     assert isinstance(userlog.app, SnedBot)
 
-    records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id)
+    records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
 
     log_channels = json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else {}
 
@@ -111,7 +111,7 @@ userlog.d.actions["set_log_channel"] = set_log_channel
 async def is_color_enabled(guild_id: int) -> bool:
 
     assert isinstance(userlog.app, SnedBot)
-    records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id)
+    records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
     return records[0]["color"] if records else True
 
 

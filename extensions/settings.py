@@ -187,7 +187,7 @@ class SettingsView(models.AuthorOnlyView):
         """The reports menu."""
         assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
-        records = await self.app.db_cache.get(table="reports", guild_id=self.last_ctx.guild_id)
+        records = await self.app.db_cache.get(table="reports", guild_id=self.last_ctx.guild_id, limit=1)
 
         if not records:
             records = [
@@ -419,7 +419,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
-        records = await self.app.db_cache.get(table="starboard", guild_id=self.last_ctx.guild_id)
+        records = await self.app.db_cache.get(table="starboard", guild_id=self.last_ctx.guild_id, limit=1)
         settings = (
             records[0]
             if records

@@ -226,7 +226,7 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
 async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
     assert ctx.guild_id is not None
 
-    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, entry_id=button_id)
+    records = await ctx.app.db_cache.get(table="button_roles", guild_id=ctx.guild_id, entry_id=button_id, limit=1)
 
     if not records:
         embed = hikari.Embed(
@@ -242,7 +242,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
         ctx.guild_id,
         button_id,
     )
-    await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
+    await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id, entry_id=button_id)
 
     embed = hikari.Embed(
         title="✅ Deleted!",
@@ -320,7 +320,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         ctx.options.buttonstyle,
         ctx.options.role.id,
     )
-    await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id)
+    await ctx.app.db_cache.refresh(table="button_roles", guild_id=ctx.guild_id, entry_id=entry_id)
 
     channel = ctx.app.cache.get_guild_channel(message.channel_id)
     assert channel is not None

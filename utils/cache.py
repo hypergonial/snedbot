@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import typing as t
 
 import asyncpg
@@ -27,7 +28,7 @@ class Caching:
 
     async def startup(self) -> None:
         """
-        Creates an empty dict for every table in the database
+        Initialize
         """
         self.is_ready = False
         self._cache = {}
@@ -76,7 +77,7 @@ class Caching:
         if not self.is_ready:
             return
 
-        rows = []
+        rows: t.List[t.Dict[str, t.Any]] = []
 
         for row in self._cache[table]:
             if limit and len(rows) >= limit:
@@ -84,32 +85,37 @@ class Caching:
 
             # Check if all kwargs match what is in the row
             if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
+                print("Added row from cache")
                 rows.append(row)
 
         if not rows and not cache_only:
+            print("Getting from db...")
             await self.refresh(table, **kwargs)
+            
 
             for row in self._cache[table]:
                 if limit and len(rows) >= limit:
                     break
 
                 if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
+                    print("Added row from db")
                     rows.append(row)
         if rows:
             return rows
 
-    async def refresh(self, table: str, *, **kwargs) -> None:
+    async def refresh(self, table: str, **kwargs) -> None:
         """
         Discards and reloads a specific part of the cache, should be called after modifying database values.
         """
         if not self.is_ready:
             return
 
-        if not self._cache.get(table):
+        if self._cache.get(table) is None:
             raise ValueError("Invalid table specified.")
 
-        sql_args = [f"{kwarg} = ${i+1}" for i, kwarg in enumerate(kwargs)]
-
+        # Construct sql args, remove invalid python chars
+        sql_args = [f"{re.sub(r'\W|^(?=\d)', '_', kwarg)} = ${i+1}" for i, kwarg in enumerate(kwargs)]
+        print("Getting records from db")
         records = await self.bot.pool.fetch(
             f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values()
         )
@@ -121,6 +127,7 @@ class Caching:
 
         for record in records:
             self._cache[table].append(dict(record))
+        print("Refreshed")
 
     async def wipe(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
         """

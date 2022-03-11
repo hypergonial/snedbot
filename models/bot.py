@@ -31,7 +31,7 @@ async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[
     if message.guild_id is None:
         return "sn "
 
-    records = await bot.db_cache.get(table="global_config", guild_id=message.guild_id)
+    records = await bot.db_cache.get(table="global_config", guild_id=message.guild_id, limit=1)
     if records and records[0]["prefix"]:
         return tuple(records[0]["prefix"])
 
