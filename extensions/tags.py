@@ -66,10 +66,11 @@ class TagEditorModal(miru.Modal):
 
 
 @tags.command()
+@lightbulb.option("ephemeral", "If True, sends the tag in a way that only you can see it.", default=False)
 @lightbulb.option("name", "The name of the tag you want to call.", autocomplete=True)
 @lightbulb.command("tag", "Call a tag and display it's contents.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def tag_cmd(ctx: SnedSlashContext, name: str) -> None:
+async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> None:
     tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
 
     if not tag:
@@ -80,8 +81,8 @@ async def tag_cmd(ctx: SnedSlashContext, name: str) -> None:
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
-
-    await ctx.respond(content=tag.content)
+    flags = hikari.MessageFlag.EPHEMERAL if ephemeral else hikari.MessageFlag.NONE
+    await ctx.respond(content=tag.content, flags=flags)
 
 
 @tag_cmd.autocomplete("name")

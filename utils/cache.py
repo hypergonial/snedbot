@@ -26,9 +26,12 @@ class Caching:
         self.is_ready: bool = False
         self.bot.loop.create_task(self.startup())
 
+    def _clean_kwarg(self, kwarg: str) -> str:
+        return re.sub(r"\W|^(?=\d)", "_", kwarg)
+
     async def startup(self) -> None:
         """
-        Initialize
+        Initialize the database cache.
         """
         self.is_ready = False
         self._cache = {}
@@ -91,7 +94,6 @@ class Caching:
         if not rows and not cache_only:
             print("Getting from db...")
             await self.refresh(table, **kwargs)
-            
 
             for row in self._cache[table]:
                 if limit and len(rows) >= limit:
@@ -114,7 +116,7 @@ class Caching:
             raise ValueError("Invalid table specified.")
 
         # Construct sql args, remove invalid python chars
-        sql_args = [f"{re.sub(r'\W|^(?=\d)', '_', kwarg)} = ${i+1}" for i, kwarg in enumerate(kwargs)]
+        sql_args = [f"{self._clean_kwarg(kwarg)} = ${i+1}" for i, kwarg in enumerate(kwargs)]
         print("Getting records from db")
         records = await self.bot.pool.fetch(
             f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values()
