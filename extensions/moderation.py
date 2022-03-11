@@ -1261,7 +1261,9 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS, hikari.Permissions.MANAGE_MESSAGES),
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
 )
-@lightbulb.option("interval", "The slowmode interval in seconds, use 0 to disable it.", min_value=0, max_value=21600)
+@lightbulb.option(
+    "interval", "The slowmode interval in seconds, use 0 to disable it.", type=int, min_value=0, max_value=21600
+)
 @lightbulb.command("slowmode", "Set slowmode interval for this channel.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:

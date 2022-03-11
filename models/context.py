@@ -158,7 +158,7 @@ class SnedContext(lightbulb.Context):
         mod = self.app.get_plugin("Moderation")
 
         if mod:
-            is_ephemeral = (mod.d.actions.get_settings(self.guild_id))["is_ephemeral"]
+            is_ephemeral = (await mod.d.actions.get_settings(self.guild_id))["is_ephemeral"]
             flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
         flags = kwargs.get("flags") or hikari.UNDEFINED
 
