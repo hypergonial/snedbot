@@ -278,7 +278,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
 
 
 @fun.command
-@lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
+@lightbulb.set_max_concurrency(1, lightbulb.ChannelBucket)
 @lightbulb.option("length", "The amount of words provided.", required=False, type=int, min_value=1, max_value=15)
 @lightbulb.option(
     "difficulty", "The difficulty of the words provided.", choices=["easy", "medium", "hard"], required=False

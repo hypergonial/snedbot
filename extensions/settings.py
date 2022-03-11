@@ -1321,6 +1321,7 @@ async def ask_settings(
 
 
 @settings.command()
+@lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
 )

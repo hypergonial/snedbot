@@ -1257,6 +1257,7 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 
 
 @mod.command()
+@lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_cooldown(60.0, 1, bucket=lightbulb.GuildBucket)
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),

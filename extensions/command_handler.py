@@ -88,6 +88,15 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
+    if isinstance(error, lightbulb.MaxConcurrencyLimitReached):
+        embed = hikari.Embed(
+            title="❌ Max Concurrency Reached",
+            description=f"You have reached the maximum amount of running instances for this command. Please try again later.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
     if isinstance(error, lightbulb.CommandInvocationError):
 
         if isinstance(error.original, asyncio.TimeoutError):
