@@ -88,11 +88,9 @@ class Caching:
 
             # Check if all kwargs match what is in the row
             if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
-                print("Added row from cache")
                 rows.append(row)
 
         if not rows and not cache_only:
-            print("Getting from db...")
             await self.refresh(table, **kwargs)
 
             for row in self._cache[table]:
@@ -100,7 +98,6 @@ class Caching:
                     break
 
                 if all([row[kwarg] == value for kwarg, value in kwargs.items()]):
-                    print("Added row from db")
                     rows.append(row)
         if rows:
             return rows
@@ -117,7 +114,6 @@ class Caching:
 
         # Construct sql args, remove invalid python chars
         sql_args = [f"{self._clean_kwarg(kwarg)} = ${i+1}" for i, kwarg in enumerate(kwargs)]
-        print("Getting records from db")
         records = await self.bot.pool.fetch(
             f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values()
         )
@@ -129,7 +125,6 @@ class Caching:
 
         for record in records:
             self._cache[table].append(dict(record))
-        print("Refreshed")
 
     async def wipe(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
         """

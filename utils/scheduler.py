@@ -151,8 +151,9 @@ class Scheduler:
 
             timezone = "UTC"
             if user_id:
-                records = await self.bot.pool.fetch("""SELECT timezone FROM preferences WHERE user_id = $1""", user_id)
+                records = await self.bot.db_cache.get(table="preferences", user_id=user_id, limit=1)
                 timezone = records[0].get("timezone") if records else "UTC"
+                assert timezone is not None  # Fucking pointless, I hate you pyright
 
             time = dateparser.parse(
                 timestr, settings={"RETURN_AS_TIMEZONE_AWARE": True, "TIMEZONE": timezone, "NORMALIZE": True}

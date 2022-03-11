@@ -395,6 +395,7 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
         ctx.user.id,
         timezone,
     )
+    await ctx.app.db_cache.refresh(table="preferences", user_id=ctx.user.id, timezone=timezone)
 
     embed = hikari.Embed(
         title="✅ Timezone set!",
