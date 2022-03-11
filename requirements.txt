@@ -3,7 +3,7 @@ psutil
 Pillow
 asyncpg
 hikari @ git+https://github.com/thesadru/hikari@feat/modal
-hikari-lightbulb @ git+https://github.com/tandemdude/hikari-lightbulb
+hikari-lightbulb @ git+https://github.com/HyperGH/hikari-lightbulb@fix/dumb-issue
 hikari-miru @ git+https://github.com/HyperGH/hikari-miru@feature/modals
 perspective.py @ git+https://github.com/HyperGH/perspective.py
 Levenshtein
