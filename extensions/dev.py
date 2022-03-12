@@ -346,11 +346,11 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
         return await ctx.app.close()
 
     elif code != 0:
-        await ctx.event.message.add_reaction("❌")
-        await ctx.respond("❌ **Fatal:** Failed to load database backup, database corrupted. Shutdown recommended.")
+        await ctx.respond(
+            "❌ **Fatal:** Failed to load database backup, database may be corrupted. Shutdown recommended."
+        )
 
     else:
-        await ctx.event.message.add_reaction("✅")
         await ctx.respond("📥 Restored database from backup file.")
 
     await ctx.app.db_cache.startup()
@@ -394,3 +394,31 @@ async def blacklist_cmd(ctx: SnedPrefixContext, mode: str, user: hikari.User) ->
     else:
         await ctx.event.message.add_reaction("❌")
         await ctx.respond("❌ Invalid mode\nValid modes:`add`, `del`.")
+
+
+@dev.command
+@lightbulb.option("guild_id", "The guild_id to reset all settings for.", type=int)
+@lightbulb.command("resetsettings", "Reset all settings for the specified guild.", pass_options=True)
+@lightbulb.implements(lightbulb.PrefixCommand)
+async def resetsettings_cmd(ctx: SnedPrefixContext, guild_id: int) -> None:
+    guild = ctx.app.cache.get_guild(guild_id)
+
+    if not guild:
+        await ctx.event.message.add_reaction("❌")
+        await ctx.respond("❌ Guild not found.")
+        return
+
+    confirmed = await ctx.confirm(
+        f"Are you sure you want to wipe all settings for guild `{guild.id}`?",
+        cancel_payload={"content": "❌ Cancelled", "components": []},
+        confirm_payload={"content": "✅ Confirmed", "components": []},
+    )
+
+    if not confirmed:
+        return await ctx.event.message.add_reaction("❌")
+
+    await ctx.app.global_config.wipe_data(guild)
+    await ctx.app.db_cache.wipe(guild)
+
+    await ctx.event.message.add_reaction("✅")
+    await ctx.respond(f"✅ Wiped data for guild `{guild.id}`.")
