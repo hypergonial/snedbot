@@ -147,6 +147,7 @@ async def run_shell(ctx: SnedPrefixContext, code: str) -> None:
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def reload_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
     ctx.app.reload_extensions(extension_name)
+    await ctx.event.message.add_reaction("✅")
     await ctx.respond(f"🔃 `{extension_name}`")
 
 
@@ -156,6 +157,7 @@ async def reload_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def load_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
     ctx.app.load_extensions(extension_name)
+    await ctx.event.message.add_reaction("✅")
     await ctx.respond(f"📥 `{extension_name}`")
 
 
@@ -165,6 +167,7 @@ async def load_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def unload_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
     ctx.app.unload_extensions(extension_name)
+    await ctx.event.message.add_reaction("✅")
     await ctx.respond(f"📤 `{extension_name}`")
 
 
@@ -254,6 +257,7 @@ async def dev_git_pull(ctx: SnedPrefixContext, code: str) -> None:
 async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
     await ctx.app.rest.trigger_typing(ctx.channel_id)
     await ctx.app.sync_application_commands()
+    await ctx.event.message.add_reaction("✅")
     await ctx.respond("🔃 Synced application commands.")
 
 
@@ -289,7 +293,9 @@ async def shutdown_cmd(ctx: SnedPrefixContext) -> None:
         cancel_payload=cancel_payload,
     )
     if confirmed:
+        await ctx.event.message.add_reaction("✅")
         return await ctx.app.close()
+    await ctx.event.message.add_reaction("❌")
 
 
 @dev.command
