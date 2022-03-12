@@ -252,7 +252,9 @@ async def dev_git_pull(ctx: SnedPrefixContext, code: str) -> None:
 
 
 @dev.command
-@lightbulb.option("--force", "If True, purges application commands before re-registering them.", type=bool)
+@lightbulb.option(
+    "--force", "If True, purges application commands before re-registering them.", type=bool, required=False
+)
 @lightbulb.command("sync", "Sync application commands.")
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
