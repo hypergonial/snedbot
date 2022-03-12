@@ -59,7 +59,7 @@ class BasicModal(miru.Modal):
         await ctx.respond(self.values)
 
 
-@test.command()
+@test.command
 @lightbulb.command("mirutest", "Test miru views")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def viewtest(ctx: SnedSlashContext) -> None:
@@ -69,7 +69,7 @@ async def viewtest(ctx: SnedSlashContext) -> None:
     view.start(await resp.message())
 
 
-@test.command()
+@test.command
 @lightbulb.command("modaltest", "Test miru modals")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def modaltest(ctx: SnedSlashContext) -> None:
@@ -77,7 +77,7 @@ async def modaltest(ctx: SnedSlashContext) -> None:
     await modal.send(ctx.interaction)
 
 
-@test.command()
+@test.command
 @lightbulb.command("navtest", "Test miru nav")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def navtest(ctx: SnedSlashContext) -> None:
@@ -87,7 +87,7 @@ async def navtest(ctx: SnedSlashContext) -> None:
     await navigator.send(ctx.interaction, responded=True)
 
 
-@test.command()
+@test.command
 @lightbulb.option("text", "Text to analyze.")
 @lightbulb.command("perspectivetestmultiple", "aaa", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -112,7 +112,7 @@ async def testmultiple_cmd(ctx: SnedSlashContext) -> None:
     await ctx.respond("\n".join(resp_strs))
 
 
-@test.command()
+@test.command
 @lightbulb.option("text", "Text to analyze.")
 @lightbulb.command("perspectivetest", "aaa", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)

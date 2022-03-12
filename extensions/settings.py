@@ -1320,7 +1320,7 @@ async def ask_settings(
             return await converter.convert(event.content)
 
 
-@settings.command()
+@settings.command
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)

@@ -159,14 +159,14 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
             return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@reminders.command()
+@reminders.command
 @lightbulb.command("reminder", "Manage reminders!")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def reminder(ctx: SnedSlashContext) -> None:
     pass
 
 
-@reminder.child()  # type: ignore
+@reminder.child
 @lightbulb.option("message", "The message that should be sent to you when this reminder expires.")
 @lightbulb.option(
     "when", "When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'"
@@ -251,7 +251,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
     await ctx.app.scheduler.update_timer(timer)
 
 
-@reminder.child()  # type: ignore
+@reminder.child
 @lightbulb.option("id", "The ID of the timer to delete. You can get this via /reminder list", type=int)
 @lightbulb.command("delete", "Delete a currently pending reminder.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -278,7 +278,7 @@ async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
     await ctx.respond(embed=embed)
 
 
-@reminder.child()  # type: ignore
+@reminder.child
 @lightbulb.command("list", "List your currently pending reminders.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_list(ctx: SnedSlashContext) -> None:

@@ -167,14 +167,14 @@ async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInt
         await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@role_buttons.command()
+@role_buttons.command
 @lightbulb.command("rolebutton", "Commands relating to rolebuttons.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def rolebutton(ctx: SnedSlashContext) -> None:
     pass
 
 
-@rolebutton.child()  # type: ignore
+@rolebutton.child
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.command("list", "List all registered rolebuttons on this server.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -217,7 +217,7 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
     await navigator.send(ctx.interaction)
 
 
-@rolebutton.child()  # type: ignore
+@rolebutton.child
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
     "button_id",
@@ -268,7 +268,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
         message = await message.edit(components=view.build())
 
 
-@rolebutton.child()  # type: ignore
+@rolebutton.child
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option("buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"])
 @lightbulb.option("label", "The label that should appear on the button.", required=False)

@@ -236,7 +236,7 @@ class TicTacToeView(miru.View):
             return WinState.TIE
 
 
-@fun.command()
+@fun.command
 @lightbulb.option("size", "The size of the board. Default is 3.", required=False, choices=["3", "4", "5"])
 @lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
 @lightbulb.command("tictactoe", "Play tic tac toe with someone!", pass_options=True)

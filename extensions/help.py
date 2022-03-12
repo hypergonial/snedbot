@@ -67,7 +67,7 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
 }
 
 
-@help.command()
+@help.command
 @lightbulb.option(
     "topic",
     "A specific topic to get help about.",

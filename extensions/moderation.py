@@ -700,7 +700,7 @@ async def kick(
 mod.d.actions.kick = kick
 
 
-@mod.command()
+@mod.command
 @lightbulb.option("user", "The user to show information about.", type=hikari.User)
 @lightbulb.command("whois", "Show user information about the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -709,7 +709,7 @@ async def whois(ctx: SnedSlashContext, user: hikari.User) -> None:
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.command("Show Userinfo", "Show user information about the target user.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
 async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
@@ -717,7 +717,7 @@ async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
@@ -829,14 +829,14 @@ async def purge(ctx: SnedSlashContext) -> None:
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.command("journal", "Access and manage the moderation journal.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def journal(ctx: SnedSlashContext) -> None:
     pass
 
 
-@journal.child()  # type: ignore
+@journal.child
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("user", "The user to retrieve the journal for.", type=hikari.User)
 @lightbulb.command("get", "Retrieve the journal for the specified user.", pass_options=True)
@@ -878,7 +878,7 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
         await ctx.mod_respond(embed=embed)
 
 
-@journal.child()  # type: ignore
+@journal.child
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("note", "The journal note to add.")
 @lightbulb.option("user", "The user to add a journal entry for.", type=hikari.User)
@@ -897,7 +897,7 @@ async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> No
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for this warn", required=False)
 @lightbulb.option("user", "The user to be warned.", type=hikari.Member)
@@ -912,14 +912,14 @@ async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.command("warns", "Manage warnings.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def warns(ctx: SnedSlashContext) -> None:
     pass
 
 
-@warns.child()  # type: ignore
+@warns.child
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
 @lightbulb.command("list", "List the current warning count for a user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -938,7 +938,7 @@ async def warns_list(ctx: SnedSlashContext, user: hikari.Member) -> None:
     await ctx.mod_respond(embed=embed)
 
 
-@warns.child()  # type: ignore
+@warns.child
 @lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to clear warnings for.", type=hikari.Member)
@@ -970,7 +970,7 @@ async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opti
     await ctx.mod_respond(embed=embed)
 
 
-@warns.child()  # type: ignore
+@warns.child
 @lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
@@ -1015,7 +1015,7 @@ def unload(bot: SnedBot) -> None:
     bot.remove_plugin(mod)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
     lightbulb.has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
@@ -1070,14 +1070,14 @@ async def timeout_cmd(
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.command("timeouts", "Manage timeouts.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def timeouts(ctx: SnedSlashContext) -> None:
     pass
 
 
-@timeouts.child()  # type: ignore
+@timeouts.child
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
     lightbulb.has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
@@ -1114,7 +1114,7 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
     lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
@@ -1175,7 +1175,7 @@ async def ban_cmd(
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
     lightbulb.has_guild_permissions(hikari.Permissions.KICK_MEMBERS),
@@ -1214,7 +1214,7 @@ async def softban_cmd(
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
     lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
@@ -1234,7 +1234,7 @@ async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.KICK_MEMBERS),
     lightbulb.has_guild_permissions(hikari.Permissions.KICK_MEMBERS),
@@ -1255,7 +1255,7 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.add_checks(
     lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS, hikari.Permissions.MANAGE_MESSAGES),
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
@@ -1275,7 +1275,7 @@ async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command()
+@mod.command
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_cooldown(60.0, 1, bucket=lightbulb.GuildBucket)
 @lightbulb.add_checks(

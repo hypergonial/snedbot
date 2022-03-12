@@ -205,14 +205,14 @@ async def on_reaction(
     await handle_starboard(plugin, event)
 
 
-@starboard.command()
+@starboard.command
 @lightbulb.command("star", "Handle the starboard.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def star(ctx: SnedSlashContext) -> None:
     pass
 
 
-@star.child()  # type: ignore
+@star.child
 @lightbulb.option("id", "The ID of the starboard entry. You can find this in the footer.")
 @lightbulb.command("show", "Show a starboard entry.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)

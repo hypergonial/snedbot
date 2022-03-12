@@ -68,7 +68,7 @@ class TagEditorModal(miru.Modal):
                 self.tag_content = value
 
 
-@tags.command()
+@tags.command
 @lightbulb.option("ephemeral", "If True, sends the tag in a way that only you can see it.", type=bool, default=False)
 @lightbulb.option("name", "The name of the tag you want to call.", autocomplete=True)
 @lightbulb.command("tag", "Call a tag and display it's contents.", pass_options=True)
@@ -97,14 +97,14 @@ async def tag_name_ac(
     return []
 
 
-@tags.command()
+@tags.command
 @lightbulb.command("tags", "All commands for managing tags.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def tag_group(ctx: SnedSlashContext) -> None:
     pass
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.command("create", "Create a new tag. Opens a modal to specify the details.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_create(ctx: SnedSlashContext) -> None:
@@ -144,7 +144,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     await mctx.respond(embed=embed)
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("name", "The name of the tag to get information about.", autocomplete=True)
 @lightbulb.command("info", "Display information about the specified tag.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -171,7 +171,7 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
         return
 
 
-@tag_info.autocomplete("name")  # type: ignore
+@tag_info.autocomplete("name")
 async def tag_info_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
@@ -180,7 +180,7 @@ async def tag_info_name_ac(
     return []
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("alias", "The alias to add to this tag.")
 @lightbulb.option("name", "The tag to add an alias for.", autocomplete=True)
 @lightbulb.command("alias", "Adds an alias to a tag you own.", pass_options=True)
@@ -231,7 +231,7 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
         return
 
 
-@tag_alias.autocomplete("name")  # type: ignore
+@tag_alias.autocomplete("name")
 async def tag_alias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
@@ -240,7 +240,7 @@ async def tag_alias_name_ac(
     return []
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("alias", "The name of the alias to remove.")
 @lightbulb.option("name", "The tag to remove the alias from.", autocomplete=True)
 @lightbulb.command("delalias", "Remove an alias from a tag you own.", pass_options=True)
@@ -279,7 +279,7 @@ async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
         return
 
 
-@tag_delalias.autocomplete("name")  # type: ignore
+@tag_delalias.autocomplete("name")
 async def tag_delalias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
@@ -288,7 +288,7 @@ async def tag_delalias_name_ac(
     return []
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("receiver", "The user to receive the tag.", type=hikari.Member)
 @lightbulb.option("name", "The name of the tag to transfer.", autocomplete=True)
 @lightbulb.command(
@@ -324,7 +324,7 @@ async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member
         return
 
 
-@tag_transfer.autocomplete("name")  # type: ignore
+@tag_transfer.autocomplete("name")
 async def tag_transfer_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
@@ -333,7 +333,7 @@ async def tag_transfer_name_ac(
     return []
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("name", "The name of the tag to claim.", autocomplete=True)
 @lightbulb.command(
     "claim",
@@ -384,7 +384,7 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
         return
 
 
-@tag_claim.autocomplete("name")  # type: ignore
+@tag_claim.autocomplete("name")
 async def tag_claim_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
@@ -393,7 +393,7 @@ async def tag_claim_name_ac(
     return []
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("name", "The name of the tag to edit.", autocomplete=True)
 @lightbulb.command("edit", "Edit the content of a tag you own.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -432,7 +432,7 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
     await mctx.respond(embed=embed)
 
 
-@tag_edit.autocomplete("name")  # type: ignore
+@tag_edit.autocomplete("name")
 async def tag_edit_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
@@ -441,7 +441,7 @@ async def tag_edit_name_ac(
     return []
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("name", "The name of the tag to delete.", autocomplete=True)
 @lightbulb.command("delete", "Delete a tag you own.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -474,7 +474,7 @@ async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
         return
 
 
-@tag_delete.autocomplete("name")  # type: ignore
+@tag_delete.autocomplete("name")
 async def tag_delete_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
@@ -483,7 +483,7 @@ async def tag_delete_name_ac(
     return []
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.command("list", "List all tags this server has.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_list(ctx: SnedSlashContext) -> None:
@@ -518,7 +518,7 @@ async def tag_list(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed)
 
 
-@tag_group.child()  # type: ignore
+@tag_group.child
 @lightbulb.option("query", "The tag name or alias to search for.")
 @lightbulb.command("search", "Search for a tag name or alias.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)

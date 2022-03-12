@@ -21,7 +21,7 @@ misc = lightbulb.Plugin("Miscellaneous Commands")
 psutil.cpu_percent(interval=1)  # Call so subsequent calls for CPU % will not be blocking
 
 
-@misc.command()
+@misc.command
 @lightbulb.command("ping", "Check the bot's latency.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def ping(ctx: SnedSlashContext) -> None:
@@ -33,7 +33,7 @@ async def ping(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed)
 
 
-@misc.command()
+@misc.command
 @lightbulb.option("detach", "Send the embed in a detached manner from the slash command.", type=bool, required=False)
 @lightbulb.option(
     "color",
@@ -132,7 +132,7 @@ async def embed(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@embed.set_error_handler()  # type: ignore
+@embed.set_error_handler
 async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
     if isinstance(event.exception, lightbulb.CommandInvocationError) and isinstance(
         event.exception.original, ValueError
@@ -147,7 +147,7 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
     raise
 
 
-@misc.command()
+@misc.command
 @lightbulb.command("about", "Displays information about the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def about(ctx: SnedSlashContext) -> None:
@@ -185,7 +185,7 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
     await ctx.respond(embed=embed)
 
 
-@misc.command()
+@misc.command
 @lightbulb.command("invite", "Invite the bot to your server!")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def invite(ctx: SnedSlashContext) -> None:
@@ -207,7 +207,7 @@ async def invite(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed)
 
 
-@misc.command()
+@misc.command
 @lightbulb.add_cooldown(10.0, 1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_NICKNAMES),
@@ -228,21 +228,21 @@ async def setnick(ctx: SnedSlashContext, nickname: t.Optional[str] = None) -> No
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@misc.command()
+@misc.command
 @lightbulb.command("support", "Provides a link to the support Discord.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def support(ctx: SnedSlashContext) -> None:
     await ctx.respond("https://discord.gg/KNKr8FPmJa", flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@misc.command()
+@misc.command
 @lightbulb.command("source", "Provides a link to the source-code of the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def source(ctx: SnedSlashContext) -> None:
     await ctx.respond("<https://github.com/HyperGH/snedbot_v2>")
 
 
-@misc.command()
+@misc.command
 @lightbulb.command("serverinfo", "Provides detailed information about this server.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def serverinfo(ctx: SnedSlashContext) -> None:
@@ -278,7 +278,7 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed)
 
 
-@misc.command()
+@misc.command
 @lightbulb.add_checks(
     lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
     lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES),
@@ -317,7 +317,7 @@ async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.Inte
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@misc.command()
+@misc.command
 @lightbulb.add_checks(
     lightbulb.bot_has_role_permissions(
         hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
@@ -383,7 +383,7 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
     await modal.get_response_context().respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@misc.command()
+@misc.command
 @lightbulb.add_checks(
     lightbulb.bot_has_role_permissions(
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY
@@ -403,7 +403,7 @@ async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@misc.command()
+@misc.command
 @lightbulb.option("timezone", "The timezone to set as your default. Example: 'Europe/Kiev'", autocomplete=True)
 @lightbulb.command(
     "timezone", "Sets your preferred timezone for other time-related commands to use.", pass_options=True
@@ -447,7 +447,7 @@ async def tz_opts(
     return pytz.common_timezones[:25]
 
 
-@misc.command()
+@misc.command
 @lightbulb.option(
     "style",
     "Timestamp style.",
