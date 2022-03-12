@@ -252,10 +252,14 @@ async def dev_git_pull(ctx: SnedPrefixContext, code: str) -> None:
 
 
 @dev.command
+@lightbulb.option("--force", "If True, purges application commands before re-registering them.", type=bool)
 @lightbulb.command("sync", "Sync application commands.")
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
     await ctx.app.rest.trigger_typing(ctx.channel_id)
+    if ctx.options["--force"]:
+        await ctx.app.purge_application_commands(*ctx.app.default_enabled_guilds, global_commands=True)
+
     await ctx.app.sync_application_commands()
     await ctx.event.message.add_reaction("✅")
     await ctx.respond("🔃 Synced application commands.")
