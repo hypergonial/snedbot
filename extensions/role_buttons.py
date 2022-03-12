@@ -110,7 +110,8 @@ async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInt
             description="The role this button was pointing to was deleted! Please notify an administrator!",
             color=0xFF0000,
         )
-        return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     me = plugin.app.cache.get_member(event.context.guild_id, plugin.app.user_id)
     assert me is not None
@@ -121,7 +122,8 @@ async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInt
             description="Bot does not have `Manage Roles` permissions! Contact an administrator!",
             color=0xFF0000,
         )
-        return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     await role_button_ratelimiter.acquire(event.context)
     if role_button_ratelimiter.is_rate_limited(event.context):
@@ -130,11 +132,10 @@ async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInt
             description="You are clicking too fast!",
             color=0xFF0000,
         )
-        return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
-    await event.interaction.create_initial_response(
-        hikari.ResponseType.DEFERRED_MESSAGE_CREATE, flags=hikari.MessageFlag.EPHEMERAL
-    )
+    await event.context.defer(hikari.ResponseType.DEFERRED_MESSAGE_CREATE, flags=hikari.MessageFlag.EPHEMERAL)
 
     try:
         assert event.context.member is not None

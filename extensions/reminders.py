@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class SnoozeSelect(miru.Select):
-    def __init__(self, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> None:
+    def __init__(self) -> None:
         super().__init__(
             options=[
                 miru.SelectOption(label="5 minutes", value="5"),
@@ -35,49 +35,33 @@ class SnoozeSelect(miru.Select):
                 miru.SelectOption(label="1 day", value="1440"),
             ],
             placeholder="Snooze reminder...",
-            custom_id=f"RMSS:{hikari.Snowflake(user)}",
         )
 
+    async def callback(self, ctx: miru.ViewContext) -> None:
+        assert isinstance(self.view, SnoozeView)
 
-@reminders.listener(miru.ComponentInteractionCreateEvent, bind=True)
-async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.ComponentInteractionCreateEvent) -> None:
-
-    if not event.interaction.custom_id.startswith(("RMSS:", "RMAR:")):
-        return
-
-    assert isinstance(plugin.app, SnedBot) and event.context.guild_id is not None
-
-    if event.interaction.custom_id.startswith("RMSS:"):  # Snoozes
-        author_id = hikari.Snowflake(event.interaction.custom_id.split(":")[1])
-
-        if author_id != event.context.user.id:
-            embed = hikari.Embed(
-                title="❌ Invalid interaction",
-                description="You cannot snooze someone else's reminder!",
-                color=const.ERROR_COLOR,
-            )
-            return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-
-        if not event.interaction.message.embeds:
-            return
-
-        expiry = helpers.utcnow() + datetime.timedelta(minutes=int(event.interaction.values[0]))
-        assert event.interaction.message.embeds[0].description is not None
-        message = event.interaction.message.embeds[0].description.split("\n\n[Jump to original message!](")[0]
+        expiry = helpers.utcnow() + datetime.timedelta(minutes=int(self.values[0]))
+        assert (
+            self.view.reminder_message.embeds[0].description
+            and isinstance(ctx.app, SnedBot)
+            and ctx.guild_id
+            and isinstance(self.view, SnoozeView)
+        )
+        message = self.view.reminder_message.embeds[0].description.split("\n\n[Jump to original message!](")[0]
 
         reminder_data = {
             "message": message,
-            "jump_url": event.interaction.message.make_link(event.context.guild_id),
+            "jump_url": ctx.message.make_link(ctx.guild_id),
             "additional_recipients": [],
             "is_snoozed": True,
         }
 
-        timer = await plugin.app.scheduler.create_timer(
+        timer = await ctx.app.scheduler.create_timer(
             expiry,
             "reminder",
-            event.context.guild_id,
-            event.context.user,
-            event.context.channel_id,
+            ctx.guild_id,
+            ctx.user,
+            ctx.channel_id,
             notes=json.dumps(reminder_data),
         )
 
@@ -88,15 +72,67 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
         )
         embed.set_footer(f"Reminder ID: {timer.id}")
 
-        await event.context.edit_response(
+        await ctx.edit_response(
+            embed=embed,
             components=miru.View()
             .add_item(miru.Select(placeholder="Reminder snoozed!", options=[miru.SelectOption("foo")], disabled=True))
-            .build()
+            .build(),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        self.view.stop()
+
+
+class SnoozeView(miru.View):
+    def __init__(
+        self, reminder_message: hikari.Message, *, timeout: t.Optional[float] = 600, autodefer: bool = True
+    ) -> None:
+        super().__init__(timeout=timeout, autodefer=autodefer)
+        self.reminder_message = reminder_message
+        self.add_item(SnoozeSelect())
+
+    async def on_timeout(self) -> None:
+        return await super().on_timeout()
+
+
+@reminders.listener(miru.ComponentInteractionCreateEvent, bind=True)
+async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.ComponentInteractionCreateEvent) -> None:
+
+    if not event.context.custom_id.startswith(("RMSS:", "RMAR:")):
+        return
+
+    assert isinstance(plugin.app, SnedBot) and event.context.guild_id is not None
+
+    if event.context.custom_id.startswith("RMSS:"):  # Snoozes
+        author_id = hikari.Snowflake(event.context.custom_id.split(":")[1])
+
+        if author_id != event.context.user.id:
+            embed = hikari.Embed(
+                title="❌ Invalid interaction",
+                description="You cannot snooze someone else's reminder!",
+                color=const.ERROR_COLOR,
+            )
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
+        if not event.context.message.embeds:
+            return
+
+        embed = hikari.Embed(
+            title="🕔 Select a snooze duration!",
+            description="Select a duration to snooze the reminder for!",
+            color=const.EMBED_BLUE,
+        )
+
+        view = miru.View.from_message(event.context.message)
+        view.children[0].disabled = True  # type: ignore
+        await event.context.edit_response(components=view.build())
+
+        view = SnoozeView(event.context.message)  # I literally added InteractionResponse just for this
+        resp = await event.context.respond(embed=embed, components=view.build(), flags=hikari.MessageFlag.EPHEMERAL)
+        view.start(await resp.retrieve_message())
 
     else:  # Reminder additional recipients
-        timer_id = int(event.interaction.custom_id.split(":")[1])
+        timer_id = int(event.context.custom_id.split(":")[1])
         try:
             timer: Timer = await plugin.app.scheduler.get_timer(timer_id, event.context.guild_id)
             if timer.channel_id != event.context.channel_id or timer.event != "reminder":
@@ -109,12 +145,12 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                 color=const.ERROR_COLOR,
             )
             await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-            view = miru.View.from_message(event.interaction.message)
+            view = miru.View.from_message(event.context.message)
 
             for item in view.children:
                 if isinstance(item, miru.Button):
                     item.disabled = True
-            await event.interaction.message.edit(components=view.build())
+            await event.context.message.edit(components=view.build())
             return
 
         if timer.user_id == event.context.user.id:
@@ -123,7 +159,8 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                 description="You cannot do this on your own reminder.",
                 color=const.ERROR_COLOR,
             )
-            return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
         assert timer.notes is not None
         notes: t.Dict[str, t.Any] = json.loads(timer.notes)
@@ -136,7 +173,8 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                     description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
                     color=const.ERROR_COLOR,
                 )
-                return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+                return
 
             notes["additional_recipients"].append(event.context.user.id)
             timer.notes = json.dumps(notes)
@@ -146,7 +184,8 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                 description="You will be notified when this reminder is due!",
                 color=const.EMBED_GREEN,
             )
-            return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
         else:
             notes["additional_recipients"].remove(event.context.user.id)
             timer.notes = json.dumps(notes)
@@ -156,7 +195,8 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                 description="Removed you from the list of recipients!",
                 color=const.EMBED_GREEN,
             )
-            return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
 
 @reminders.command
@@ -364,7 +404,9 @@ async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent
             event.timer.channel_id,
             content=" ".join(pings),
             embed=embed,
-            components=miru.View().add_item(SnoozeSelect(event.timer.user_id)).build(),
+            components=miru.View()
+            .add_item(miru.Button(emoji="🕔", label="Snooze!", custom_id=f"RMSS:{event.timer.user_id}"))
+            .build(),
             user_mentions=True,
         )
     except (
