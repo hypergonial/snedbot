@@ -271,7 +271,6 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: t.Option
 
     await mod.app.dispatch(WarnCreateEvent(mod.app, member.guild_id, member, moderator, db_user.warns, reason))
     await post_mod_actions(member.guild_id, member, ActionType.WARN, reason)
-    # await add_note(member, member.guild_id, f"⚠️ **Warned by {moderator}:** {reason}")
     return embed
 
 

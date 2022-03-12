@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS preferences
 
 CREATE TABLE IF NOT EXISTS blacklist
 (
-    guild_id integer NOT NULL DEFAULT 0,
     user_id bigint NOT NULL,
     PRIMARY KEY (user_id)
 );

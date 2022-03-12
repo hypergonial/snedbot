@@ -16,6 +16,7 @@ from lightbulb.ext import tasks
 import utils.db_backup as db_backup
 from config import Config
 from etc import constants as const
+from models.errors import UserBlacklistedError
 from utils import cache
 from utils import helpers
 from utils import scheduler
@@ -38,6 +39,32 @@ async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[
         return tuple(records[0]["prefix"])
 
     return "sn "
+
+
+async def is_not_blacklisted(ctx: SnedContext) -> bool:
+    """Evaluate if the user is blacklisted or not.
+
+    Parameters
+    ----------
+    ctx : SnedContext
+        The context to evaluate under.
+
+    Returns
+    -------
+    bool
+        A boolean determining if the user is blacklisted or not.
+
+    Raises
+    ------
+    UserBlacklistedError
+        The user is blacklisted.
+    """
+    records = await ctx.app.db_cache.get(table="blacklist", user_id=ctx.user.id)
+
+    if not records:
+        return True
+
+    raise UserBlacklistedError("User is blacklisted from using the application.")
 
 
 class SnedBot(lightbulb.BotApp):
@@ -106,13 +133,15 @@ class SnedBot(lightbulb.BotApp):
         self._user_id: t.Optional[Snowflake] = None
         self._initial_guilds: t.List[Snowflake] = []
 
+        self.check(is_not_blacklisted)
+
         self.start_listeners()
 
     @property
     def user_id(self) -> Snowflake:
         """The application user's ID."""
         if self._user_id is None:
-            raise RuntimeError("The bot is not yet initialized, user_id is unavailable.")
+            raise hikari.ComponentStateConflictError("The bot is not yet initialized, user_id is unavailable.")
 
         return self._user_id
 
@@ -131,7 +160,7 @@ class SnedBot(lightbulb.BotApp):
     def pool(self) -> asyncpg.Pool:
         """The database connection pool of the bot."""
         if self._pool is None:
-            raise RuntimeError("The bot is not initialized and has no pool.")
+            raise hikari.ComponentStateConflictError("The bot is not initialized and has no pool.")
         return self._pool
 
     @property

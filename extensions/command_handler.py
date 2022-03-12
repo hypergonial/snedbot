@@ -13,10 +13,13 @@ from etc import constants as const
 from etc.perms_str import get_perm_str
 from models import SnedContext
 from models.bot import SnedBot
+from models.context import SnedPrefixContext
 from models.context import SnedSlashContext
 from models.errors import BotRoleHierarchyError
 from models.errors import MemberExpectedError
 from models.errors import RoleHierarchyError
+from models.errors import UserBlacklistedError
+from utils import helpers
 
 logger = logging.getLogger(__name__)
 
@@ -72,21 +75,28 @@ async def log_exc_to_channel(
 
 async def application_error_handler(ctx: SnedContext, error: lightbulb.LightbulbError) -> None:
 
+    if isinstance(error, lightbulb.MissingRequiredPermission):
+        embed = hikari.Embed(
+            title="❌ Missing Permissions",
+            description=f"You require `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    if isinstance(error, lightbulb.BotMissingRequiredPermission):
+        embed = hikari.Embed(
+            title="❌ Bot Missing Permissions",
+            description=f"The bot requires `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
     if isinstance(error, lightbulb.CheckFailure):
-
-        if isinstance(error, lightbulb.MissingRequiredPermission):
+        if isinstance(error.__cause__, UserBlacklistedError):
             embed = hikari.Embed(
-                title="❌ Missing Permissions",
-                description=f"You require `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-                color=const.ERROR_COLOR,
-            )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-            return
-
-        elif isinstance(error, lightbulb.BotMissingRequiredPermission):
-            embed = hikari.Embed(
-                title="❌ Bot Missing Permissions",
-                description=f"The bot requires `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
+                title="❌ Application access terminated",
                 color=const.ERROR_COLOR,
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -222,6 +232,21 @@ async def command_invoke_listener(event: lightbulb.events.CommandInvocationEvent
     logger.info(
         f"Command {event.command.name} was invoked by {event.context.author} in guild {event.context.guild_id}."
     )
+
+
+@ch.listener(lightbulb.PrefixCommandInvocationEvent)
+async def prefix_command_invoke_listener(event: lightbulb.PrefixCommandInvocationEvent) -> None:
+
+    if event.context.guild_id:
+        assert isinstance(event.app, SnedBot)
+        me = event.app.cache.get_member(event.context.guild_id, event.app.user_id)
+        assert me is not None
+
+        if not helpers.includes_permissions(lightbulb.utils.permissions_for(me), hikari.Permissions.ADD_REACTIONS):
+            return
+
+    assert isinstance(event.context, SnedPrefixContext)
+    await event.context.event.message.add_reaction("▶️")
 
 
 @ch.listener(hikari.ExceptionEvent)

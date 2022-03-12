@@ -91,10 +91,10 @@ async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.Lightbu
 async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInteractionCreateEvent) -> None:
     """Statelessly listen for rolebutton interactions"""
 
-    assert isinstance(plugin.app, SnedBot)
-
     if not event.interaction.custom_id.startswith("RB:"):
         return
+
+    assert isinstance(plugin.app, SnedBot)
 
     entry_id = event.interaction.custom_id.split(":")[1]
     role_id = int(event.interaction.custom_id.split(":")[2])

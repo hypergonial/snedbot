@@ -108,7 +108,14 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                 description="Oops! It looks like this reminder is no longer valid!",
                 color=const.ERROR_COLOR,
             )
-            return await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            view = miru.View.from_message(event.interaction.message)
+
+            for item in view.children:
+                if isinstance(item, miru.Button):
+                    item.disabled = True
+            await event.interaction.message.edit(components=view.build())
+            return
 
         if timer.user_id == event.context.user.id:
             embed = hikari.Embed(

@@ -141,7 +141,7 @@ async def run_shell(ctx: SnedPrefixContext, code: str) -> None:
         await send_paginated(ctx, ctx.channel_id, result.stdout.decode("utf-8"), prefix="```ansi\n", suffix="```")
 
 
-@dev.command()
+@dev.command
 @lightbulb.option("extension_name", "The name of the extension to reload.")
 @lightbulb.command("reload", "Reload an extension.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
@@ -150,7 +150,7 @@ async def reload_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
     await ctx.respond(f"🔃 `{extension_name}`")
 
 
-@dev.command()
+@dev.command
 @lightbulb.option("extension_name", "The name of the extension to load.")
 @lightbulb.command("load", "Load an extension.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
@@ -159,7 +159,7 @@ async def load_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
     await ctx.respond(f"📥 `{extension_name}`")
 
 
-@dev.command()
+@dev.command
 @lightbulb.option("extension_name", "The name of the extension to unload.")
 @lightbulb.command("unload", "Unload an extension.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
@@ -168,7 +168,7 @@ async def unload_cmd(ctx: SnedPrefixContext, extension_name: str) -> None:
     await ctx.respond(f"📤 `{extension_name}`")
 
 
-@dev.command()
+@dev.command
 @lightbulb.option("code", "Code to execute.", modifier=lightbulb.OptionModifier.CONSUME_REST)
 @lightbulb.command("py", "Run code.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
@@ -231,7 +231,7 @@ def unload(bot: SnedBot) -> None:
     bot.remove_plugin(dev)
 
 
-@dev.command()
+@dev.command
 @lightbulb.option("code", "Code to execute.", modifier=lightbulb.OptionModifier.CONSUME_REST)
 @lightbulb.command("sh", "Run code.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
@@ -240,7 +240,7 @@ async def eval_sh(ctx: SnedPrefixContext, code: str) -> None:
     await run_shell(ctx, code)
 
 
-@dev.command()
+@dev.command
 @lightbulb.option("code", "Code to execute.", modifier=lightbulb.OptionModifier.CONSUME_REST)
 @lightbulb.command("git", "Run git commands.", pass_options=True)
 @lightbulb.implements(lightbulb.PrefixCommand)
@@ -248,7 +248,7 @@ async def dev_git_pull(ctx: SnedPrefixContext, code: str) -> None:
     await run_shell(ctx, f"git {code}")
 
 
-@dev.command()
+@dev.command
 @lightbulb.command("sync", "Sync application commands.")
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
@@ -257,7 +257,7 @@ async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
     await ctx.respond("🔃 Synced application commands.")
 
 
-@dev.command()
+@dev.command
 @lightbulb.command("sql", "Execute an SQL file")
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def run_sql(ctx: SnedPrefixContext) -> None:
@@ -277,7 +277,7 @@ async def run_sql(ctx: SnedPrefixContext) -> None:
     await send_paginated(ctx, ctx.channel_id, str(return_value), prefix="```sql\n", suffix="```")
 
 
-@dev.command()
+@dev.command
 @lightbulb.command("shutdown", "Shut down the bot.")
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def shutdown_cmd(ctx: SnedPrefixContext) -> None:
@@ -292,7 +292,7 @@ async def shutdown_cmd(ctx: SnedPrefixContext) -> None:
         return await ctx.app.close()
 
 
-@dev.command()
+@dev.command
 @lightbulb.command("pg_dump", "Back up the database.", aliases=["dbbackup", "backup"])
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def backup_db_cmd(ctx: SnedPrefixContext) -> None:
@@ -301,7 +301,7 @@ async def backup_db_cmd(ctx: SnedPrefixContext) -> None:
     await ctx.respond("📤 Database backup complete.")
 
 
-@dev.command()
+@dev.command
 @lightbulb.option("--ignore-errors", "Ignore all errors.", type=bool, default=False)
 @lightbulb.command("pg_restore", "Restore database from attached dump file.", aliases=["restore"])
 @lightbulb.implements(lightbulb.PrefixCommand)
@@ -342,28 +342,55 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     code = os.system(f"pg_restore {path} {arg} -n 'public' -j 4 -d {ctx.app._dsn}")
 
     if code != 0 and not ctx.options["--ignore-errors"]:
-        embed = hikari.Embed(
-            title="❌ Fatal Error",
-            description=f"Failed to load database backup, database corrupted. Shutting down as a security measure...",
-            color=const.ERROR_COLOR,
-        )
-        await ctx.respond(embed=embed)
+        await ctx.respond("❌ **Fatal:** Failed to load database backup, database corrupted. Shutting down...")
         return await ctx.app.close()
 
     elif code != 0:
         await ctx.event.message.add_reaction("❌")
-        embed = hikari.Embed(
-            title="❌ Fatal Error",
-            description=f"Failed to load database backup, database corrupted. Shutdown recommended.",
-            color=const.ERROR_COLOR,
-        )
-        await ctx.respond(embed=embed)
+        await ctx.respond("❌ **Fatal:** Failed to load database backup, database corrupted. Shutdown recommended.")
 
     else:
         await ctx.event.message.add_reaction("✅")
         await ctx.respond("📥 Restored database from backup file.")
 
-    # Reinitialize the cache
     await ctx.app.db_cache.startup()
-    # Restart scheduler
     await ctx.app.scheduler.restart()
+
+
+@dev.command
+@lightbulb.option("user", "The user to manage.", type=hikari.User)
+@lightbulb.option("mode", "The mode of operation.", type=str)
+@lightbulb.command("blacklist", "Commands to manage the blacklist.", pass_options=True)
+@lightbulb.implements(lightbulb.PrefixCommand)
+async def blacklist_cmd(ctx: SnedPrefixContext, mode: str, user: hikari.User) -> None:
+    if user.id == ctx.user.id:
+        await ctx.event.message.add_reaction("❌")
+        await ctx.respond("❌ Cannot blacklist self")
+        return
+
+    records = await ctx.app.db_cache.get(table="blacklist", user_id=user.id)
+
+    if mode.casefold() == "add":
+        if records:
+            await ctx.event.message.add_reaction("❌")
+            await ctx.respond("❌ Already blacklisted")
+            return
+
+        await ctx.app.pool.execute("""INSERT INTO blacklist (user_id) VALUES ($1)""", user.id)
+        await ctx.app.db_cache.refresh(table="blacklist", user_id=user.id)
+        await ctx.event.message.add_reaction("✅")
+        await ctx.respond("✅ User added to blacklist")
+    elif mode.casefold() in ["del", "delete", "remove"]:
+        if not records:
+            await ctx.event.message.add_reaction("❌")
+            await ctx.respond("❌ Not blacklisted")
+            return
+
+        await ctx.app.pool.execute("""DELETE FROM blacklist WHERE user_id = $1""", user.id)
+        await ctx.app.db_cache.refresh(table="blacklist", user_id=user.id)
+        await ctx.event.message.add_reaction("✅")
+        await ctx.respond("✅ User removed from blacklist")
+
+    else:
+        await ctx.event.message.add_reaction("❌")
+        await ctx.respond("❌ Invalid mode\nValid modes:`add`, `del`.")

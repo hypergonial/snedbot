@@ -29,3 +29,9 @@ class MemberExpectedError(Exception):
     """
     Raised when a command expected a member and received a user instead.
     """
+
+
+class UserBlacklistedError(Exception):
+    """
+    Raised when a user who is blacklisted from using the application tries to use it.
+    """
