@@ -31,7 +31,9 @@ class TagHandler:
     def __init__(self, bot: SnedBot):
         self.bot: SnedBot = bot
 
-    async def get(self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[Tag]:
+    async def get(
+        self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild], add_use: bool = False
+    ) -> t.Optional[Tag]:
         """Returns a Tag object for the given name & guild ID, returns None if not found.
         Will try to find aliases too.
 
@@ -41,6 +43,8 @@ class TagHandler:
             The name or alias of the tag to get.
         guild : hikari.SnowflakeishOr[hikari.PartialGuild]
             The guild this tag is located in.
+        add_use : bool
+            If True, adds 1 use to the usage counter.
 
         Returns
         -------
@@ -49,34 +53,26 @@ class TagHandler:
         """
         guild_id = hikari.Snowflake(guild)
 
+        if add_use:
+            sql = "UPDATE tags SET uses = uses + 1 WHERE name = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2 RETURNING *"
+        else:
+            sql = "SELECT * FROM tags WHERE name = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2"
+
         async with self.bot.pool.acquire() as con:
             results = await con.fetch(
-                """SELECT * FROM tags WHERE tag_name = $1 AND guild_id = $2""",
+                sql,
                 name.lower(),
                 guild_id,
             )
             if results:
                 tag = Tag(
                     guild_id=hikari.Snowflake(results[0].get("guild_id")),
-                    name=results[0].get("tag_name"),
-                    owner_id=hikari.Snowflake(results[0].get("tag_owner_id")),
-                    aliases=results[0].get("tag_aliases"),
-                    content=results[0].get("tag_content"),
-                )
-                return tag
-
-            results = await con.fetch(
-                """SELECT * FROM tags WHERE $1 = ANY(tag_aliases) AND guild_id = $2""",
-                name.lower(),
-                guild_id,
-            )
-            if results:
-                tag = Tag(
-                    guild_id=hikari.Snowflake(results[0].get("guild_id")),
-                    name=results[0].get("tag_name"),
-                    owner_id=hikari.Snowflake(results[0].get("tag_owner_id")),
-                    aliases=results[0].get("tag_aliases"),
-                    content=results[0].get("tag_content"),
+                    name=results[0].get("tagname"),
+                    owner_id=hikari.Snowflake(results[0].get("owner_id")),
+                    creator_id=hikari.Snowflake(results[0].get("creator_id")) if results[0].get("creator_id") else None,
+                    aliases=results[0].get("aliases"),
+                    content=results[0].get("content"),
+                    uses=results[0].get("uses"),
                 )
                 return tag
 
@@ -99,12 +95,12 @@ class TagHandler:
         """
         guild_id = hikari.Snowflake(guild)
         async with self.bot.pool.acquire() as con:
-            results = await con.fetch("""SELECT tag_name, tag_aliases FROM tags WHERE guild_id = $1""", guild_id)
+            results = await con.fetch("""SELECT tagname, aliases FROM tags WHERE guild_id = $1""", guild_id)
 
-            names = [result.get("tag_name") for result in results] if results else []
+            names = [result.get("tagname") for result in results] if results else []
 
             if results is not None:
-                names += list(chain(*[result.get("tag_aliases") or [] for result in results]))
+                names += list(chain(*[result.get("aliases") or [] for result in results]))
 
         return get_close_matches(name, names)
 
@@ -134,15 +130,15 @@ class TagHandler:
         owner_id = hikari.Snowflake(owner)
         async with self.bot.pool.acquire() as con:
             results = await con.fetch(
-                """SELECT tag_name, tag_aliases FROM tags WHERE guild_id = $1 AND tag_owner_id = $2""",
+                """SELECT tagname, aliases FROM tags WHERE guild_id = $1 AND owner_id = $2""",
                 guild_id,
                 owner_id,
             )
 
-            names = [result.get("tag_name") for result in results] if results else []
+            names = [result.get("tagname") for result in results] if results else []
 
             if results is not None:
-                names += list(chain(*[result.get("tag_aliases") or [] for result in results]))
+                names += list(chain(*[result.get("aliases") or [] for result in results]))
 
         return get_close_matches(name, names)
 
@@ -156,10 +152,11 @@ class TagHandler:
         """
         await self.bot.pool.execute(
             """
-        INSERT INTO tags (guild_id, tag_name, tag_owner_id, tag_aliases, tag_content)
+        INSERT INTO tags (guild_id, tagname, creator_id, owner_id, aliases, content)
         VALUES ($1, $2, $3, $4, $5)""",
             tag.guild_id,
             tag.name,
+            tag.creator_id or tag.owner_id,
             tag.owner_id,
             tag.aliases,
             tag.content,
@@ -184,10 +181,12 @@ class TagHandler:
             return [
                 Tag(
                     guild_id=hikari.Snowflake(result.get("guild_id")),
-                    name=result.get("tag_name"),
-                    owner_id=hikari.Snowflake(result.get("tag_owner_id")),
-                    aliases=result.get("tag_aliases"),
-                    content=result.get("tag_content"),
+                    name=result.get("tagname"),
+                    owner_id=hikari.Snowflake(result.get("owner_id")),
+                    creator_id=hikari.Snowflake(result.get("creator_id")) if result.get("creator_id") else None,
+                    aliases=result.get("aliases"),
+                    content=result.get("content"),
+                    uses=result.get("uses"),
                 )
                 for result in results
             ]
@@ -196,7 +195,7 @@ class TagHandler:
         """Delete a tag from the database."""
         guild_id = hikari.Snowflake(guild)
         await self.bot.pool.execute(
-            """DELETE FROM tags WHERE tag_name = $1 AND guild_id = $2""",
+            """DELETE FROM tags WHERE tagname = $1 AND guild_id = $2""",
             name,
             guild_id,
         )
@@ -211,9 +210,9 @@ class TagHandler:
         """
 
         await self.bot.pool.execute(
-            """INSERT INTO tags (guild_id, tag_name, tag_owner_id, tag_aliases, tag_content)
-        VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, tag_name) DO
-        UPDATE SET tag_aliases = $4, tag_content = $5""",
+            """INSERT INTO tags (guild_id, tagname, owner_id, aliases, content)
+        VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, tagname) DO
+        UPDATE SET aliases = $4, content = $5""",
             tag.guild_id,
             tag.name,
             tag.owner_id,
@@ -299,39 +298,25 @@ class TagHandler:
         if not tags:
             return
 
-        tags_unpacked = []
-
-        for tag in tags:
-            """
-            Unpack tag objects into a 2D list that contains all the info required about them,
-            for easy insertion into the database.
-            """
-            tag_unpacked = [
-                destination_id,
-                tag.name,
-                invoker_id,
-                None,
-                tag.content,
-            ]
-            tags_unpacked.append(tag_unpacked)
+        tags_unpacked = [[destination_id, tag.name, invoker_id, invoker_id, None, tag.content] for tag in tags]
 
         if strategy == TagMigrationStrategy.OVERRIDE:
             async with self.bot.pool.acquire() as con:
                 await con.executemany(
                     """
-                INSERT INTO tags (guild_id, tag_name, tag_owner_id, tag_aliases, tag_content)
-                VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (guild_id, tag_name) DO
-                UPDATE SET owner_id=$3, aliases=$4, content = $5""",
+                INSERT INTO tags (guild_id, tagname, creator_id, owner_id, aliases, content)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (guild_id, tagname) DO
+                UPDATE SET owner_id=$3, creator_id=$4 aliases=$5, content = $6""",
                     tags_unpacked,
                 )
         elif strategy == TagMigrationStrategy.KEEP:
             async with self.bot.pool.acquire() as con:
                 await con.executemany(
                     """
-                INSERT INTO tags (guild_id, tag_name, tag_owner_id, tag_aliases, tag_content)
-                VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (guild_id, tag_name) DO
+                INSERT INTO tags (guild_id, tagname, creator_id, owner_id, aliases, content)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (guild_id, tagname) DO
                 NOTHING""",
                     tags_unpacked,
                 )

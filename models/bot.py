@@ -229,7 +229,7 @@ class SnedBot(lightbulb.BotApp):
 
     async def on_starting(self, event: hikari.StartingEvent) -> None:
         # Create all the initial tables if they do not exist already
-        with open(os.path.join(self.base_dir, "etc", "db_init.sql")) as file:
+        with open(os.path.join(self.base_dir, "db", "schema.sql")) as file:
             await self.pool.execute(file.read())
 
     async def on_started(self, event: hikari.StartedEvent) -> None:

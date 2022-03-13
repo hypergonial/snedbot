@@ -74,7 +74,7 @@ class TagEditorModal(miru.Modal):
 @lightbulb.command("tag", "Call a tag and display it's contents.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> None:
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
+    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id, add_use=True)
 
     if not tag:
         embed = hikari.Embed(
@@ -126,7 +126,8 @@ async def tag_create(ctx: SnedSlashContext) -> None:
             description=f"This tag already exists. If the owner of this tag is no longer in the server, you can try doing `/tags claim {modal.tag_name.casefold()}`",
             color=const.ERROR_COLOR,
         )
-        return await mctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await mctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     new_tag = Tag(
         guild_id=hikari.Snowflake(ctx.guild_id),

@@ -17,6 +17,24 @@ logger = logging.getLogger(__name__)
 test = lightbulb.Plugin("Test")
 
 
+@test.listener(hikari.StartedEvent)
+async def start_views(event: hikari.StartedEvent) -> None:
+    PersistentThing().start_listener()
+
+
+class PersistentThing(miru.View):
+    def __init__(self) -> None:
+        super().__init__(timeout=None)
+
+    @miru.button(label="Foo!", style=hikari.ButtonStyle.SUCCESS, custom_id="foo")
+    async def foo_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        await ctx.respond("You clicked foo!")
+
+    @miru.button(label="Bar!", style=hikari.ButtonStyle.SUCCESS, custom_id="bar")
+    async def bar_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        await ctx.respond("You clicked bar!")
+
+
 class BasicView(miru.View):
 
     # Define a new Select menu with two options
@@ -57,6 +75,13 @@ class BasicModal(miru.Modal):
 
     async def callback(self, ctx: miru.ModalContext) -> None:
         await ctx.respond(self.values)
+
+
+@test.command
+@lightbulb.command("mirupersistent", "Test miru persistent unbound")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def miru_persistent(ctx: SnedSlashContext) -> None:
+    await ctx.respond("Beep Boop!", components=PersistentThing().build())
 
 
 @test.command

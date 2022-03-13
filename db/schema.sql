@@ -1,5 +1,10 @@
 -- Creation of all tables necessary for the bot to function
 
+CREATE TABLE IF NOT EXISTS schema_info
+(
+    schema_version int NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS global_config
 (
     guild_id bigint NOT NULL,
@@ -91,11 +96,13 @@ CREATE TABLE IF NOT EXISTS button_roles
 CREATE TABLE IF NOT EXISTS tags
 (
     guild_id bigint NOT NULL,
-    tag_name text NOT NULL,
-    tag_owner_id bigint NOT NULL,
-    tag_aliases text[],
-    tag_content text NOT NULL,
-    PRIMARY KEY (guild_id, tag_name),
+    tagname text NOT NULL,
+    owner_id bigint NOT NULL,
+    creator_id bigint, -- This may be null for tags that were not tracked for this.
+    uses integer NOT NULL DEFAULT 0,
+    aliases text[],
+    content text NOT NULL,
+    PRIMARY KEY (guild_id, tagname),
     FOREIGN KEY (guild_id)
         REFERENCES global_config (guild_id)
         ON DELETE CASCADE

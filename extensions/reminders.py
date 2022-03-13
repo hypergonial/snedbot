@@ -185,7 +185,7 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                 color=const.EMBED_GREEN,
             )
             await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-            return
+
         else:
             notes["additional_recipients"].remove(event.context.user.id)
             timer.notes = json.dumps(notes)
@@ -196,7 +196,6 @@ async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.Compo
                 color=const.EMBED_GREEN,
             )
             await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
-            return
 
 
 @reminders.command
