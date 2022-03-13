@@ -494,13 +494,12 @@ async def tag_delete_name_ac(
 
 
 @tag_group.child
-@lightbulb.option("show_owned", "Only show tags that are owned by me.", type=bool, required=False)
+@lightbulb.option("owner", "Only show tags that are owned by this user.", type=hikari.User, required=False)
 @lightbulb.command("list", "List all tags this server has.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_list(ctx: SnedSlashContext, show_owned: bool = False) -> None:
+async def tag_list(ctx: SnedSlashContext, owner: t.Optional[hikari.User] = None) -> None:
     assert ctx.member is not None
-    user = ctx.member if show_owned else None
-    tags_list: List[Tag] = await tags.d.tag_handler.get_all(ctx.guild_id, user)
+    tags_list: List[Tag] = await tags.d.tag_handler.get_all(ctx.guild_id, owner)
 
     if tags_list:
         tags_fmt = []
@@ -511,7 +510,7 @@ async def tag_list(ctx: SnedSlashContext, show_owned: bool = False) -> None:
         embeds = []
         for contents in tags_fmt:
             embed = hikari.Embed(
-                title=f"💬 Available tags{f' owned by {user.username}' if user else ''}:",
+                title=f"💬 Available tags{f' owned by {owner.username}' if owner else ''}:",
                 description="\n".join(contents),
                 color=const.EMBED_BLUE,
             )
@@ -522,8 +521,8 @@ async def tag_list(ctx: SnedSlashContext, show_owned: bool = False) -> None:
 
     else:
         embed = hikari.Embed(
-            title="💬 Available tags for this server:",
-            description="There are no tags on this server yet! You can create one via `/tags create`",
+            title=f"💬 Available tags{f' owned by {owner.username}' if owner else ''}:",
+            description="No tags found! You can create one via `/tags create`",
             color=const.EMBED_BLUE,
         )
         await ctx.respond(embed=embed)
