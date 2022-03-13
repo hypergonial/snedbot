@@ -106,9 +106,11 @@ class SettingsView(models.AuthorOnlyView):
 
     async def on_timeout(self) -> None:
         """Stop waiting for input events after the view times out."""
-        assert self.last_ctx is not None
         self.value = None
         self.input_event.set()
+
+        if not self.last_ctx:
+            return
 
         for item in self.children:
             assert isinstance(item, (miru.Button, miru.Select))
@@ -161,11 +163,11 @@ class SettingsView(models.AuthorOnlyView):
         )
 
         buttons = [
-            OptionButton(label="Moderation"),
-            OptionButton(label="Auto-Moderation"),
-            OptionButton(label="Logging"),
-            OptionButton(label="Reports"),
-            OptionButton(label="Starboard"),
+            OptionButton(label="Moderation", emoji=const.EMOJI_MOD_SHIELD),
+            OptionButton(label="Auto-Moderation", emoji="🤖"),
+            OptionButton(label="Logging", emoji="🗒️"),
+            OptionButton(label="Reports", emoji="📣", row=1),
+            OptionButton(label="Starboard", emoji="⭐", row=1),
         ]
 
         self.add_buttons(buttons)
@@ -221,9 +223,13 @@ class SettingsView(models.AuthorOnlyView):
 
         buttons = [
             BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enable", disabled=not channel),
-            OptionButton(label="Set Channel"),
-            OptionButton(label="Add Role", disabled=not unadded_roles),
-            OptionButton(label="Remove Role", disabled=not pinged_roles),
+            OptionButton(label="Set Channel", emoji=const.EMOJI_CHANNEL, style=hikari.ButtonStyle.SECONDARY),
+            OptionButton(
+                label="Role", disabled=not unadded_roles, custom_id="add_r", emoji="➕", style=hikari.ButtonStyle.SUCCESS
+            ),
+            OptionButton(
+                label="Role", disabled=not pinged_roles, custom_id="del_r", emoji="➖", style=hikari.ButtonStyle.DANGER
+            ),
         ]
         self.add_buttons(buttons, parent="Main")
         await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
@@ -287,7 +293,9 @@ class SettingsView(models.AuthorOnlyView):
             await self.app.db_cache.refresh(table="reports", guild_id=self.last_ctx.guild_id)
             return await self.settings_report()
 
-        if self.value == "Add Role":
+        assert self.last_item and self.last_item.custom_id
+
+        if self.last_item.custom_id == "add_r":
 
             embed = hikari.Embed(
                 title="Reports Settings",
@@ -320,7 +328,7 @@ class SettingsView(models.AuthorOnlyView):
                 )
                 return await self.error_screen(embed, parent="Reports")
 
-        elif self.value == "Remove Role":
+        elif self.last_item.custom_id == "del_r":
 
             embed = hikari.Embed(
                 title="Reports Settings",

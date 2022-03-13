@@ -85,6 +85,20 @@ async def miru_persistent(ctx: SnedSlashContext) -> None:
 
 
 @test.command
+@lightbulb.option("nonce", "The nonce to send.")
+@lightbulb.command("nonce", "foo")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def nonce_thing(ctx: SnedSlashContext) -> None:
+    await ctx.respond(f"Sending nonce: {ctx.options.nonce}", flags=hikari.MessageFlag.EPHEMERAL)
+    await ctx.app.rest.create_message(ctx.channel_id, "Foo", nonce=ctx.options.nonce)
+
+
+@test.listener(hikari.GuildMessageCreateEvent)
+async def nonce_printer(event: hikari.GuildMessageCreateEvent) -> None:
+    print(f"Nonce is: {event.message.nonce}")
+
+
+@test.command
 @lightbulb.command("mirutest", "Test miru views")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def viewtest(ctx: SnedSlashContext) -> None:
