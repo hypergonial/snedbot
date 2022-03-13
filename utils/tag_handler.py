@@ -53,9 +53,9 @@ class TagHandler:
         guild_id = hikari.Snowflake(guild)
 
         if add_use:
-            sql = "UPDATE tags SET uses = uses + 1 WHERE name = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2 RETURNING *"
+            sql = "UPDATE tags SET uses = uses + 1 WHERE tagname = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2 RETURNING *"
         else:
-            sql = "SELECT * FROM tags WHERE name = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2"
+            sql = "SELECT * FROM tags WHERE tagname = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2"
 
         async with self.bot.pool.acquire() as con:
             results = await con.fetch(
@@ -161,13 +161,19 @@ class TagHandler:
             tag.content,
         )
 
-    async def get_all(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[Tag]]:
+    async def get_all(
+        self,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        owner: t.Optional[hikari.SnowflakeishOr[hikari.User]] = None,
+    ) -> t.Optional[t.List[Tag]]:
         """Returns a list of all tags for the specified guild.
 
         Parameters
         ----------
         guild : hikari.SnowflakeishOr[hikari.PartialGuild]
             The guild to return all tags from.
+        owner : Optional[hikari.SnowflakeishOr[hikari.User]]
+            If specified, only return tags that belong to this user.
 
         Returns
         -------
@@ -175,7 +181,17 @@ class TagHandler:
             A list of all tags found in the guild.
         """
         guild_id = hikari.Snowflake(guild)
-        results = await self.bot.pool.fetch("""SELECT * FROM tags WHERE guild_id = $1""", guild_id)
+        if not owner:
+            results = await self.bot.pool.fetch(
+                """SELECT * FROM tags WHERE guild_id = $1 ORDER BY uses DESC""", guild_id
+            )
+        else:
+            results = await self.bot.pool.fetch(
+                """SELECT * FROM tags WHERE guild_id = $1 AND owner_id = $2 ORDER BY uses DESC""",
+                guild_id,
+                hikari.Snowflake(owner),
+            )
+
         if results:
             return [
                 Tag(

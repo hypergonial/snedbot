@@ -150,16 +150,25 @@ async def tag_create(ctx: SnedSlashContext) -> None:
 @lightbulb.command("info", "Display information about the specified tag.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_info(ctx: SnedSlashContext, name: str) -> None:
+    assert ctx.guild_id is not None
     tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
     if tag:
-        owner = await ctx.app.rest.fetch_user(tag.owner_id)
+        owner = ctx.app.cache.get_member(ctx.guild_id, tag.owner_id) or tag.owner_id
+        creator = (
+            (ctx.app.cache.get_member(ctx.guild_id, tag.creator_id) or tag.creator_id)
+            if tag.creator_id
+            else "*Unknown*"
+        )
         aliases = ", ".join(tag.aliases) if tag.aliases else None
 
         embed = hikari.Embed(
             title=f"💬 Tag Info: {tag.name}",
-            description=f"**Aliases:** `{aliases}`\n**Tag owner:** `{owner}`\n",
+            description=f"**Aliases:** `{aliases}`\n**Tag owner:** `{owner}`\n**Tag creator:** {creator}\n**Uses:** `{tag.uses}`",
             color=const.EMBED_BLUE,
-        ).set_author(name=str(owner), icon=owner.display_avatar_url)
+        )
+        if isinstance(owner, hikari.Member):
+            embed.set_author(name=str(owner), icon=owner.display_avatar_url)
+
         await ctx.respond(embed=embed)
 
     else:
@@ -485,23 +494,24 @@ async def tag_delete_name_ac(
 
 
 @tag_group.child
-@lightbulb.command("list", "List all tags this server has.")
+@lightbulb.option("show_owned", "Only show tags that are owned by me.", type=bool, required=False)
+@lightbulb.command("list", "List all tags this server has.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_list(ctx: SnedSlashContext) -> None:
+async def tag_list(ctx: SnedSlashContext, show_owned: bool = False) -> None:
     assert ctx.member is not None
-
-    tags_list: List[Tag] = await tags.d.tag_handler.get_all(ctx.guild_id)
+    user = ctx.member if show_owned else None
+    tags_list: List[Tag] = await tags.d.tag_handler.get_all(ctx.guild_id, user)
 
     if tags_list:
         tags_fmt = []
         for i, tag in enumerate(tags_list):
-            tags_fmt.append(f"**#{i+1}** {tag.name}")
-        # Only show 10 tags per page
-        tags_fmt = [tags_fmt[i * 10 : (i + 1) * 10] for i in range((len(tags_fmt) + 10 - 1) // 10)]
+            tags_fmt.append(f"**#{i+1}** - `{tag.uses}` uses: `{tag.name}`")
+        # Only show 8 tags per page
+        tags_fmt = [tags_fmt[i * 8 : (i + 1) * 8] for i in range((len(tags_fmt) + 8 - 1) // 8)]
         embeds = []
         for contents in tags_fmt:
             embed = hikari.Embed(
-                title="💬 Available tags for this server:",
+                title=f"💬 Available tags{f' owned by {user.username}' if user else ''}:",
                 description="\n".join(contents),
                 color=const.EMBED_BLUE,
             )
