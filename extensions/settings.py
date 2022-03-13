@@ -156,9 +156,10 @@ class SettingsView(models.AuthorOnlyView):
         embed = hikari.Embed(
             title="Sned Configuration",
             description="""**Welcome to settings!**
-            
-            Here you can configure various aspects of the bot, such as moderation settings, automoderator, logging options, permissions, and more. 
-            Click one of the buttons below to get started!""",
+
+Here you can configure various aspects of the bot, such as moderation settings, automod, logging options, and more. 
+
+Click one of the buttons below to get started!""",
             color=const.EMBED_BLUE,
         )
 
@@ -284,9 +285,9 @@ class SettingsView(models.AuthorOnlyView):
             else:
                 await self.app.pool.execute(
                     """INSERT INTO reports (channel_id, guild_id)
-                VALUES ($1, $2)
-                ON CONFLICT (guild_id) DO
-                UPDATE SET channel_id = $1""",
+                    VALUES ($1, $2)
+                    ON CONFLICT (guild_id) DO
+                    UPDATE SET channel_id = $1""",
                     channel.id,
                     self.last_ctx.guild_id,
                 )
@@ -368,9 +369,9 @@ class SettingsView(models.AuthorOnlyView):
 
         await self.app.pool.execute(
             """INSERT INTO reports (pinged_role_ids, guild_id)
-        VALUES ($1, $2)
-        ON CONFLICT (guild_id) DO
-        UPDATE SET pinged_role_ids = $1""",
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO
+            UPDATE SET pinged_role_ids = $1""",
             [role.id for role in pinged_roles if role is not None],
             self.last_ctx.guild_id,
         )
@@ -412,10 +413,10 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         await self.app.pool.execute(
             f"""
-        INSERT INTO mod_config (guild_id, {option})
-        VALUES ($1, $2)
-        ON CONFLICT (guild_id) DO
-        UPDATE SET {option} = $2""",
+            INSERT INTO mod_config (guild_id, {option})
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO
+            UPDATE SET {option} = $2""",
             self.last_ctx.guild_id,
             not mod_settings[option],
         )
@@ -582,9 +583,9 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             else:
                 await self.app.pool.execute(
                     """INSERT INTO starboard (channel_id, guild_id)
-                VALUES ($1, $2)
-                ON CONFLICT (guild_id) DO
-                UPDATE SET channel_id = $1""",
+                    VALUES ($1, $2)
+                    ON CONFLICT (guild_id) DO
+                    UPDATE SET channel_id = $1""",
                     channel.id,
                     self.last_ctx.guild_id,
                 )
@@ -665,9 +666,9 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         await self.app.pool.execute(
             """INSERT INTO starboard (excluded_channels, guild_id)
-        VALUES ($1, $2)
-        ON CONFLICT (guild_id) DO
-        UPDATE SET excluded_channels = $1""",
+            VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO
+            UPDATE SET excluded_channels = $1""",
             [channel.id for channel in excluded_channels if channel],
             self.last_ctx.guild_id,
         )
