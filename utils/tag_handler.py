@@ -6,7 +6,6 @@ from difflib import get_close_matches
 from itertools import chain
 
 import hikari
-import Levenshtein as lev
 
 from models.errors import TagAlreadyExists
 from models.errors import TagNotFound
