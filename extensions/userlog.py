@@ -586,6 +586,10 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
     if entry and event.old_channel:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
+
+        if moderator and moderator.is_bot: # Ignore bots updating channels
+            return
+
         attrs = {
             "name": "Name",
             "position": "Position",
@@ -876,8 +880,8 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
         entry = await find_auditlog_data(
             event, event_type=hikari.AuditLogEventType.MEMBER_ROLE_UPDATE, user_id=event.user.id
         )
-        assert entry and entry.user_id
-        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
+        
+        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry and entry.user_id else "Unknown"
         reason: t.Optional[str] = entry.reason if entry else "No reason provided."
 
         if isinstance(moderator, (hikari.Member)) and moderator.is_bot:
