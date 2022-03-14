@@ -444,7 +444,7 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
 
     embed = hikari.Embed(
         title="✅ Timezone set!",
-        description=f"Your preferred timezone has been set to `{timezone}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
+        description=f"Your preferred timezone has been set to `{timezone.title()}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
         color=const.EMBED_GREEN,
     )
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
