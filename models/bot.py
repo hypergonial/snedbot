@@ -319,7 +319,7 @@ class SnedBot(lightbulb.BotApp):
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
         """Guild join behaviour"""
-        await self.pool.execute("INSERT INTO global_config (guild_id) VALUES ($1)", event.guild_id)
+        await self.pool.execute("INSERT INTO global_config (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING", event.guild_id)
 
         if event.guild.system_channel_id is None:
             return
