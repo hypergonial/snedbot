@@ -414,8 +414,6 @@ async def message_delete(plugin: lightbulb.Plugin, event: hikari.GuildMessageDel
     entry = await find_auditlog_data(
         event, event_type=hikari.AuditLogEventType.MESSAGE_DELETE, user_id=event.old_message.author.id
     )
-    channel = event.get_channel()
-    assert channel is not None
 
     if entry:
         assert entry.user_id is not None
@@ -426,7 +424,7 @@ async def message_delete(plugin: lightbulb.Plugin, event: hikari.GuildMessageDel
             title=f"🗑️ Message deleted by Moderator",
             description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
 **Moderator:** `{moderator} ({moderator.id})`
-**Channel:** {channel.mention}
+**Channel:** <#{event.channel_id}>
 **Message content:** ```{contents}```""",
             color=const.ERROR_COLOR,
         )
@@ -436,7 +434,7 @@ async def message_delete(plugin: lightbulb.Plugin, event: hikari.GuildMessageDel
         embed = hikari.Embed(
             title=f"🗑️ Message deleted",
             description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
-**Channel:** {channel.mention}
+**Channel:** <#{event.channel_id}>
 **Message content:** ```{contents}```""",
             color=const.ERROR_COLOR,
         )
@@ -452,13 +450,11 @@ async def message_update(plugin: lightbulb.Plugin, event: hikari.GuildMessageUpd
 
     old_content = create_log_content(event.old_message, max_length=1800)
     new_content = create_log_content(event.message, max_length=1800)
-    channel = event.get_channel()
-    assert channel is not None
 
     embed = hikari.Embed(
         title=f"🖊️ Message edited",
         description=f"""**Message author:** `{event.author} ({event.author_id})`
-**Channel:** {channel.mention}
+**Channel:** <#{event.channel_id}>
 **Before:** ```{old_content}``` \n**After:** ```{new_content}```
 [Jump!]({event.message.make_link(event.guild_id)})""",
         color=const.EMBED_BLUE,
