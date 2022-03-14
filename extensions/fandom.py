@@ -116,7 +116,7 @@ async def ffwiki(ctx: SnedSlashContext, query: str) -> None:
         embed = hikari.Embed(
             title=f"Falling Frontier Wiki: {query}",
             description=results,
-            color=(218, 166, 100),
+            color=(75, 170, 147),
         )
     except ValueError:
         embed = hikari.Embed(
