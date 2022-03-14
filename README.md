@@ -2,7 +2,7 @@
 
 > Sned is a general purpose Discord bot designed to make handling your community a breeze!
 
-### [Add it to your server!](https://canary.discord.com/channels/836248845268680785/836300326172229672/952792529978425364)
+### [Add it to your server!](https://discord.com/oauth2/authorize?client_id=817730141722902548&permissions=1494984682710&scope=applications.commands%20bot)
 
 ### Main features:
 - Powerful moderation commands
