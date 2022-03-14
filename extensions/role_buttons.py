@@ -248,6 +248,15 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     if not message:
         return
 
+    if message.author.id == ctx.app.user_id:
+        embed = hikari.Embed(
+            title="❌ Message not authored by bot",
+            description="This message was not sent by the bot, and thus it cannot be edited to add the button.\nIf you want to create a new message for the rolebutton with custom content, use the `/echo` or `/embed` command!",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
     records = await ctx.app.pool.fetch("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC LIMIT 1""")
     entry_id = records[0].get("entry_id") + 1 if records else 1
     emoji = hikari.Emoji.parse(ctx.options.emoji) if ctx.options.emoji else None
