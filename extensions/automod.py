@@ -116,6 +116,9 @@ async def punish(
     offender = offender or automod.app.cache.get_member(message.guild_id, message.author.id)
     assert offender is not None
 
+    if offender.id in automod.app.owner_ids:
+        return # Hyper is always a good person
+
     if not helpers.can_harm(me, offender, permission=required_perms):
         return
 

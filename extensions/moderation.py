@@ -14,7 +14,7 @@ from models.bot import SnedBot
 from models.context import SnedContext
 from models.context import SnedUserContext
 from models.db_user import User
-from models.errors import BotRoleHierarchyError
+from models.errors import BotRoleHierarchyError, DMFailedError
 from models.errors import RoleHierarchyError
 from models.events import MassBanEvent
 from models.events import WarnCreateEvent
@@ -156,7 +156,7 @@ async def pre_mod_actions(
         try:
             await target.send(embed=embed)
         except (hikari.ForbiddenError, hikari.HTTPError):
-            pass
+            raise DMFailedError("Failed delivering direct message to user.")
 
 
 async def post_mod_actions(
@@ -259,12 +259,10 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: t.Option
         description=f"**{member}** has been warned by **{moderator}**.\n**Reason:** ```{reason}```",
         color=const.WARN_COLOR,
     )
-    log_embed = hikari.Embed(
-        title="⚠️ Warning issued",
-        description=f"**{member}** has been warned by **{moderator}**.\n**Warns:** {db_user.warns}\n**Reason:** ```{reason}```",
-        color=const.WARN_COLOR,
-    )
-    await pre_mod_actions(member.guild_id, member, ActionType.WARN, reason)
+    try:
+        await pre_mod_actions(member.guild_id, member, ActionType.WARN, reason)
+    except DMFailedError:
+        embed.set_footer("Failed sending DM to user.")
 
     userlog = mod.app.get_plugin("Logging")
     assert userlog is not None
@@ -424,7 +422,17 @@ async def timeout(
     # Raise error if cannot harm user
     helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
 
-    await pre_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
+    embed = hikari.Embed(
+        title="🔇 " + "User timed out",
+        description=f"**{member}** has been timed out until {helpers.format_dt(duration)}.\n**Reason:** ```{raw_reason}```",
+        color=const.ERROR_COLOR,
+    )
+
+    try:
+        await pre_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
+    except:
+        embed.set_footer("Failed sending DM to user.")
+    
     if duration > helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS):
         await mod.app.scheduler.create_timer(
             helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
@@ -442,12 +450,6 @@ async def timeout(
         await member.edit(communication_disabled_until=duration, reason=reason)
 
     await post_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
-
-    embed = hikari.Embed(
-        title="🔇 " + "User timed out",
-        description=f"**{member}** has been timed out until {helpers.format_dt(duration)}.\n**Reason:** ```{raw_reason}```",
-        color=const.ERROR_COLOR,
-    )
     return embed
 
 
@@ -534,14 +536,20 @@ async def ban(
     raw_reason = reason
     reason = helpers.format_reason(reason, moderator, max_length=512)
 
+    embed = hikari.Embed(
+        title="🔨 User banned",
+        description=f"**{user}** has been banned.\n**Reason:** ```{raw_reason}```",
+        color=const.ERROR_COLOR,
+    )
+
     try:
-        await pre_mod_actions(moderator.guild_id, user, ActionType.BAN, reason=raw_reason)
+        try:
+            await pre_mod_actions(moderator.guild_id, user, ActionType.BAN, reason=raw_reason)
+        except DMFailedError:
+            embed.set_footer("Failed sending DM to user.")
+
         await mod.app.rest.ban_user(moderator.guild_id, user.id, delete_message_days=days_to_delete, reason=reason)
-        embed = hikari.Embed(
-            title="🔨 User banned",
-            description=f"**{user}** has been banned.\n**Reason:** ```{raw_reason}```",
-            color=const.ERROR_COLOR,
-        )
+
 
         if soft:
             await mod.app.rest.unban_user(moderator.guild_id, user.id, reason="Automatic unban by softban.")
@@ -677,14 +685,19 @@ async def kick(
     # Raise error if cannot harm user
     helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
 
+    embed = hikari.Embed(
+        title="🚪👈 User kicked",
+        description=f"**{member}** has been kicked.\n**Reason:** ```{raw_reason}```",
+        color=const.ERROR_COLOR,
+    )
+
     try:
-        await pre_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
+        try:
+            await pre_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
+        except DMFailedError:
+            embed.set_footer("Failed sending DM to user.")
+
         await mod.app.rest.kick_user(member.guild_id, member, reason=reason)
-        embed = hikari.Embed(
-            title="🚪👈 User kicked",
-            description=f"**{member}** has been kicked.\n**Reason:** ```{raw_reason}```",
-            color=const.ERROR_COLOR,
-        )
         await post_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
         return embed
 
