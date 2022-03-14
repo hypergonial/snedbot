@@ -112,7 +112,7 @@ async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> Non
 async def ffwiki(ctx: SnedSlashContext, query: str) -> None:
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     try:
-        results = await search_fandom(f"fallingfrontier", query)
+        results = await search_fandom(f"falling-frontier", query)
         embed = hikari.Embed(
             title=f"Falling Frontier Wiki: {query}",
             description=results,
