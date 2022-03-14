@@ -1,5 +1,4 @@
 import logging
-import random
 import typing as t
 from difflib import get_close_matches
 
@@ -457,7 +456,7 @@ async def tz_opts(
 ) -> t.List[str]:
     if option.value:
         return get_close_matches(str(option.value), pytz.common_timezones, 25)
-    return random.choices(pytz.common_timezones, k=25)
+    return []
 
 
 @misc.command
