@@ -152,7 +152,7 @@ class TagHandler:
         await self.bot.pool.execute(
             """
         INSERT INTO tags (guild_id, tagname, creator_id, owner_id, aliases, content)
-        VALUES ($1, $2, $3, $4, $5)""",
+        VALUES ($1, $2, $3, $4, $5, $6)""",
             tag.guild_id,
             tag.name,
             tag.creator_id or tag.owner_id,
