@@ -19,13 +19,13 @@ async def backup_database() -> hikari.File:
 
     filepath: str = os.path.dirname(os.path.realpath(__file__))
 
-    if not os.path.isdir(os.path.join(filepath, "db_backup")):
-        os.mkdir(os.path.join(filepath, "db_backup"))
+    if not os.path.isdir(os.path.join(filepath, "db", "backup")):
+        os.mkdir(os.path.join(filepath, "db", "backup"))
 
     now = datetime.datetime.now(datetime.timezone.utc)
 
     filename: str = f"{now.year}-{now.month}-{now.day}_{now.hour}_{now.minute}_{now.second}.pgdmp"
-    backup_path: str = os.path.join(filepath, "db_backup", filename)
+    backup_path: str = os.path.join(filepath, "db", "backup", filename)
 
     return_code = os.system(
         f"pg_dump -Fc -c -U {username} -d {db_name} -h {hostname} -p {port} --quote-all-identifiers -w > {backup_path}"

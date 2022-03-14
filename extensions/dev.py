@@ -329,7 +329,10 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
 
-    path = os.path.join(ctx.app.base_dir, "db_backup", "dev_pg_restore_snapshot.pgdmp")
+    if not os.path.isdir(os.path.join(ctx.app.base_dir, "db", "backup")):
+        os.mkdir(os.path.join(ctx.app.base_dir, "db", "backup"))
+
+    path = os.path.join(ctx.app.base_dir, "db", "backup", "dev_pg_restore_snapshot.pgdmp")
     with open(path, "wb") as file:
         file.write((await ctx.attachments[0].read()))
     try:
