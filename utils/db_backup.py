@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import pathlib
 
 import hikari
 
@@ -17,7 +18,7 @@ async def backup_database() -> hikari.File:
 
     os.environ["PGPASSWORD"] = password
 
-    filepath: str = os.path.dirname(os.path.realpath(__file__))
+    filepath: str = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
 
     if not os.path.isdir(os.path.join(filepath, "db", "backup")):
         os.mkdir(os.path.join(filepath, "db", "backup"))
