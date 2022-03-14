@@ -51,8 +51,8 @@ class AutoModState(enum.Enum):
 
 spam_ratelimiter = utils.RateLimiter(10, 8, bucket=BucketType.MEMBER, wait=False)
 punish_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
-attach_spam_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
-link_spam_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
+attach_spam_ratelimiter = utils.RateLimiter(30, 2, bucket=BucketType.MEMBER, wait=False)
+link_spam_ratelimiter = utils.RateLimiter(30, 2, bucket=BucketType.MEMBER, wait=False)
 escalate_prewarn_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
 escalate_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
 
