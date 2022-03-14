@@ -241,6 +241,15 @@ def can_harm(
         if raise_error:
             raise lightbulb.BotMissingRequiredPermission(perms=permission)
         return False
+    
+    guild = member.get_guild()
+    if not guild:
+        return True
+    
+    if member.id == guild.owner_id:
+        if raise_error:
+            errors.RoleHierarchyError
+        return False
 
     if not is_above(me, member):
         if raise_error:
