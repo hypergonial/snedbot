@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import datetime
 import re
 from typing import List
 from typing import Optional
 from typing import Sequence
-from typing import Union
 
 import hikari
 import lightbulb
