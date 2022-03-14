@@ -239,7 +239,7 @@ async def support(ctx: SnedSlashContext) -> None:
 @lightbulb.command("source", "Provides a link to the source-code of the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def source(ctx: SnedSlashContext) -> None:
-    await ctx.respond("<https://github.com/HyperGH/snedbot_v2>")
+    await ctx.respond("<https://github.com/HyperGH/snedbot>")
 
 
 @misc.command
