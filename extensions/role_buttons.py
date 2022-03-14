@@ -248,10 +248,10 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
     if not message:
         return
 
-    if message.author.id == ctx.app.user_id:
+    if message.author.id != ctx.app.user_id:
         embed = hikari.Embed(
             title="❌ Message not authored by bot",
-            description="This message was not sent by the bot, and thus it cannot be edited to add the button.\nIf you want to create a new message for the rolebutton with custom content, use the `/echo` or `/embed` command!",
+            description="This message was not sent by the bot, and thus it cannot be edited to add the button.\n\n**Tip:** If you want to create a new message for the rolebutton with custom content, use the `/echo` or `/embed` command!",
             color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -270,7 +270,19 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         style=button_style,
     )
 
-    view = miru.View.from_message(message, timeout=None).add_item(button)
+    view = miru.View.from_message(message, timeout=None)
+
+    try:
+        view.add_item(button)
+    except ValueError:
+        embed = hikari.Embed(
+            title="❌ Too many buttons",
+            description="This message has too many buttons attached to it already, please choose a different message!",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
     message = await message.edit(components=view.build())
 
     await ctx.app.pool.execute(
