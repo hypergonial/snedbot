@@ -435,7 +435,7 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
         description=f"Your preferred timezone has been set to `{timezone}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
         color=const.EMBED_GREEN,
     )
-    await ctx.respond(embed=embed)
+    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @set_timezone.autocomplete("timezone")
