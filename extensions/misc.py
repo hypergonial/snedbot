@@ -422,7 +422,7 @@ async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
 )
 @lightbulb.implements(lightbulb.SlashCommand)
 async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
-    if timezone not in pytz.common_timezones:
+    if timezone.title() not in pytz.common_timezones:
         embed = hikari.Embed(
             title="❌ Invalid Timezone",
             description="Oops! This does not look like a valid timezone! Specify your timezone as a valid `Continent/City` combination.",
@@ -438,9 +438,9 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
     ON CONFLICT (user_id) DO 
     UPDATE SET timezone = $2""",
         ctx.user.id,
-        timezone,
+        timezone.title(),
     )
-    await ctx.app.db_cache.refresh(table="preferences", user_id=ctx.user.id, timezone=timezone)
+    await ctx.app.db_cache.refresh(table="preferences", user_id=ctx.user.id, timezone=timezone.title())
 
     embed = hikari.Embed(
         title="✅ Timezone set!",
