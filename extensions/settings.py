@@ -894,8 +894,12 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         if state != "disabled":
             for key in policy_data:
-                if key == "state" or predicates.get(key) and not predicates[key](state):
+                if key == "state":
                     continue
+
+                if predicate := predicates.get(key):
+                    if not predicate(state):
+                        continue
 
                 if key in ["excluded_channels", "excluded_roles"]:
                     continue
@@ -1291,7 +1295,7 @@ async def ask_settings(
         await view.wait_for_input()
 
         if view.value:
-            if ignore and view.value in ignore:
+            if ignore and view.value.casefold() in ignore:
                 return view.value
             return await converter.convert(view.value)
 
@@ -1324,7 +1328,7 @@ async def ask_settings(
             await helpers.maybe_delete(event.message)
 
         if event.content:
-            if ignore and event.content in ignore:
+            if ignore and event.content.casefold() in ignore:
                 return event.content
             return await converter.convert(event.content)
 
