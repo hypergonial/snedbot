@@ -309,7 +309,7 @@ class SnedBot(lightbulb.BotApp):
             elif event.content.startswith(await get_prefix(self, event.message)):
                 embed = hikari.Embed(
                     title="Uh Oh!",
-                    description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!",
+                    description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!\nIf you have any questions, or feel lost, feel free to join the [suuport server](https://discord.gg/KNKr8FPmJa)!",
                     color=const.ERROR_COLOR,
                 )
                 user = self.get_me()
