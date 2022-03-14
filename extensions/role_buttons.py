@@ -16,9 +16,6 @@ from utils.ratelimiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
-# Set to true to migrate old stateful rolebuttons
-MIGRATE = False
-
 role_buttons = lightbulb.Plugin("Role-Buttons")
 
 button_styles = {
@@ -28,13 +25,6 @@ button_styles = {
     "Red": hikari.ButtonStyle.DANGER,
 }
 role_button_ratelimiter = RateLimiter(2, 1, BucketType.MEMBER, wait=False)
-
-
-class PersistentRoleView(miru.View):  # TODO: Remove me after migration
-    def __init__(self, buttons: t.List[miru.Button]) -> None:
-        super().__init__(timeout=None)
-        for button in buttons:
-            self.add_item(button)
 
 
 class RoleButton(miru.Button):
@@ -49,46 +39,6 @@ class RoleButton(miru.Button):
     ):
         role_id = hikari.Snowflake(role)
         super().__init__(style=style, label=label, emoji=emoji, custom_id=f"RB:{entry_id}:{role_id}")
-
-
-@role_buttons.listener(lightbulb.LightbulbStartedEvent, bind=True)
-async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.LightbulbStartedEvent) -> None:
-    if not MIGRATE:
-        return
-
-    assert isinstance(plugin.app, SnedBot)
-
-    records: t.List[asyncpg.Record] = await plugin.app.pool.fetch("""SELECT * FROM button_roles""")
-
-    msg_button_mapping: t.Dict[str, t.List[RoleButton]] = {}
-
-    for record in records:
-        button = RoleButton(
-            entry_id=record.get("entry_id"),
-            role=record.get("role_id"),
-            label=record.get("buttonlabel"),
-            style=button_styles[record.get("buttonstyle")],
-            emoji=hikari.Emoji.parse(record.get("emoji")),
-        )
-
-        if f"{record.get('channel_id')}:{record.get('msg_id')}" not in msg_button_mapping:
-            msg_button_mapping[f"{record.get('channel_id')}:{record.get('msg_id')}"] = [button]
-        else:
-            msg_button_mapping[f"{record.get('channel_id')}:{record.get('msg_id')}"].append(button)
-
-    count = 0
-    for compound_id, buttons in msg_button_mapping.items():
-        channel_id = int(compound_id.split(":")[0])
-        msg_id = int(compound_id.split(":")[1])
-
-        view = PersistentRoleView(buttons)  # type: ignore
-        try:
-            await plugin.app.rest.edit_message(channel_id, msg_id, components=view.build())
-            count += 1
-        except Exception as e:
-            logging.warn(f"Failed migrating a role-button: {e}\nContinuing...")
-
-    logger.info(f"Migrated {count} role-buttons to stateless handling.")
 
 
 @role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
