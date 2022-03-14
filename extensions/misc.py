@@ -455,7 +455,8 @@ async def tz_opts(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
     if option.value:
-        return get_close_matches(str(option.value), pytz.common_timezones, 25)
+        assert isinstance(option.value, str)
+        return get_close_matches(option.value.title(), pytz.common_timezones, 25)
     return []
 
 
