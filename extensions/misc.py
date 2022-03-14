@@ -7,6 +7,7 @@ import lightbulb
 import miru
 import psutil
 import pytz
+import re
 
 from etc import constants as const
 from models import SnedBot
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 misc = lightbulb.Plugin("Miscellaneous Commands")
 psutil.cpu_percent(interval=1)  # Call so subsequent calls for CPU % will not be blocking
 
+RGB_REGEX = re.compile(r"[0-9]{1,3} [0-9]{1,3} [0-9]{1,3}")
 
 @misc.command
 @lightbulb.command("ping", "Check the bot's latency.")
@@ -85,6 +87,16 @@ async def embed(ctx: SnedSlashContext) -> None:
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
+
+    if ctx.options.color is not None and not RGB_REGEX.fullmatch(ctx.options.color):
+        embed = hikari.Embed(
+            title="❌ Invalid Color",
+            description=f"Colors must be of format `RRR GGG BBB`, three values seperated by spaces.",
+            color=const.ERROR_COLOR,
+            )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
 
     embed = hikari.Embed(
         title=ctx.options.title,
