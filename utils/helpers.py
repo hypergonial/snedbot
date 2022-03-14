@@ -73,30 +73,24 @@ def sort_roles(roles: Sequence[hikari.Role]) -> Sequence[hikari.Role]:
     return sorted(roles, key=lambda r: r.position, reverse=True)
 
 
-def get_badges(ctx: lightbulb.Context, user: hikari.User) -> List[str]:
+def get_badges(user: hikari.User) -> List[str]:
     """Return a list of badge emojies that the user has."""
 
     badge_emoji_mapping = {
-        hikari.UserFlag.BUG_HUNTER_LEVEL_1: str(ctx.app.cache.get_emoji(927590809241530430)),
-        hikari.UserFlag.BUG_HUNTER_LEVEL_2: str(ctx.app.cache.get_emoji(927590820448710666)),
-        hikari.UserFlag.DISCORD_CERTIFIED_MODERATOR: str(ctx.app.cache.get_emoji(927582595808657449)),
-        hikari.UserFlag.EARLY_SUPPORTER: str(ctx.app.cache.get_emoji(927582684123914301)),
-        hikari.UserFlag.EARLY_VERIFIED_DEVELOPER: str(ctx.app.cache.get_emoji(927582706974462002)),
-        hikari.UserFlag.HYPESQUAD_EVENTS: str(ctx.app.cache.get_emoji(927582724523450368)),
-        hikari.UserFlag.HYPESQUAD_BALANCE: str(ctx.app.cache.get_emoji(927582757587136582)),
-        hikari.UserFlag.HYPESQUAD_BRAVERY: str(ctx.app.cache.get_emoji(927582770329444434)),
-        hikari.UserFlag.HYPESQUAD_BRILLIANCE: str(ctx.app.cache.get_emoji(927582740977684491)),
-        hikari.UserFlag.PARTNERED_SERVER_OWNER: str(ctx.app.cache.get_emoji(927591117304778772)),
-        hikari.UserFlag.DISCORD_EMPLOYEE: str(ctx.app.cache.get_emoji(927591104902201385)),
+        hikari.UserFlag.BUG_HUNTER_LEVEL_1: const.EMOJI_BUGHUNTER,
+        hikari.UserFlag.BUG_HUNTER_LEVEL_2: const.EMOJI_BUGHUNTER_GOLD,
+        hikari.UserFlag.DISCORD_CERTIFIED_MODERATOR: const.EMOJI_CERT_MOD,
+        hikari.UserFlag.EARLY_SUPPORTER: const.EMOJI_EARLY_SUPPORTER,
+        hikari.UserFlag.EARLY_VERIFIED_DEVELOPER: const.EMOJI_VERIFIED_DEVELOPER,
+        hikari.UserFlag.HYPESQUAD_EVENTS: const.EMOJI_HYPESQUAD_EVENTS,
+        hikari.UserFlag.HYPESQUAD_BALANCE: const.EMOJI_HYPESQUAD_BALANCE,
+        hikari.UserFlag.HYPESQUAD_BRAVERY: const.EMOJI_HYPESQUAD_BRAVERY,
+        hikari.UserFlag.HYPESQUAD_BRILLIANCE: const.EMOJI_HYPESQUAD_BRILLIANCE,
+        hikari.UserFlag.PARTNERED_SERVER_OWNER: const.EMOJI_PARTNER,
+        hikari.UserFlag.DISCORD_EMPLOYEE: const.EMOJI_STAFF,
     }
 
-    badges = []
-
-    for flag, emoji in badge_emoji_mapping.items():
-        if flag & user.flags:
-            badges.append(emoji)
-
-    return badges
+    return [emoji for flag, emoji in badge_emoji_mapping.items() if flag & user.flags]
 
 
 async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
@@ -122,7 +116,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Bot:** `{member.is_bot}`
 **• Account creation date:** {format_dt(member.created_at)} ({format_dt(member.created_at, style='R')})
 **• Join date:** {format_dt(member.joined_at)} ({format_dt(member.joined_at, style='R')})
-**• Badges:** {"   ".join(get_badges(ctx, member)) or "`-`"}
+**• Badges:** {"   ".join(get_badges(member)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** {f"Until: {format_dt(comms_disabled_until)}" if comms_disabled_until is not None else "`-`"}
 **• Flags:** `{",".join(list(db_user.flags.keys())) if db_user.flags and len(db_user.flags) > 0 else "-"}`
@@ -144,7 +138,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Bot:** `{user.is_bot}`
 **• Account creation date:** {format_dt(user.created_at)} ({format_dt(user.created_at, style='R')})
 **• Join date:** `-`
-**• Badges:** {"   ".join(get_badges(ctx, user)) or "`-`"}
+**• Badges:** {"   ".join(get_badges(user)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** `-`
 **• Flags:** `{",".join(list(db_user.flags.keys())) if db_user.flags and len(db_user.flags) > 0 else "-"}`
