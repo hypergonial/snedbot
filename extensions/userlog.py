@@ -889,21 +889,17 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             return
 
         if add_diff:
-            role = plugin.app.cache.get_role(add_diff[0])
-            assert role is not None
             embed = hikari.Embed(
                 title=f"🖊️ Member roles updated",
-                description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role added:** {role.mention}",
+                description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role added:** <@&{add_diff[0]}>",
                 color=const.EMBED_BLUE,
             )
             await log("roles", embed, event.guild_id)
 
         elif rem_diff:
-            role = plugin.app.cache.get_role(rem_diff[0])
-            assert role is not None
             embed = hikari.Embed(
                 title=f"🖊️ Member roles updated",
-                description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role removed:** {role.mention}",
+                description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role removed:** <@&{rem_diff[0]}>",
                 color=const.EMBED_BLUE,
             )
             await log("roles", embed, event.guild_id)
