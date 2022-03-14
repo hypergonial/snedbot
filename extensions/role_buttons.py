@@ -82,8 +82,11 @@ async def migrate_rolebuttons(plugin: lightbulb.Plugin, event: lightbulb.Lightbu
         msg_id = int(compound_id.split(":")[1])
 
         view = PersistentRoleView(buttons)  # type: ignore
-        await plugin.app.rest.edit_message(channel_id, msg_id, components=view.build())
-        count += 1
+        try:
+            await plugin.app.rest.edit_message(channel_id, msg_id, components=view.build())
+            count += 1
+        except Exception as e:
+            logging.warn(f"Failed migrating a role-button: {e}\nContinuing...")
 
     logger.info(f"Migrated {count} role-buttons to stateless handling.")
 
