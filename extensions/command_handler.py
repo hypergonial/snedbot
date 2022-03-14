@@ -144,6 +144,24 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
+    if isinstance(error, BotRoleHierarchyError):
+        embed = hikari.Embed(
+            title="❌ Role Hierarchy Error",
+            description=f"The targeted user's highest role is higher than the bot's highest role.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    if isinstance(error, RoleHierarchyError):
+        embed = hikari.Embed(
+            title="❌ Role Hierarchy Error",
+            description=f"The targeted user's highest role is higher than the your highest role.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
     if isinstance(error, lightbulb.CommandInvocationError):
 
         if isinstance(error.original, asyncio.TimeoutError):
