@@ -865,7 +865,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         # Conditions for certain attributes to appear
         predicates = {
             "temp_dur": lambda s: s in ["timeout", "tempban"]
-            or policies["escalate"]["state"] in ["timeout", "tempban"],
+            or s == "escalate" and policies["escalate"]["state"] in ["timeout", "tempban"],
         }
 
         if policy_data.get("excluded_channels") is not None and policy_data.get("excluded_roles") is not None:
