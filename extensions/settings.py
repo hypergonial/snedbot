@@ -1296,7 +1296,7 @@ async def ask_settings(
 
         if view.value:
             if ignore and view.value.casefold() in ignore:
-                return view.value
+                return view.value.casefold()
             return await converter.convert(view.value)
 
         await view.quit_settings()
@@ -1329,7 +1329,7 @@ async def ask_settings(
 
         if event.content:
             if ignore and event.content.casefold() in ignore:
-                return event.content
+                return event.content.casefold()
             return await converter.convert(event.content)
 
 
