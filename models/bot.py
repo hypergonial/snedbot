@@ -98,7 +98,7 @@ class SnedBot(lightbulb.BotApp):
         self.dev_mode: bool = config.DEV_MODE
 
         if self.dev_mode:
-            default_enabled_guilds = (config.DEBUG_GUILDS) if config.DEBUG_GUILDS else ()
+            default_enabled_guilds = config.DEBUG_GUILDS or ()
         else:
             default_enabled_guilds = ()
 
