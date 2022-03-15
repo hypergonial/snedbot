@@ -279,24 +279,27 @@ async def find_auditlog_data(
         raise ValueError("Cannot find guild to parse auditlogs for.")
 
     me = userlog.app.cache.get_member(guild, userlog.app.user_id)
-    assert me is not None
+    
+    if me is None:
+        return
+
     perms = lightbulb.utils.permissions_for(me)
     if not (perms & hikari.Permissions.VIEW_AUDIT_LOG):
         # Do not attempt to fetch audit log if bot has no perms
         return
 
     try:
-        return_next = False
+        count = 0
         async for log in userlog.app.rest.fetch_audit_log(guild, event_type=event_type):
             for entry in log.entries.values():
                 # We do not want to return entries older than 15 seconds
-                if (helpers.utcnow() - entry.id.created_at).total_seconds() > 30 or return_next:
+                if (helpers.utcnow() - entry.id.created_at).total_seconds() > 30 or count >= 5:
                     return
 
                 if user_id and user_id == entry.target_id:
                     return entry
                 elif user_id:
-                    return_next = True  # Only do two calls at max
+                    count += 1
                     continue
                 else:
                     return entry
@@ -741,14 +744,17 @@ async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent)
 @userlog.listener(hikari.MemberDeleteEvent, bind=True)
 async def member_delete(plugin: lightbulb.Plugin, event: hikari.MemberDeleteEvent) -> None:
 
+    assert isinstance(plugin.app, SnedBot)
+
+    if event.user_id == plugin.app.user_id:
+        return # RIP
+
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MEMBER_KICK, user_id=event.user.id)
 
     if entry:  # This is a kick
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
         reason: t.Optional[str] = entry.reason or "No reason provided"
-
-        assert isinstance(plugin.app, SnedBot)
 
         if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
             reason, moderator = strip_bot_reason(reason)

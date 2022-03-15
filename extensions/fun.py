@@ -21,6 +21,7 @@ from models import SnedBot
 from models import SnedSlashContext
 from models.context import SnedUserContext
 from utils import helpers
+from models.checks import bot_has_permissions
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +280,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
 
 @fun.command
 @lightbulb.set_max_concurrency(1, lightbulb.ChannelBucket)
+@lightbulb.add_checks(bot_has_permissions(hikari.Permissions.ADD_REACTIONS))
 @lightbulb.option("length", "The amount of words provided.", required=False, type=int, min_value=1, max_value=15)
 @lightbulb.option(
     "difficulty", "The difficulty of the words provided.", choices=["easy", "medium", "hard"], required=False

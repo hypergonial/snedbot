@@ -16,6 +16,7 @@ from models.bot import SnedBot
 from models.components import *
 from models.context import SnedSlashContext
 from utils import helpers
+from models.checks import has_permissions, bot_has_permissions
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +262,7 @@ Click one of the buttons below to get started!""",
             options = [
                 miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)  # type: ignore
                 for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
-                if isinstance(channel, hikari.TextableGuildChannel)
+                if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
             ]
 
             try:
@@ -320,7 +321,8 @@ Click one of the buttons below to get started!""",
                     ephemeral=self.ephemeral,
                 )
                 assert isinstance(role, hikari.Role)
-                pinged_roles.append(role)
+                if role not in pinged_roles:
+                    pinged_roles.append(role)
             except TypeError:
                 embed = hikari.Embed(
                     title="❌ Role not found.",
@@ -446,7 +448,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         all_channels = [
             channel
             for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
-            if isinstance(channel, hikari.TextableGuildChannel)
+            if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
         ]
         included_channels = list(set(all_channels) - set(excluded_channels))  # type: ignore
 
@@ -617,7 +619,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     ephemeral=self.ephemeral,
                 )
                 assert isinstance(channel, hikari.TextableGuildChannel)
-                excluded_channels.append(channel)
+                if channel not in excluded_channels:
+                    excluded_channels.append(channel)
             except TypeError:
                 embed = hikari.Embed(
                     title="❌ Channel not found.",
@@ -742,7 +745,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         options += [
             miru.SelectOption(label=str(channel.name), value=str(channel.id), emoji=const.EMOJI_CHANNEL)
             for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
-            if isinstance(channel, hikari.TextableGuildChannel)
+            if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
         ]
 
         embed = hikari.Embed(
@@ -881,7 +884,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             all_channels = [
                 channel
                 for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
-                if isinstance(channel, hikari.TextableGuildChannel)
+                if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
             ]
             included_channels = list(set(all_channels) - set(excluded_channels))  # type: ignore
 
@@ -1192,9 +1195,12 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         ephemeral=self.ephemeral,
                     )
                     if opt.startswith("add_"):
-                        policies[policy][f"excluded_{opt.split('_')[1]}s"].append(value.id)
+                        if value.id not in policies[policy][f"excluded_{opt.split('_')[1]}s"]:
+                            policies[policy][f"excluded_{opt.split('_')[1]}s"].append(value.id)
                     elif opt.startswith("del_"):
-                        policies[policy][f"excluded_{opt.split('_')[1]}s"].remove(value.id)
+                        if value.id in policies[policy][f"excluded_{opt.split('_')[1]}s"]:
+                            policies[policy][f"excluded_{opt.split('_')[1]}s"].remove(value.id)
+                        raise ValueError("Value not excluded.")
 
                 except (TypeError, ValueError):
                     embed = hikari.Embed(
@@ -1321,11 +1327,12 @@ async def ask_settings(
 
         me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
         channel = event.get_channel()
-        assert me is not None and channel is not None
-        perms = lightbulb.utils.permissions_in(channel, me)
+        assert me is not None
+        if channel: # Make reasonable attempt at perms
+            perms = lightbulb.utils.permissions_in(channel, me)
 
-        if helpers.includes_permissions(perms, hikari.Permissions.MANAGE_MESSAGES):
-            await helpers.maybe_delete(event.message)
+            if helpers.includes_permissions(perms, hikari.Permissions.MANAGE_MESSAGES):
+                await helpers.maybe_delete(event.message)
 
         if event.content:
             if ignore and event.content.casefold() in ignore:
@@ -1336,9 +1343,9 @@ async def ask_settings(
 @settings.command
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
+    bot_has_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL)
 )
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_GUILD))
+@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_GUILD))
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def settings_cmd(ctx: SnedSlashContext) -> None:

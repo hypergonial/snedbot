@@ -11,16 +11,16 @@ import models
 from etc import constants as const
 from models import SnedSlashContext
 from models.bot import SnedBot
-from models.context import SnedContext
 from models.context import SnedUserContext
 from models.db_user import User
-from models.errors import BotRoleHierarchyError, DMFailedError
+from models.errors import DMFailedError
 from models.errors import RoleHierarchyError
 from models.events import MassBanEvent
 from models.events import WarnCreateEvent
 from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
 from models.timer import Timer
+from models.checks import is_invoker_above_target, is_above_target, has_permissions, bot_has_permissions
 from utils import helpers
 
 logger = logging.getLogger(__name__)
@@ -46,63 +46,6 @@ class ActionType(enum.Enum):
     KICK = "Kick"
     TIMEOUT = "Timeout"
     WARN = "Warn"
-
-
-@lightbulb.Check  # type: ignore
-async def is_above_target(ctx: SnedContext) -> bool:
-    """Check if the targeted user is above the bot's top role or not."""
-
-    if not hasattr(ctx.options, "user"):
-        return True
-
-    if not ctx.guild_id:
-        return True
-
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-    assert me is not None
-
-    if isinstance(ctx.options.user, hikari.Member):
-        member = ctx.options.user
-    else:
-        member = ctx.app.cache.get_member(ctx.guild_id, ctx.options.user)
-
-    if not member:
-        return True
-
-    if helpers.is_above(me, member):
-        return True
-
-    raise BotRoleHierarchyError("Target user top role is higher than bot.")
-
-
-@lightbulb.Check  # type: ignore
-async def is_invoker_above_target(ctx: SnedContext) -> bool:
-    """Check if the targeted user is above the invoker's top role or not."""
-
-    if not hasattr(ctx.options, "user"):
-        return True
-
-    if not ctx.member or not ctx.guild_id:
-        return True
-
-    guild = ctx.get_guild()
-    assert guild is not None
-
-    if ctx.member.id == guild.owner_id:
-        return True
-
-    if isinstance(ctx.options.user, hikari.Member):
-        member = ctx.options.user
-    else:
-        member = ctx.app.cache.get_member(ctx.guild_id, ctx.options.user)
-
-    if not member:
-        return True
-
-    if helpers.is_above(ctx.member, member):
-        return True
-
-    raise RoleHierarchyError("Target user top role is higher than author.")
 
 
 async def get_settings(guild_id: int) -> t.Dict[str, bool]:
@@ -733,7 +676,7 @@ async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
 @mod.command
 @lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
+    bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
 )
 @lightbulb.option("user", "Only delete messages authored by this user.", type=hikari.User, required=False)
 @lightbulb.option("regex", "Only delete messages that match with the regular expression.", required=False)
@@ -750,7 +693,7 @@ async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def purge(ctx: SnedSlashContext) -> None:
 
-    channel = ctx.get_channel()
+    channel = ctx.get_channel() or await ctx.app.rest.fetch_channel(ctx.channel_id)
     assert isinstance(channel, hikari.TextableGuildChannel)
 
     predicates = [
@@ -850,7 +793,7 @@ async def journal(ctx: SnedSlashContext) -> None:
 
 
 @journal.child
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.add_checks(has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("user", "The user to retrieve the journal for.", type=hikari.User)
 @lightbulb.command("get", "Retrieve the journal for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -892,7 +835,7 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
 
 
 @journal.child
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.add_checks(has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("note", "The journal note to add.")
 @lightbulb.option("user", "The user to add a journal entry for.", type=hikari.User)
 @lightbulb.command("add", "Add a new journal entry for the specified user.", pass_options=True)
@@ -911,7 +854,7 @@ async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> No
 
 
 @mod.command
-@lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.add_checks(is_invoker_above_target, has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for this warn", required=False)
 @lightbulb.option("user", "The user to be warned.", type=hikari.Member)
 @lightbulb.command(
@@ -952,7 +895,7 @@ async def warns_list(ctx: SnedSlashContext, user: hikari.Member) -> None:
 
 
 @warns.child
-@lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.add_checks(is_invoker_above_target, has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to clear warnings for.", type=hikari.Member)
 @lightbulb.command("clear", "Clear warnings for the specified user.", pass_options=True)
@@ -984,7 +927,7 @@ async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opti
 
 
 @warns.child
-@lightbulb.add_checks(is_invoker_above_target, lightbulb.has_guild_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.add_checks(is_invoker_above_target, has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
 @lightbulb.command("remove", "Remove a single warning from the specified user.", pass_options=True)
@@ -1030,8 +973,8 @@ def unload(bot: SnedBot) -> None:
 
 @mod.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
+    bot_has_permissions(hikari.Permissions.MODERATE_MEMBERS),
+    has_permissions(hikari.Permissions.MODERATE_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -1092,8 +1035,8 @@ async def timeouts(ctx: SnedSlashContext) -> None:
 
 @timeouts.child
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS),
+    bot_has_permissions(hikari.Permissions.MODERATE_MEMBERS),
+    has_permissions(hikari.Permissions.MODERATE_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -1129,8 +1072,8 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason
 
 @mod.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
+    bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
+    has_permissions(hikari.Permissions.BAN_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -1190,8 +1133,8 @@ async def ban_cmd(
 
 @mod.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.KICK_MEMBERS),
+    bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
+    has_permissions(hikari.Permissions.KICK_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -1229,8 +1172,8 @@ async def softban_cmd(
 
 @mod.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
+    bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
+    has_permissions(hikari.Permissions.BAN_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -1249,8 +1192,8 @@ async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional
 
 @mod.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.KICK_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.KICK_MEMBERS),
+    bot_has_permissions(hikari.Permissions.KICK_MEMBERS),
+    has_permissions(hikari.Permissions.KICK_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -1270,8 +1213,8 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 
 @mod.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS, hikari.Permissions.MANAGE_MESSAGES),
-    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_CHANNELS),
+    bot_has_permissions(hikari.Permissions.MANAGE_CHANNELS, hikari.Permissions.MANAGE_MESSAGES),
+    has_permissions(hikari.Permissions.MANAGE_CHANNELS),
 )
 @lightbulb.option(
     "interval", "The slowmode interval in seconds, use 0 to disable it.", type=int, min_value=0, max_value=21600
@@ -1292,8 +1235,8 @@ async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_cooldown(60.0, 1, bucket=lightbulb.GuildBucket)
 @lightbulb.add_checks(
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
-    lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS),
+    bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
+    has_permissions(hikari.Permissions.BAN_MEMBERS),
 )
 @lightbulb.option(
     "show",

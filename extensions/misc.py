@@ -14,6 +14,7 @@ from models import SnedBot
 from models.context import SnedMessageContext
 from models.context import SnedSlashContext
 from utils import helpers
+from models.checks import has_permissions, bot_has_permissions
 from utils.scheduler import ConversionMode
 
 logger = logging.getLogger(__name__)
@@ -129,7 +130,16 @@ async def embed(ctx: SnedSlashContext) -> None:
     if ctx.guild_id:
         me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
         channel = ctx.get_channel()
-        assert me and isinstance(channel, hikari.TextableGuildChannel)
+
+        if not isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel)):
+            embed = hikari.Embed(
+                title="❌ Cannot send in thread.",
+                color=const.ERROR_COLOR,
+            )
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
+        assert me is not None
 
         if not helpers.includes_permissions(
             lightbulb.utils.permissions_in(channel, me),
@@ -222,8 +232,8 @@ async def invite(ctx: SnedSlashContext) -> None:
 @misc.command
 @lightbulb.add_cooldown(10.0, 1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
-    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_NICKNAMES),
-    lightbulb.bot_has_guild_permissions(hikari.Permissions.CHANGE_NICKNAME),
+    has_permissions(hikari.Permissions.MANAGE_NICKNAMES),
+    bot_has_permissions(hikari.Permissions.CHANGE_NICKNAME),
 )
 @lightbulb.option("nickname", "The nickname to set the bot's nickname to. Type 'None' to reset it!")
 @lightbulb.command("setnick", "Set the bot's nickname!", pass_options=True)
@@ -292,8 +302,8 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 
 @misc.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_role_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
-    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES),
+    bot_has_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
+    has_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option(
     "channel",
@@ -307,12 +317,14 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.InteractionChannel] = None) -> None:
     # InteractionChannel has no overrides data
-    if channel:
-        send_to = ctx.app.cache.get_guild_channel(channel.id) or ctx.get_channel()
-    else:
-        send_to = ctx.get_channel()
+    send_to = (ctx.app.cache.get_guild_channel(channel.id) or ctx.get_channel()) if channel else ctx.get_channel()
 
     assert ctx.guild_id is not None
+
+    if not send_to:
+        embed = hikari.Embed(title="❌ Cannot send message in threads yet!", color=const.ERROR_COLOR)
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
 
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
     assert isinstance(send_to, hikari.TextableGuildChannel) and me is not None
@@ -331,10 +343,10 @@ async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.Inte
 
 @misc.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_role_permissions(
+    bot_has_permissions(
         hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
     ),
-    lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES),
+    has_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option("message_link", "You can get this by right-clicking a message.", type=str)
 @lightbulb.command("edit", "Edit a message that was sent by the bot.", pass_options=True)
@@ -347,12 +359,14 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
 
     assert ctx.guild_id is not None
 
-    channel = ctx.app.cache.get_guild_channel(message.channel_id) or ctx.get_channel()
+    channel = ctx.app.cache.get_guild_channel(message.channel_id) or await ctx.app.rest.fetch_channel(message.channel_id)
+
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
 
-    assert isinstance(channel, hikari.TextableGuildChannel) and me is not None
+    overwrites_channel = channel if not isinstance(channel, hikari.GuildThreadChannel) else ctx.app.cache.get_guild_channel(channel.parent_id)
+    assert isinstance(channel, (hikari.TextableGuildChannel)) and me is not None and isinstance(overwrites_channel, hikari.GuildChannel)
 
-    perms = lightbulb.utils.permissions_in(channel, me)
+    perms = lightbulb.utils.permissions_in(overwrites_channel, me)
     if not helpers.includes_permissions(
         perms,
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
@@ -397,7 +411,7 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
 
 @misc.command
 @lightbulb.add_checks(
-    lightbulb.bot_has_role_permissions(
+    bot_has_permissions(
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY
     )
 )

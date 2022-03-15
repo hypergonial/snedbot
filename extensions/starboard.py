@@ -144,14 +144,14 @@ async def handle_starboard(
         return
 
     channel = plugin.app.cache.get_guild_channel(event.channel_id)
-    assert channel is not None
-
-    perms = lightbulb.utils.permissions_in(channel, me)
-    if not helpers.includes_permissions(
-        perms,
-        hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
-    ):
-        return
+    
+    if channel: # Check perms if channel is cached
+        perms = lightbulb.utils.permissions_in(channel, me)
+        if not helpers.includes_permissions(
+            perms,
+            hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
+        ):
+            return
 
     message = await plugin.app.rest.fetch_message(event.channel_id, event.message_id)
     reactions = [reaction for reaction in message.reactions if str(reaction.emoji) == "⭐"]

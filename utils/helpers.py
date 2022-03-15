@@ -316,14 +316,15 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
 
     channel = ctx.app.cache.get_guild_channel(channel_id)
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-    assert channel is not None and me is not None and isinstance(channel, hikari.TextableGuildChannel)
+    assert me is not None and isinstance(channel, hikari.TextableGuildChannel)
 
-    perms = lightbulb.utils.permissions_in(channel, me)
-    if not (perms & hikari.Permissions.READ_MESSAGE_HISTORY):
-        raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)
+    if channel: # Make reasonable attempt at checking perms
+        perms = lightbulb.utils.permissions_in(channel, me)
+        if not (perms & hikari.Permissions.READ_MESSAGE_HISTORY):
+            raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)
 
     try:
-        message = await ctx.app.rest.fetch_message(channel, message_id)
+        message = await ctx.app.rest.fetch_message(channel_id, message_id)
     except (hikari.NotFoundError, hikari.ForbiddenError):
         embed = hikari.Embed(
             title="❌ Unknown message",
