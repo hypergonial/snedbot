@@ -97,10 +97,7 @@ class SnedBot(lightbulb.BotApp):
 
         self.dev_mode: bool = config.DEV_MODE
 
-        if self.dev_mode:
-            default_enabled_guilds = config.DEBUG_GUILDS or ()
-        else:
-            default_enabled_guilds = ()
+        default_enabled_guilds = (config.DEBUG_GUILDS or ()) if self.dev_mode else ()
 
         token = os.getenv("TOKEN")
 
@@ -131,6 +128,7 @@ class SnedBot(lightbulb.BotApp):
         self._db_backup_loop = IntervalLoop(self.backup_db, hours=24.0)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
+        self._perspective: t.Optional[perspective.Client] = None
         self._initial_guilds: t.List[Snowflake] = []
 
         self.check(is_not_blacklisted)
@@ -162,6 +160,13 @@ class SnedBot(lightbulb.BotApp):
         if self._pool is None:
             raise hikari.ComponentStateConflictError("The bot is not initialized and has no pool.")
         return self._pool
+    
+    @property
+    def perspective(self) -> perspective.Client:
+        """The perspective client of the bot."""
+        if self._perspective is None:
+            raise hikari.ComponentStateConflictError("The bot is not initialized or no perspective API key was found in the environment.")
+        return self._perspective
 
     @property
     def config(self) -> Config:
@@ -239,10 +244,9 @@ class SnedBot(lightbulb.BotApp):
         self.db_cache = cache.Caching(self)
         self.global_config = ConfigHandler(self)
         self.scheduler = scheduler.Scheduler(self)
+
         if perspective_api_key := os.getenv("PERSPECTIVE_API_KEY"):
-            self.perspective = perspective.Client(perspective_api_key, do_not_store=True)
-        else:
-            self.perspective = None
+            self._perspective = perspective.Client(perspective_api_key, do_not_store=True)
 
         self._db_backup_loop.start()
 
@@ -258,8 +262,8 @@ class SnedBot(lightbulb.BotApp):
             for guild_id in self.cache.get_guilds_view():
                 await con.execute(
                     """
-                INSERT INTO global_config (guild_id) VALUES ($1)
-                ON CONFLICT (guild_id) DO NOTHING""",
+                    INSERT INTO global_config (guild_id) VALUES ($1)
+                    ON CONFLICT (guild_id) DO NOTHING""",
                     guild_id,
                 )
 
@@ -270,8 +274,8 @@ class SnedBot(lightbulb.BotApp):
             for guild_id in self._initial_guilds:
                 await con.execute(
                     """
-                INSERT INTO global_config (guild_id) VALUES ($1)
-                ON CONFLICT (guild_id) DO NOTHING""",
+                    INSERT INTO global_config (guild_id) VALUES ($1)
+                    ON CONFLICT (guild_id) DO NOTHING""",
                     guild_id,
                 )
             logging.info(f"Connected to {len(self._initial_guilds)} guilds.")

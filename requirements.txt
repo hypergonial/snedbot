@@ -3,7 +3,7 @@ psutil
 Pillow
 asyncpg
 hikari @ git+https://github.com/HyperGH/hikari
-hikari-lightbulb @ git+https://github.com/HyperGH/hikari-lightbulb@fix/dumb-issue
+hikari-lightbulb @ git+https://github.com/HyperGH/hikari-lightbulb
 hikari-miru @ git+https://github.com/HyperGH/hikari-miru@cursed/branch
 perspective.py @ git+https://github.com/HyperGH/perspective.py
 Levenshtein
