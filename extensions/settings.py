@@ -1200,7 +1200,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     elif opt.startswith("del_"):
                         if value.id in policies[policy][f"excluded_{opt.split('_')[1]}s"]:
                             policies[policy][f"excluded_{opt.split('_')[1]}s"].remove(value.id)
-                        raise ValueError("Value not excluded.")
+                        else:
+                            raise ValueError("Value not excluded.")
 
                 except (TypeError, ValueError):
                     embed = hikari.Embed(
