@@ -6,8 +6,6 @@ import hikari
 import lightbulb
 import miru
 
-from utils import helpers
-
 from .views import AuthorOnlyView
 
 __all__ = ["SnedContext", "SnedSlashContext", "SnedMessageContext", "SnedUserContext", "SnedPrefixContext"]
@@ -31,18 +29,18 @@ class ConfirmView(AuthorOnlyView):
         self.cancel_resp = cancel_resp
         self.value: t.Optional[bool] = None
 
-    @miru.button(label="Confirm", emoji="✔️", style=hikari.ButtonStyle.SUCCESS)
-    async def confirm_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
-        self.value = True
-        if self.confirm_resp:
-            await ctx.edit_response(**self.confirm_resp)
-        self.stop()
-
-    @miru.button(label="Cancel", emoji="✖️", style=hikari.ButtonStyle.DANGER)
+    @miru.button(emoji="✖️", style=hikari.ButtonStyle.DANGER)
     async def cancel_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
         self.value = False
         if self.cancel_resp:
             await ctx.edit_response(**self.cancel_resp)
+        self.stop()
+
+    @miru.button(emoji="✔️", style=hikari.ButtonStyle.SUCCESS)
+    async def confirm_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+        self.value = True
+        if self.confirm_resp:
+            await ctx.edit_response(**self.confirm_resp)
         self.stop()
 
 
