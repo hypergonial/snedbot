@@ -275,7 +275,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
         channel=ctx.channel_id,
         notes=json.dumps(reminder_data),
     )
-
+    print("Creating reminder...")
     embed.set_footer(f"Reminder ID: {timer.id}")
     proxy = await ctx.respond(
         embed=embed,
@@ -283,8 +283,9 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
         .add_item(miru.Button(label="Remind me too!", emoji="✉️", custom_id=f"RMAR:{timer.id}"))
         .build(),
     )
-
+    print("Building jump url")
     reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
+    print(reminder_data["jump_url"])
     timer.notes = json.dumps(reminder_data)
 
     await ctx.app.scheduler.update_timer(timer)

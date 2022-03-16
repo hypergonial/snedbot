@@ -5,7 +5,7 @@ import attr
 
 
 @attr.define()
-class User:
+class DatabaseUser:
     """
     Represents a user stored inside the database.
     """

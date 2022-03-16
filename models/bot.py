@@ -11,7 +11,6 @@ import kosu
 import lightbulb
 import miru
 from hikari.snowflakes import Snowflake
-from lightbulb.ext import tasks
 
 import utils.db_backup as db_backup
 from config import Config
@@ -72,7 +71,7 @@ class SnedBot(lightbulb.BotApp):
 
     Parameters
     ----------
-    config : Dict[str, Any]
+    config : Config
         The bot configuration to initialize the bot with.
         See the included config_example.py for formatting help.
     """
@@ -118,14 +117,11 @@ class SnedBot(lightbulb.BotApp):
         self._config = config
         self._dsn = f"postgres://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}"
         self._pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self._dsn))
-
-        # Startup lightbulb.ext.tasks and miru
-        tasks.load(self)
         miru.load(self)
 
         # Some global variables
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
-        self._db_backup_loop = IntervalLoop(self.backup_db, hours=24.0)
+        self._db_backup_loop = IntervalLoop(self.backup_db, seconds=3600*24)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
         self._perspective: t.Optional[kosu.Client] = None

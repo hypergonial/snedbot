@@ -234,7 +234,7 @@ resolved_reference = "1f2d14c31f46db0fe7fb24b249dfe236b532aead"
 
 [[package]]
 name = "hikari-lightbulb"
-version = "2.1.3"
+version = "2.2.1"
 description = "A simple to use command handler for Hikari"
 category = "main"
 optional = false
@@ -242,13 +242,16 @@ python-versions = ">=3.8.0,<3.11"
 develop = false
 
 [package.dependencies]
-hikari = ">=2.0.0.dev105,<2.1.0"
+hikari = {git = "https://github.com/HyperGH/hikari", branch = "master"}
+
+[package.extras]
+crontrigger = ["croniter (>=1.3.4,<1.4.0)", "types-croniter (>=1.0.7,<1.1.0)"]
 
 [package.source]
 type = "git"
 url = "https://github.com/HyperGH/hikari-lightbulb.git"
-reference = "master"
-resolved_reference = "641a41ef868fb3f85d1bb2d6a74130208bfaa794"
+reference = "development"
+resolved_reference = "3e2ef90e0f5b4578f8fee6555d62ca52de0a8b99"
 
 [[package]]
 name = "hikari-miru"
@@ -526,7 +529,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "1b71ac02bf11f8b719b9aba52eb25246542c1b1c0685073d22c52ba6469d5aea"
+content-hash = "bf2e8720c2c231156608a60b7dd2321e27064e20c4619c1455841eede4bb1289"
 
 [metadata.files]
 aiodns = [

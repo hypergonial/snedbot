@@ -269,7 +269,7 @@ class Scheduler:
             timer.id,
             timer.guild_id,
         )
-        if self._current_timer and timer.expires < self._current_timer.expires:
+        if self._current_timer and timer.expires <= self._current_timer.expires:
             if self._current_task:
                 self._current_task.cancel()
             self._current_task = asyncio.create_task(self._dispatch_timers())

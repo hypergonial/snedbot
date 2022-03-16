@@ -27,7 +27,7 @@ cchardet = "~=2.1"
 Brotli = "~=1.0"
 ciso8601 = "~=2.2"
 kosu = {git = "https://github.com/HyperGH/kosu.git", branch="main"}
-hikari-lightbulb = {git = "https://github.com/HyperGH/hikari-lightbulb.git"}
+hikari-lightbulb = {git = "https://github.com/HyperGH/hikari-lightbulb.git", branch="development"}
 hikari-miru = {git = "https://github.com/HyperGH/hikari-miru.git", branch="cursed/branch"}
 
 [tool.poetry.dev-dependencies]

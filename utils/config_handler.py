@@ -7,7 +7,7 @@ import typing as t
 import asyncpg
 import hikari
 
-from models.db_user import User
+from models.db_user import DatabaseUser
 from utils import tasks
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class ConfigHandler:
         await self.bot.db_cache.wipe(guild_id)
         logger.warning(f"Config reset and cache wiped for guild {guild_id}.")
 
-    async def update_user(self, user: User) -> None:
+    async def update_user(self, user: DatabaseUser) -> None:
         """
         Takes an instance of GlobalConfig.User and tries to either update or create a new user entry if one does not exist already
         """
@@ -75,7 +75,7 @@ class ConfigHandler:
 
     async def get_user(
         self, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> User:
+    ) -> DatabaseUser:
         """
         Gets an instance of GlobalConfig.User that contains basic information about the user in relation to a guild
         Returns None if not found
@@ -89,7 +89,7 @@ class ConfigHandler:
             guild_id,
         )
         if result:
-            db_user = User(
+            db_user = DatabaseUser(
                 user_id=result[0].get("user_id"),
                 guild_id=result[0].get("guild_id"),
                 flags=json.loads(result[0].get("flags")) if result[0].get("flags") else {},
@@ -98,9 +98,9 @@ class ConfigHandler:
             )
             return db_user
         else:
-            return User(user_id, guild_id, flags=None, notes=None, warns=0)
+            return DatabaseUser(user_id, guild_id, flags=None, notes=None, warns=0)
 
-    async def get_all_guild_users(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[User]]:
+    async def get_all_guild_users(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[DatabaseUser]]:
         """
         Returns all users related to a specific guild as a list of GlobalConfig.User
         Return None if no users are contained in the database
@@ -110,7 +110,7 @@ class ConfigHandler:
         results = await self.bot.pool.fetch("""SELECT * FROM users WHERE guild_id = $1""", guild_id)
         if results:
             return [
-                User(
+                DatabaseUser(
                     result.get("user_id"),
                     result.get("guild_id"),
                     result.get("flags"),

@@ -9,14 +9,14 @@ import lightbulb
 
 import models
 from etc import constants as const
-from models import SnedSlashContext
+from models.context import SnedSlashContext
 from models.bot import SnedBot
 from models.checks import bot_has_permissions
 from models.checks import has_permissions
 from models.checks import is_above_target
 from models.checks import is_invoker_above_target
 from models.context import SnedUserContext
-from models.db_user import User
+from models.db_user import DatabaseUser
 from models.errors import DMFailedError
 from models.errors import RoleHierarchyError
 from models.events import MassBanEvent
@@ -290,7 +290,7 @@ async def member_create(event: hikari.MemberCreateEvent):
     if not helpers.can_harm(me, event.member, hikari.Permissions.MODERATE_MEMBERS):
         return
 
-    db_user: User = await event.app.global_config.get_user(event.member.id, event.guild_id)
+    db_user: DatabaseUser = await event.app.global_config.get_user(event.member.id, event.guild_id)
 
     if not db_user.flags or "timeout_on_join" not in db_user.flags.keys():
         return
@@ -883,7 +883,7 @@ async def warns_list(ctx: SnedSlashContext, user: hikari.Member) -> None:
     helpers.is_member(user)
     assert ctx.guild_id is not None
 
-    db_user: User = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
+    db_user: DatabaseUser = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
     warns = db_user.warns
     embed = hikari.Embed(
         title=f"{user}'s warnings",
@@ -905,7 +905,7 @@ async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opti
 
     assert ctx.guild_id is not None and ctx.member is not None
 
-    db_user: User = await ctx.app.global_config.get_user(user, ctx.guild_id)
+    db_user: DatabaseUser = await ctx.app.global_config.get_user(user, ctx.guild_id)
     db_user.warns = 0
     await ctx.app.global_config.update_user(db_user)
 
@@ -937,7 +937,7 @@ async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opt
 
     assert ctx.guild_id is not None and ctx.member is not None
 
-    db_user: User = await ctx.app.global_config.get_user(user, ctx.guild_id)
+    db_user: DatabaseUser = await ctx.app.global_config.get_user(user, ctx.guild_id)
 
     if db_user.warns == 0:
         embed = hikari.Embed(

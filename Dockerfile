@@ -16,5 +16,5 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false
 RUN poetry install -n --no-dev
 
-COPY . .
+COPY . ./
 CMD ["python3.10", "-O", "main.py"]

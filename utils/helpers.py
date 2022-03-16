@@ -14,7 +14,7 @@ from models import errors
 from models.components import *
 from models.context import SnedContext
 from models.context import SnedSlashContext
-from models.db_user import User
+from models.db_user import DatabaseUser
 
 MESSAGE_LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)channels[\/][0-9]{1,}[\/][0-9]{1,}[\/][0-9]{1,}"
@@ -98,7 +98,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
     if not ctx.guild_id:
         raise RuntimeError("Cannot use get_userinfo outside of a guild.")
 
-    db_user: User = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
+    db_user: DatabaseUser = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
 
     member = ctx.app.cache.get_member(ctx.guild_id, user)
 
