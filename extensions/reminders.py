@@ -276,7 +276,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
         notes=json.dumps(reminder_data),
     )
     embed.set_footer(f"Reminder ID: {timer.id}")
-    
+
     proxy = await ctx.respond(
         embed=embed,
         components=miru.View()

@@ -100,14 +100,20 @@ async def embed(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    embed = hikari.Embed(
-        title=ctx.options.title,
-        description=ctx.options.description,
-        color=ctx.options.color,
-    ).set_footer(ctx.options.footer, icon=ctx.options.footer_image_url).set_image(ctx.options.image_url).set_thumbnail(ctx.options.thumbnail_url).set_author(
-        name=ctx.options.author,
-        url=ctx.options.author_url,
-        icon=ctx.options.author_image_url,
+    embed = (
+        hikari.Embed(
+            title=ctx.options.title,
+            description=ctx.options.description,
+            color=ctx.options.color,
+        )
+        .set_footer(ctx.options.footer, icon=ctx.options.footer_image_url)
+        .set_image(ctx.options.image_url)
+        .set_thumbnail(ctx.options.thumbnail_url)
+        .set_author(
+            name=ctx.options.author,
+            url=ctx.options.author_url,
+            icon=ctx.options.author_image_url,
+        )
     )
 
     if not ctx.options.detach:

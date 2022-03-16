@@ -121,7 +121,7 @@ class SnedBot(lightbulb.BotApp):
 
         # Some global variables
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
-        self._db_backup_loop = IntervalLoop(self.backup_db, seconds=3600*24)
+        self._db_backup_loop = IntervalLoop(self.backup_db, seconds=3600 * 24)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
         self._perspective: t.Optional[kosu.Client] = None

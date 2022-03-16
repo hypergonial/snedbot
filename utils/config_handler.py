@@ -100,7 +100,9 @@ class ConfigHandler:
         else:
             return DatabaseUser(user_id, guild_id, flags=None, notes=None, warns=0)
 
-    async def get_all_guild_users(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[DatabaseUser]]:
+    async def get_all_guild_users(
+        self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+    ) -> t.Optional[t.List[DatabaseUser]]:
         """
         Returns all users related to a specific guild as a list of GlobalConfig.User
         Return None if no users are contained in the database
