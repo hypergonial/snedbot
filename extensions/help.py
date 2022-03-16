@@ -61,7 +61,7 @@ Here you may configure permissions per-command or on a global basis, as you see 
     "configuration": hikari.Embed(
         title="ℹ️ ___Help: Configuration__",
         description="""To configure the bot, use the `/settings` command. This will open up an interactive menu for you to change the different properties of the bot, enable/disable features, or tailor them to your liking.
-If you need any assistance in configuring the bot, do not hesitate to join our [suuport server](https://discord.gg/KNKr8FPmJa)!""",
+If you need any assistance in configuring the bot, do not hesitate to join our [support server](https://discord.gg/KNKr8FPmJa)!""",
         color=const.EMBED_BLUE,
     ),
 }
