@@ -104,15 +104,12 @@ async def embed(ctx: SnedSlashContext) -> None:
         title=ctx.options.title,
         description=ctx.options.description,
         color=ctx.options.color,
-    )
-    embed.set_footer(ctx.options.footer, icon=ctx.options.footer_image_url)
-    embed.set_image(ctx.options.image_url)
-    embed.set_thumbnail(ctx.options.thumbnail_url)
-    embed.set_author(
+    ).set_footer(ctx.options.footer, icon=ctx.options.footer_image_url).set_image(ctx.options.image_url).set_thumbnail(ctx.options.thumbnail_url).set_author(
         name=ctx.options.author,
         url=ctx.options.author_url,
         icon=ctx.options.author_image_url,
     )
+
     if not ctx.options.detach:
         await ctx.respond(embed=embed)
         return
