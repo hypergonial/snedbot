@@ -233,11 +233,11 @@ def can_harm(
         if raise_error:
             raise lightbulb.BotMissingRequiredPermission(perms=permission)
         return False
-    
+
     guild = member.get_guild()
     if not guild:
         return True
-    
+
     if member.id == guild.owner_id:
         if raise_error:
             errors.RoleHierarchyError
@@ -318,7 +318,7 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
     assert me is not None and isinstance(channel, hikari.TextableGuildChannel)
 
-    if channel: # Make reasonable attempt at checking perms
+    if channel:  # Make reasonable attempt at checking perms
         perms = lightbulb.utils.permissions_in(channel, me)
         if not (perms & hikari.Permissions.READ_MESSAGE_HISTORY):
             raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)

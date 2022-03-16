@@ -11,6 +11,10 @@ import models
 from etc import constants as const
 from models import SnedSlashContext
 from models.bot import SnedBot
+from models.checks import bot_has_permissions
+from models.checks import has_permissions
+from models.checks import is_above_target
+from models.checks import is_invoker_above_target
 from models.context import SnedUserContext
 from models.db_user import User
 from models.errors import DMFailedError
@@ -20,7 +24,6 @@ from models.events import WarnCreateEvent
 from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
 from models.timer import Timer
-from models.checks import is_invoker_above_target, is_above_target, has_permissions, bot_has_permissions
 from utils import helpers
 
 logger = logging.getLogger(__name__)
@@ -375,7 +378,7 @@ async def timeout(
         await pre_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
     except:
         embed.set_footer("Failed sending DM to user.")
-    
+
     if duration > helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS):
         await mod.app.scheduler.create_timer(
             helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
@@ -492,7 +495,6 @@ async def ban(
             embed.set_footer("Failed sending DM to user.")
 
         await mod.app.rest.ban_user(moderator.guild_id, user.id, delete_message_days=days_to_delete, reason=reason)
-
 
         if soft:
             await mod.app.rest.unban_user(moderator.guild_id, user.id, reason="Automatic unban by softban.")
@@ -675,9 +677,7 @@ async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
 
 @mod.command
 @lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
-@lightbulb.add_checks(
-    bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY)
-)
+@lightbulb.add_checks(bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY))
 @lightbulb.option("user", "Only delete messages authored by this user.", type=hikari.User, required=False)
 @lightbulb.option("regex", "Only delete messages that match with the regular expression.", required=False)
 @lightbulb.option("embeds", "Only delete messages that contain embeds.", type=bool, required=False)

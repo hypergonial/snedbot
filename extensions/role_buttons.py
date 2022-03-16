@@ -10,10 +10,10 @@ import models
 from etc import constants as const
 from models import SnedBot
 from models import SnedSlashContext
+from models.checks import has_permissions
 from utils import helpers
 from utils.ratelimiter import BucketType
 from utils.ratelimiter import RateLimiter
-from models.checks import has_permissions
 
 logger = logging.getLogger(__name__)
 

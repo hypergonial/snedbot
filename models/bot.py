@@ -7,9 +7,9 @@ import typing as t
 
 import asyncpg
 import hikari
+import kosu
 import lightbulb
 import miru
-import perspective
 from hikari.snowflakes import Snowflake
 from lightbulb.ext import tasks
 
@@ -128,7 +128,7 @@ class SnedBot(lightbulb.BotApp):
         self._db_backup_loop = IntervalLoop(self.backup_db, hours=24.0)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
-        self._perspective: t.Optional[perspective.Client] = None
+        self._perspective: t.Optional[kosu.Client] = None
         self._initial_guilds: t.List[Snowflake] = []
 
         self.check(is_not_blacklisted)
@@ -160,12 +160,14 @@ class SnedBot(lightbulb.BotApp):
         if self._pool is None:
             raise hikari.ComponentStateConflictError("The bot is not initialized and has no pool.")
         return self._pool
-    
+
     @property
-    def perspective(self) -> perspective.Client:
+    def perspective(self) -> kosu.Client:
         """The perspective client of the bot."""
         if self._perspective is None:
-            raise hikari.ComponentStateConflictError("The bot is not initialized or no perspective API key was found in the environment.")
+            raise hikari.ComponentStateConflictError(
+                "The bot is not initialized or no perspective API key was found in the environment."
+            )
         return self._perspective
 
     @property
@@ -246,7 +248,7 @@ class SnedBot(lightbulb.BotApp):
         self.scheduler = scheduler.Scheduler(self)
 
         if perspective_api_key := os.getenv("PERSPECTIVE_API_KEY"):
-            self._perspective = perspective.Client(perspective_api_key, do_not_store=True)
+            self._perspective = kosu.Client(perspective_api_key, do_not_store=True)
 
         self._db_backup_loop.start()
 
@@ -310,7 +312,9 @@ class SnedBot(lightbulb.BotApp):
                 await event.message.respond(embed=embed)
                 return
 
-            elif not event.content in await get_prefix(self, event.message) and event.content.startswith(await get_prefix(self, event.message)):
+            elif not event.content in await get_prefix(self, event.message) and event.content.startswith(
+                await get_prefix(self, event.message)
+            ):
                 embed = hikari.Embed(
                     title="Uh Oh!",
                     description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!\nIf you have any questions, or feel lost, feel free to join the [support server](https://discord.gg/KNKr8FPmJa)!",
@@ -323,7 +327,9 @@ class SnedBot(lightbulb.BotApp):
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
         """Guild join behaviour"""
-        await self.pool.execute("INSERT INTO global_config (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING", event.guild_id)
+        await self.pool.execute(
+            "INSERT INTO global_config (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING", event.guild_id
+        )
 
         if event.guild.system_channel_id is None:
             return

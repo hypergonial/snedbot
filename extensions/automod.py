@@ -6,8 +6,8 @@ import re
 import typing as t
 
 import hikari
+import kosu
 import lightbulb
-import perspective
 
 import utils
 from etc import constants as const
@@ -117,7 +117,7 @@ async def punish(
     assert offender is not None
 
     if offender.id in automod.app.owner_ids:
-        return # Hyper is always a good person
+        return  # Hyper is always a good person
 
     if not helpers.can_harm(me, offender, permission=required_perms):
         return
@@ -391,16 +391,16 @@ async def scan_messages(
 
     if policies["perspective"]["state"] != AutoModState.DISABLED.value:
         persp_attribs = [
-            perspective.Attribute(perspective.AttributeName.TOXICITY),
-            perspective.Attribute(perspective.AttributeName.SEVERE_TOXICITY),
-            perspective.Attribute(perspective.AttributeName.PROFANITY),
-            perspective.Attribute(perspective.AttributeName.INSULT),
-            perspective.Attribute(perspective.AttributeName.THREAT),
+            kosu.Attribute(kosu.AttributeName.TOXICITY),
+            kosu.Attribute(kosu.AttributeName.SEVERE_TOXICITY),
+            kosu.Attribute(kosu.AttributeName.PROFANITY),
+            kosu.Attribute(kosu.AttributeName.INSULT),
+            kosu.Attribute(kosu.AttributeName.THREAT),
         ]
         try:
             assert plugin.app.perspective is not None
-            resp: perspective.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
-        except perspective.wrapper.PerspectiveException:
+            resp: kosu.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
+        except kosu.wrapper.PerspectiveException:
             return
         scores = {score.name.name: score.summary.value for score in resp.attribute_scores}
 

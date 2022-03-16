@@ -1,4 +1,5 @@
 import logging
+import re
 import typing as t
 from difflib import get_close_matches
 
@@ -7,14 +8,14 @@ import lightbulb
 import miru
 import psutil
 import pytz
-import re
 
 from etc import constants as const
 from models import SnedBot
+from models.checks import bot_has_permissions
+from models.checks import has_permissions
 from models.context import SnedMessageContext
 from models.context import SnedSlashContext
 from utils import helpers
-from models.checks import has_permissions, bot_has_permissions
 from utils.scheduler import ConversionMode
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ misc = lightbulb.Plugin("Miscellaneous Commands")
 psutil.cpu_percent(interval=1)  # Call so subsequent calls for CPU % will not be blocking
 
 RGB_REGEX = re.compile(r"[0-9]{1,3} [0-9]{1,3} [0-9]{1,3}")
+
 
 @misc.command
 @lightbulb.command("ping", "Check the bot's latency.")
@@ -94,10 +96,9 @@ async def embed(ctx: SnedSlashContext) -> None:
             title="❌ Invalid Color",
             description=f"Colors must be of format `RRR GGG BBB`, three values seperated by spaces.",
             color=const.ERROR_COLOR,
-            )
+        )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
-
 
     embed = hikari.Embed(
         title=ctx.options.title,
@@ -359,12 +360,22 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
 
     assert ctx.guild_id is not None
 
-    channel = ctx.app.cache.get_guild_channel(message.channel_id) or await ctx.app.rest.fetch_channel(message.channel_id)
+    channel = ctx.app.cache.get_guild_channel(message.channel_id) or await ctx.app.rest.fetch_channel(
+        message.channel_id
+    )
 
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
 
-    overwrites_channel = channel if not isinstance(channel, hikari.GuildThreadChannel) else ctx.app.cache.get_guild_channel(channel.parent_id)
-    assert isinstance(channel, (hikari.TextableGuildChannel)) and me is not None and isinstance(overwrites_channel, hikari.GuildChannel)
+    overwrites_channel = (
+        channel
+        if not isinstance(channel, hikari.GuildThreadChannel)
+        else ctx.app.cache.get_guild_channel(channel.parent_id)
+    )
+    assert (
+        isinstance(channel, (hikari.TextableGuildChannel))
+        and me is not None
+        and isinstance(overwrites_channel, hikari.GuildChannel)
+    )
 
     perms = lightbulb.utils.permissions_in(overwrites_channel, me)
     if not helpers.includes_permissions(

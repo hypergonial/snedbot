@@ -13,10 +13,11 @@ import models
 from etc import constants as const
 from etc.settings_static import *
 from models.bot import SnedBot
+from models.checks import bot_has_permissions
+from models.checks import has_permissions
 from models.components import *
 from models.context import SnedSlashContext
 from utils import helpers
-from models.checks import has_permissions, bot_has_permissions
 
 logger = logging.getLogger(__name__)
 
@@ -868,7 +869,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         # Conditions for certain attributes to appear
         predicates = {
             "temp_dur": lambda s: s in ["timeout", "tempban"]
-            or s == "escalate" and policies["escalate"]["state"] in ["timeout", "tempban"],
+            or s == "escalate"
+            and policies["escalate"]["state"] in ["timeout", "tempban"],
         }
 
         if policy_data.get("excluded_channels") is not None and policy_data.get("excluded_roles") is not None:
@@ -1329,7 +1331,7 @@ async def ask_settings(
         me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
         channel = event.get_channel()
         assert me is not None
-        if channel: # Make reasonable attempt at perms
+        if channel:  # Make reasonable attempt at perms
             perms = lightbulb.utils.permissions_in(channel, me)
 
             if helpers.includes_permissions(perms, hikari.Permissions.MANAGE_MESSAGES):
@@ -1344,7 +1346,9 @@ async def ask_settings(
 @settings.command
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
-    bot_has_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL)
+    bot_has_permissions(
+        hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
+    )
 )
 @lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_GUILD))
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")

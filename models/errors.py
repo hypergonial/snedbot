@@ -35,8 +35,8 @@ class UserBlacklistedError(Exception):
     """
     Raised when a user who is blacklisted from using the application tries to use it.
     """
- 
-    
+
+
 class DMFailedError(Exception):
     """
     Raised when DMing a user fails while executing a moderation command.

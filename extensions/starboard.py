@@ -144,8 +144,8 @@ async def handle_starboard(
         return
 
     channel = plugin.app.cache.get_guild_channel(event.channel_id)
-    
-    if channel: # Check perms if channel is cached
+
+    if channel:  # Check perms if channel is cached
         perms = lightbulb.utils.permissions_in(channel, me)
         if not helpers.includes_permissions(
             perms,

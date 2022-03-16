@@ -1,10 +1,10 @@
-import lightbulb
-import hikari
 import aiohttp
+import hikari
+import lightbulb
 
-from models.context import SnedSlashContext
 from etc import constants as const
 from models.bot import SnedBot
+from models.context import SnedSlashContext
 
 fandom = lightbulb.Plugin("Fandom")
 
@@ -41,12 +41,13 @@ async def search_fandom(site: str, query: str) -> str:
                 raise RuntimeError(f"Failed to communicate with server. Response code: {response.status}")
 
     desc = ""
-    if results[1]: # 1 is text, 3 is links
+    if results[1]:  # 1 is text, 3 is links
         for result in results[1]:
             desc = f"{desc}[{result}]({results[3][results[1].index(result)]})\n"
         return desc
     else:
         raise ValueError("No results found for query.")
+
 
 @fandom.command
 @lightbulb.option("query", "What are you looking for?")
@@ -69,18 +70,24 @@ async def fandom_cmd(ctx: SnedSlashContext, wiki: str, query: str) -> None:
             color=const.ERROR_COLOR,
         )
     except RuntimeError as e:
-        embed = hikari.Embed(
-            title="❌ Network Error",
-            description=f"```{e}```",
-            color=const.ERROR_COLOR
-        )
+        embed = hikari.Embed(title="❌ Network Error", description=f"```{e}```", color=const.ERROR_COLOR)
     await ctx.respond(embed=embed)
 
 
 @fandom.command
-@lightbulb.option("wiki", "Choose the wiki to get results from. Defaults to 1800 if not specified.", choices=["1800", "2070", "2205", "1404"], required=False)
+@lightbulb.option(
+    "wiki",
+    "Choose the wiki to get results from. Defaults to 1800 if not specified.",
+    choices=["1800", "2070", "2205", "1404"],
+    required=False,
+)
 @lightbulb.option("query", "What are you looking for?")
-@lightbulb.command("annowiki", "Search an Anno Wiki for articles!", pass_options=True, guilds=(581296099826860033, 627876365223591976, 372128553031958529))
+@lightbulb.command(
+    "annowiki",
+    "Search an Anno Wiki for articles!",
+    pass_options=True,
+    guilds=(581296099826860033, 627876365223591976, 372128553031958529),
+)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> None:
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
@@ -98,16 +105,18 @@ async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> Non
             color=const.ERROR_COLOR,
         )
     except RuntimeError as e:
-        embed = hikari.Embed(
-            title="❌ Network Error",
-            description=f"```{e}```",
-            color=const.ERROR_COLOR
-        )
+        embed = hikari.Embed(title="❌ Network Error", description=f"```{e}```", color=const.ERROR_COLOR)
     await ctx.respond(embed=embed)
+
 
 @fandom.command
 @lightbulb.option("query", "What are you looking for?")
-@lightbulb.command("ffwiki", "Search the Falling Frontier Wiki for articles!", pass_options=True, guilds=(684324252786360476, 813803567445049414))
+@lightbulb.command(
+    "ffwiki",
+    "Search the Falling Frontier Wiki for articles!",
+    pass_options=True,
+    guilds=(684324252786360476, 813803567445049414),
+)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def ffwiki(ctx: SnedSlashContext, query: str) -> None:
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
@@ -125,11 +134,7 @@ async def ffwiki(ctx: SnedSlashContext, query: str) -> None:
             color=const.ERROR_COLOR,
         )
     except RuntimeError as e:
-        embed = hikari.Embed(
-            title="❌ Network Error",
-            description=f"```{e}```",
-            color=const.ERROR_COLOR
-        )
+        embed = hikari.Embed(title="❌ Network Error", description=f"```{e}```", color=const.ERROR_COLOR)
     await ctx.respond(embed=embed)
 
 

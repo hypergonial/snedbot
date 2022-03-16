@@ -1,0 +1,34 @@
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+include = ".*py$"
+
+[tool.isort]
+profile = "black"
+force_single_line = true
+
+[tool.poetry]
+name = "snedbot"
+version = "0.1.0"
+description = "Your friendly neighbourhood multi-purpose Discord bot."
+authors = ["HyperGH <46067571+HyperGH@users.noreply.github.com>"]
+license = "GNU GPL-v3"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+dateparser = "^1.1.0"
+psutil = "^5.9.0"
+Pillow = "^9.0.1"
+asyncpg = "^0.25.0"
+kosu = {git = "https://github.com/HyperGH/kosu.git", branch="main"}
+hikari-lightbulb = {git = "https://github.com/HyperGH/hikari-lightbulb.git"}
+hikari-miru = {git = "https://github.com/HyperGH/hikari-miru.git", branch="cursed/branch"}
+Levenshtein = "^0.16.0"
+
+[tool.poetry.dev-dependencies]
+black = "^21.12b0"
+isort = "^5.10.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

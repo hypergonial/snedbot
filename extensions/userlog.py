@@ -279,7 +279,7 @@ async def find_auditlog_data(
         raise ValueError("Cannot find guild to parse auditlogs for.")
 
     me = userlog.app.cache.get_member(guild, userlog.app.user_id)
-    
+
     if me is None:
         return
 
@@ -586,7 +586,7 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
 
-        if moderator and moderator.is_bot: # Ignore bots updating channels
+        if moderator and moderator.is_bot:  # Ignore bots updating channels
             return
 
         attrs = {
@@ -747,7 +747,7 @@ async def member_delete(plugin: lightbulb.Plugin, event: hikari.MemberDeleteEven
     assert isinstance(plugin.app, SnedBot)
 
     if event.user_id == plugin.app.user_id:
-        return # RIP
+        return  # RIP
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MEMBER_KICK, user_id=event.user.id)
 
@@ -879,10 +879,15 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
             # No idea why this is needed, but otherwise I get empty role updates
             return
 
+        role = userlog.app.cache.get_role(add_diff[0]) if add_diff else userlog.app.cache.get_role(rem_diff[0])
+
+        if role and role.is_managed:  # Do not handle roles managed by bots & other integration stuff
+            return
+
         entry = await find_auditlog_data(
             event, event_type=hikari.AuditLogEventType.MEMBER_ROLE_UPDATE, user_id=event.user.id
         )
-        
+
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry and entry.user_id else "Unknown"
         reason: t.Optional[str] = entry.reason if entry else "No reason provided."
 

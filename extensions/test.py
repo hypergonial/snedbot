@@ -2,9 +2,9 @@ import asyncio
 import logging
 
 import hikari
+import kosu
 import lightbulb
 import miru
-import perspective
 from miru.ext import nav
 
 from etc import constants as const
@@ -136,9 +136,9 @@ async def testmultiple_cmd(ctx: SnedSlashContext) -> None:
     for i in range(1, 80):
         try:
             print(f"REQUEST {i}")
-            assert ctx.app.perspective is not None
-            resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(
-                text, perspective.Attribute(perspective.AttributeName.TOXICITY)
+
+            resp: kosu.AnalysisResponse = await ctx.app.perspective.analyze(
+                text, kosu.Attribute(kosu.AttributeName.TOXICITY)
             )
             resps.append(resp)
         except:
@@ -158,15 +158,15 @@ async def testmultiple_cmd(ctx: SnedSlashContext) -> None:
 async def test_cmd(ctx: SnedSlashContext) -> None:
     text = ctx.options.text
     attribs = [
-        perspective.Attribute(perspective.AttributeName.TOXICITY),
-        perspective.Attribute(perspective.AttributeName.SEVERE_TOXICITY),
-        perspective.Attribute(perspective.AttributeName.IDENTITY_ATTACK),
-        perspective.Attribute(perspective.AttributeName.PROFANITY),
-        perspective.Attribute(perspective.AttributeName.INSULT),
-        perspective.Attribute(perspective.AttributeName.THREAT),
+        kosu.Attribute(kosu.AttributeName.TOXICITY),
+        kosu.Attribute(kosu.AttributeName.SEVERE_TOXICITY),
+        kosu.Attribute(kosu.AttributeName.IDENTITY_ATTACK),
+        kosu.Attribute(kosu.AttributeName.PROFANITY),
+        kosu.Attribute(kosu.AttributeName.INSULT),
+        kosu.Attribute(kosu.AttributeName.THREAT),
     ]
     assert ctx.app.perspective is not None
-    resp: perspective.AnalysisResponse = await ctx.app.perspective.analyze(text, attribs)
+    resp: kosu.AnalysisResponse = await ctx.app.perspective.analyze(text, attribs)
 
     content = "```"
     for score in resp.attribute_scores:

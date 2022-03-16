@@ -19,9 +19,9 @@ from PIL import ImageFont
 from etc import constants as const
 from models import SnedBot
 from models import SnedSlashContext
+from models.checks import bot_has_permissions
 from models.context import SnedUserContext
 from utils import helpers
-from models.checks import bot_has_permissions
 
 logger = logging.getLogger(__name__)
 
