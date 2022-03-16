@@ -9,7 +9,7 @@ force_single_line = true
 
 [tool.poetry]
 name = "snedbot"
-version = "0.1.0"
+version = "0.1.0" # I do not actually update this, lol
 description = "Your friendly neighbourhood multi-purpose Discord bot."
 authors = ["HyperGH <46067571+HyperGH@users.noreply.github.com>"]
 license = "GNU GPL-v3"
