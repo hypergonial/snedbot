@@ -282,6 +282,8 @@ async def command_invoke_listener(event: lightbulb.events.CommandInvocationEvent
 
 @ch.listener(lightbulb.PrefixCommandInvocationEvent)
 async def prefix_command_invoke_listener(event: lightbulb.PrefixCommandInvocationEvent) -> None:
+    if event.context.author.id not in event.app.owner_ids:
+        return
 
     if event.context.guild_id:
         assert isinstance(event.app, SnedBot)
