@@ -13,6 +13,7 @@ from models.tag import Tag
 
 if t.TYPE_CHECKING:
     from models import SnedBot
+    from models import SnedContext
 
 
 class TagMigrationStrategy(enum.IntEnum):
@@ -29,6 +30,24 @@ class TagHandler:
 
     def __init__(self, bot: SnedBot):
         self.bot: SnedBot = bot
+
+    def parse_tag_content(self, ctx: SnedContext, content: str) -> str:
+        """Parse tag content for custom arguments and fill them in.
+
+        Parameters
+        ----------
+        ctx : SnedContext
+            The context to evaluate custom arguments under.
+        content : str
+            The tag contents to evaluate.
+
+        Returns
+        -------
+        str
+            The parsed tag contents.
+        """
+
+        return content.replace("{user}", ctx.author.mention).replace("{channel}", f"<#{ctx.channel_id}>")
 
     async def get(
         self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild], add_use: bool = False

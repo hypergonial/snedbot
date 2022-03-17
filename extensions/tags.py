@@ -85,7 +85,7 @@ async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> 
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
     flags = hikari.MessageFlag.EPHEMERAL if ephemeral else hikari.MessageFlag.NONE
-    await ctx.respond(content=tag.content, flags=flags)
+    await ctx.respond(content=tags.d.tag_handler.parse_tag_content(ctx, tag.content), flags=flags)
 
 
 @tag_cmd.autocomplete("name")
