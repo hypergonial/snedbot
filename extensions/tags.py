@@ -163,7 +163,7 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
 
         embed = hikari.Embed(
             title=f"💬 Tag Info: {tag.name}",
-            description=f"**Aliases:** `{aliases}`\n**Tag owner:** `{owner}`\n**Tag creator:** {creator}\n**Uses:** `{tag.uses}`",
+            description=f"**Aliases:** `{aliases}`\n**Tag owner:** `{owner}`\n**Tag creator:** `{creator}`\n**Uses:** `{tag.uses}`",
             color=const.EMBED_BLUE,
         )
         if isinstance(owner, hikari.Member):
