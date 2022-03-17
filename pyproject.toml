@@ -32,7 +32,7 @@ hikari-lightbulb = {git = "https://github.com/HyperGH/hikari-lightbulb.git", bra
 hikari-miru = {git = "https://github.com/HyperGH/hikari-miru.git", branch="cursed/branch"}
 
 [tool.poetry.dev-dependencies]
-black = "^21.12b0"
+black = "^22.1"
 isort = "^5.10.1"
 
 [build-system]
