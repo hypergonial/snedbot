@@ -46,6 +46,7 @@ class TagHandler:
         str
             The parsed tag contents.
         """
+        # TODO: Actually make a proper parser and implement a whole lot more custom args
 
         return content.replace("{user}", ctx.author.mention).replace("{channel}", f"<#{ctx.channel_id}>")
 
