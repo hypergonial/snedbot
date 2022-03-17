@@ -155,9 +155,7 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
     if tag:
         owner = ctx.app.cache.get_member(ctx.guild_id, tag.owner_id) or tag.owner_id
         creator = (
-            (ctx.app.cache.get_member(ctx.guild_id, tag.creator_id) or tag.creator_id)
-            if tag.creator_id
-            else "*Unknown*"
+            (ctx.app.cache.get_member(ctx.guild_id, tag.creator_id) or tag.creator_id) if tag.creator_id else "Unknown"
         )
         aliases = ", ".join(tag.aliases) if tag.aliases else None
 
