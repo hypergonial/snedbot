@@ -255,7 +255,11 @@ async def application_command_completion_handler(event: lightbulb.events.Command
 
 @ch.listener(lightbulb.PrefixCommandErrorEvent)
 async def prefix_error_handler(event: lightbulb.PrefixCommandErrorEvent) -> None:
+    if event.context.author.id not in event.app.owner_ids:
+        return
     if isinstance(event.exception, lightbulb.CheckFailure):
+        return
+    if isinstance(event.exception, lightbulb.CommandNotFound):
         return
 
     error = event.exception.original if hasattr(event.exception, "original") else event.exception  # type: ignore
