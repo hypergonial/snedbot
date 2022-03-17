@@ -24,7 +24,7 @@ class TagMigrationStrategy(enum.IntEnum):
 
 class TagHandler:
     """
-    A class for common database operations regarding tags
+    A class for common operations regarding tags
     """
 
     def __init__(self, bot: SnedBot):
@@ -64,7 +64,7 @@ class TagHandler:
                 guild_id,
             )
             if results:
-                tag = Tag(
+                return Tag(
                     guild_id=hikari.Snowflake(results[0].get("guild_id")),
                     name=results[0].get("tagname"),
                     owner_id=hikari.Snowflake(results[0].get("owner_id")),
@@ -73,7 +73,6 @@ class TagHandler:
                     content=results[0].get("content"),
                     uses=results[0].get("uses"),
                 )
-                return tag
 
     async def get_closest_name(
         self, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
