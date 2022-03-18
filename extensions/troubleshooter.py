@@ -21,7 +21,6 @@ troubleshooter = lightbulb.Plugin("Troubleshooter")
 REQUIRED_PERMISSIONS = (
     hikari.Permissions.VIEW_AUDIT_LOG
     | hikari.Permissions.MANAGE_ROLES
-    | hikari.Permissions.MANAGE_CHANNELS
     | hikari.Permissions.KICK_MEMBERS
     | hikari.Permissions.BAN_MEMBERS
     | hikari.Permissions.CHANGE_NICKNAME
@@ -31,7 +30,6 @@ REQUIRED_PERMISSIONS = (
     | hikari.Permissions.CREATE_PUBLIC_THREADS
     | hikari.Permissions.CREATE_PRIVATE_THREADS
     | hikari.Permissions.SEND_MESSAGES_IN_THREADS
-    | hikari.Permissions.MANAGE_THREADS
     | hikari.Permissions.EMBED_LINKS
     | hikari.Permissions.ATTACH_FILES
     | hikari.Permissions.MENTION_ROLES
@@ -45,7 +43,6 @@ REQUIRED_PERMISSIONS = (
 PERM_DESCRIPTIONS = {
     hikari.Permissions.VIEW_AUDIT_LOG: "Required in logs to fill in details such as who the moderator in question was, or the reason of the action.",
     hikari.Permissions.MANAGE_ROLES: "Required to give users roles via role-buttons.",
-    hikari.Permissions.MANAGE_CHANNELS: "This permission is currently unused, and reserved for future functionality.",
     hikari.Permissions.KICK_MEMBERS: "Required to use the `/kick` command and let auto-moderation actions kick users.",
     hikari.Permissions.BAN_MEMBERS: "Required to use the `/ban`, `/softban`, `/massban` command and let auto-moderation actions ban users.",
     hikari.Permissions.CHANGE_NICKNAME: "Required for the `/setnick` command.",
@@ -55,7 +52,6 @@ PERM_DESCRIPTIONS = {
     hikari.Permissions.CREATE_PUBLIC_THREADS: "Required for the bot to access and manage threads.",
     hikari.Permissions.CREATE_PRIVATE_THREADS: "Required for the bot to access and manage threads.",
     hikari.Permissions.SEND_MESSAGES_IN_THREADS: "Required for the bot to access and manage threads.",
-    hikari.Permissions.MANAGE_THREADS: "This permissions is currently unused, and reserved for future functionality.",
     hikari.Permissions.EMBED_LINKS: "Required for the bot to create embeds to display content, without this you may not see any responses from the bot, including this one :)",
     hikari.Permissions.ATTACH_FILES: "Required for the bot to attach files to a message, for example to send a list of users to be banned in `/massban`.",
     hikari.Permissions.MENTION_ROLES: "Required for the bot to always be able to mention roles, for example when reporting users. The bot will **never** mention @everyone or @here.",

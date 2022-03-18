@@ -72,7 +72,8 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
     "topic",
     "A specific topic to get help about.",
     required=False,
-    choices=["time-formatting", "permissions", "configuration"],
+    # Re-add "permissions" once perms v2 is out
+    choices=["time-formatting", "configuration"],
 )
 @lightbulb.command("help", "Get help regarding various subjects of the bot's functionality.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
