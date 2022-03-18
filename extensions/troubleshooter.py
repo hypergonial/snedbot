@@ -23,6 +23,9 @@ REQUIRED_PERMISSIONS = (
     | hikari.Permissions.MANAGE_ROLES
     | hikari.Permissions.KICK_MEMBERS
     | hikari.Permissions.BAN_MEMBERS
+    | hikari.Permissions.MANAGE_CHANNELS
+    | hikari.Permissions.MANAGE_THREADS
+    | hikari.Permissions.MANAGE_THREADS
     | hikari.Permissions.CHANGE_NICKNAME
     | hikari.Permissions.READ_MESSAGE_HISTORY
     | hikari.Permissions.VIEW_CHANNEL
@@ -43,6 +46,8 @@ REQUIRED_PERMISSIONS = (
 PERM_DESCRIPTIONS = {
     hikari.Permissions.VIEW_AUDIT_LOG: "Required in logs to fill in details such as who the moderator in question was, or the reason of the action.",
     hikari.Permissions.MANAGE_ROLES: "Required to give users roles via role-buttons.",
+    hikari.Permissions.MANAGE_CHANNELS: "Used by `/slowmode` to set a custom slow mode duration for the channel.",
+    hikari.Permissions.MANAGE_THREADS: "Used by `/slowmode` to set a custom slow mode duration for the thread.",
     hikari.Permissions.KICK_MEMBERS: "Required to use the `/kick` command and let auto-moderation actions kick users.",
     hikari.Permissions.BAN_MEMBERS: "Required to use the `/ban`, `/softban`, `/massban` command and let auto-moderation actions ban users.",
     hikari.Permissions.CHANGE_NICKNAME: "Required for the `/setnick` command.",
