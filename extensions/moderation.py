@@ -677,7 +677,10 @@ async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
 
 @mod.command
 @lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
-@lightbulb.add_checks(bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY))
+@lightbulb.add_checks(
+    bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY),
+    has_permissions(hikari.Permissions.MANAGE_MESSAGES),
+)
 @lightbulb.option("user", "Only delete messages authored by this user.", type=hikari.User, required=False)
 @lightbulb.option("regex", "Only delete messages that match with the regular expression.", required=False)
 @lightbulb.option("embeds", "Only delete messages that contain embeds.", type=bool, required=False)
