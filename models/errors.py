@@ -41,3 +41,9 @@ class DMFailedError(Exception):
     """
     Raised when DMing a user fails while executing a moderation command.
     """
+
+
+class DatabaseStateConflictError(Exception):
+    """
+    Raised when the database's state conflicts with the operation requested to be carried out.
+    """

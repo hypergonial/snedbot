@@ -320,7 +320,7 @@ async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
 @lightbulb.command("list", "List your currently pending reminders.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_list(ctx: SnedSlashContext) -> None:
-    records = await ctx.app.pool.fetch(
+    records = await ctx.app.db.fetch(
         """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = 'reminder' ORDER BY expires""",
         ctx.guild_id,
         ctx.author.id,

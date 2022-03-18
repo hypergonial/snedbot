@@ -99,7 +99,7 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
     assert isinstance(channel, hikari.TextableGuildChannel)
 
     if not channel:
-        await ctx.app.pool.execute(
+        await ctx.app.db.execute(
             """INSERT INTO reports (is_enabled, guild_id)
             VALUES ($1, $2)
             ON CONFLICT (guild_id) DO

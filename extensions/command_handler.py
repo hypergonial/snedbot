@@ -227,7 +227,7 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
 
     embed = hikari.Embed(
         title="❌ Unhandled exception",
-        description=f"An error happened that should not have happened. Please [contact us](https://discord.gg/KNKr8FPmJa) with a screenshot of this message!\n**Error:** ```{error.__class__.__name__}: {error}```",
+        description=f"An error happened that should not have happened. Please [contact us](https://discord.gg/KNKr8FPmJa) with a screenshot of this message!\n**Error:** ```{error.__class__.__name__}: {str(error).replace(ctx.app._token, '')}```",
         color=const.ERROR_COLOR,
     )
     embed.set_footer(text=f"Guild: {ctx.guild_id}")

@@ -242,7 +242,7 @@ Click one of the buttons below to get started!""",
             return
 
         if isinstance(self.value, tuple) and self.value[0] == "Enable":
-            await self.app.pool.execute(
+            await self.app.db.execute(
                 """INSERT INTO reports (is_enabled, guild_id)
                 VALUES ($1, $2)
                 ON CONFLICT (guild_id) DO
@@ -285,7 +285,7 @@ Click one of the buttons below to get started!""",
                 return await self.error_screen(embed, parent="Reports")
 
             else:
-                await self.app.pool.execute(
+                await self.app.db.execute(
                     """INSERT INTO reports (channel_id, guild_id)
                     VALUES ($1, $2)
                     ON CONFLICT (guild_id) DO
@@ -370,7 +370,7 @@ Click one of the buttons below to get started!""",
                 )
                 return await self.error_screen(embed, parent="Reports")
 
-        await self.app.pool.execute(
+        await self.app.db.execute(
             """INSERT INTO reports (pinged_role_ids, guild_id)
             VALUES ($1, $2)
             ON CONFLICT (guild_id) DO
@@ -414,7 +414,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         option = get_key(mod_settings_strings, self.value[0])
 
-        await self.app.pool.execute(
+        await self.app.db.execute(
             f"""
             INSERT INTO mod_config (guild_id, {option})
             VALUES ($1, $2)
@@ -498,7 +498,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             return
 
         if isinstance(self.value, tuple) and self.value[0] == "Enable":
-            await self.app.pool.execute(
+            await self.app.db.execute(
                 """INSERT INTO starboard (is_enabled, guild_id)
                 VALUES ($1, $2)
                 ON CONFLICT (guild_id) DO
@@ -543,7 +543,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 )
                 return await self.error_screen(embed, parent="Starboard")
 
-            await self.app.pool.execute(
+            await self.app.db.execute(
                 """INSERT INTO starboard (star_limit, guild_id)
                 VALUES ($1, $2)
                 ON CONFLICT (guild_id) DO
@@ -584,7 +584,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 )
                 return await self.error_screen(embed, parent="Starboard")
             else:
-                await self.app.pool.execute(
+                await self.app.db.execute(
                     """INSERT INTO starboard (channel_id, guild_id)
                     VALUES ($1, $2)
                     ON CONFLICT (guild_id) DO
@@ -668,7 +668,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 )
                 return await self.error_screen(embed, parent="Starboard")
 
-        await self.app.pool.execute(
+        await self.app.db.execute(
             """INSERT INTO starboard (excluded_channels, guild_id)
             VALUES ($1, $2)
             ON CONFLICT (guild_id) DO
@@ -728,7 +728,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             return
 
         if isinstance(self.value, tuple) and self.value[0] == "Color logs":
-            await self.app.pool.execute(
+            await self.app.db.execute(
                 """INSERT INTO log_config (color, guild_id) 
                 VALUES ($1, $2)
                 ON CONFLICT (guild_id) DO
@@ -1217,7 +1217,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed = settings_help["policies"][policy]
             return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
 
-        await self.app.pool.execute(sql, json.dumps(policies), self.last_ctx.guild_id)
+        await self.app.db.execute(sql, json.dumps(policies), self.last_ctx.guild_id)
         await self.app.db_cache.refresh(table="mod_config", guild_id=self.last_ctx.guild_id)
         return await self.settings_automod_policy(policy)
 

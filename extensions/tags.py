@@ -2,7 +2,6 @@ import logging
 import typing as t
 from difflib import get_close_matches
 from itertools import chain
-from typing import List
 
 import hikari
 import lightbulb
@@ -13,7 +12,6 @@ from models import AuthorOnlyNavigator
 from models import SnedSlashContext
 from models import Tag
 from models.bot import SnedBot
-from utils import TagHandler
 from utils import helpers
 
 logger = logging.getLogger(__name__)
@@ -74,7 +72,9 @@ class TagEditorModal(miru.Modal):
 @lightbulb.command("tag", "Call a tag and display it's contents.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> None:
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id, add_use=True)
+    assert ctx.guild_id is not None
+
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id, add_use=True)
 
     if not tag:
         embed = hikari.Embed(
@@ -85,15 +85,15 @@ async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> 
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
     flags = hikari.MessageFlag.EPHEMERAL if ephemeral else hikari.MessageFlag.NONE
-    await ctx.respond(content=tags.d.tag_handler.parse_tag_content(ctx, tag.content), flags=flags)
+    await ctx.respond(content=tag.parse_content(ctx), flags=flags)
 
 
 @tag_cmd.autocomplete("name")
 async def tag_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_names(str(option.value), interaction.guild_id)) or []
     return []
 
 
@@ -119,7 +119,7 @@ async def tag_create(ctx: SnedSlashContext) -> None:
 
     mctx = modal.get_response_context()
 
-    tag: Tag = await tags.d.tag_handler.get(modal.tag_name.casefold(), ctx.guild_id)
+    tag = await Tag.fetch(modal.tag_name.casefold(), ctx.guild_id)
     if tag:
         embed = hikari.Embed(
             title="❌ Tag exists",
@@ -129,17 +129,18 @@ async def tag_create(ctx: SnedSlashContext) -> None:
         await mctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    new_tag = Tag(
-        guild_id=hikari.Snowflake(ctx.guild_id),
+    tag = await Tag.create(
+        guild=ctx.guild_id,
         name=modal.tag_name.casefold(),
-        owner_id=ctx.author.id,
-        aliases=None,
+        owner=ctx.author,
+        creator=ctx.author,
+        aliases=[],
         content=modal.tag_content,
     )
-    await tags.d.tag_handler.create(new_tag)
+
     embed = hikari.Embed(
         title="✅ Tag created!",
-        description=f"You can now call it with `/tag {modal.tag_name.casefold()}`",
+        description=f"You can now call it with `/tag {tag.name}`",
         color=const.EMBED_GREEN,
     )
     await mctx.respond(embed=embed)
@@ -151,25 +152,9 @@ async def tag_create(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_info(ctx: SnedSlashContext, name: str) -> None:
     assert ctx.guild_id is not None
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
-    if tag:
-        owner = ctx.app.cache.get_member(ctx.guild_id, tag.owner_id) or tag.owner_id
-        creator = (
-            (ctx.app.cache.get_member(ctx.guild_id, tag.creator_id) or tag.creator_id) if tag.creator_id else "Unknown"
-        )
-        aliases = ", ".join(tag.aliases) if tag.aliases else None
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
-        embed = hikari.Embed(
-            title=f"💬 Tag Info: {tag.name}",
-            description=f"**Aliases:** `{aliases}`\n**Tag owner:** `{owner}`\n**Tag creator:** `{creator}`\n**Uses:** `{tag.uses}`",
-            color=const.EMBED_BLUE,
-        )
-        if isinstance(owner, hikari.Member):
-            embed.set_author(name=str(owner), icon=owner.display_avatar_url)
-
-        await ctx.respond(embed=embed)
-
-    else:
+    if not tag:
         embed = hikari.Embed(
             title="❌ Unknown tag",
             description="Cannot find tag by that name.",
@@ -178,13 +163,29 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
+    owner = ctx.app.cache.get_member(ctx.guild_id, tag.owner_id) or tag.owner_id
+    creator = (
+        (ctx.app.cache.get_member(ctx.guild_id, tag.creator_id) or tag.creator_id) if tag.creator_id else "Unknown"
+    )
+    aliases = ", ".join(tag.aliases) if tag.aliases else None
+
+    embed = hikari.Embed(
+        title=f"💬 Tag Info: {tag.name}",
+        description=f"**Aliases:** `{aliases}`\n**Tag owner:** `{owner}`\n**Tag creator:** `{creator}`\n**Uses:** `{tag.uses}`",
+        color=const.EMBED_BLUE,
+    )
+    if isinstance(owner, hikari.Member):
+        embed.set_author(name=str(owner), icon=owner.display_avatar_url)
+
+    await ctx.respond(embed=embed)
+
 
 @tag_info.autocomplete("name")
 async def tag_info_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_names(str(option.value), interaction.guild_id)) or []
     return []
 
 
@@ -194,7 +195,9 @@ async def tag_info_name_ac(
 @lightbulb.command("alias", "Adds an alias to a tag you own.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
-    alias_tag: Tag = await tags.d.tag_handler.get(alias.casefold(), ctx.guild_id)
+    assert ctx.guild_id is not None
+
+    alias_tag = await Tag.fetch(alias.casefold(), ctx.guild_id)
     if alias_tag:
         embed = hikari.Embed(
             title="❌ Alias taken",
@@ -204,7 +207,7 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if tag and tag.owner_id == ctx.author.id:
         tag.aliases = tag.aliases if tag.aliases else []
@@ -221,10 +224,11 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
-        await tags.d.tag_handler.update(tag)
+        await tag.update()
+
         embed = hikari.Embed(
             title="✅ Alias created",
-            description=f"Alias created for tag `{tag.name}`!\nYou can now call it with `/tag {alias.casefold()}`",
+            description=f"Alias created for tag `{tag.name}`!\nYou can now also call it with `/tag {alias.casefold()}`",
             color=const.EMBED_GREEN,
         )
         await ctx.respond(embed=embed)
@@ -243,8 +247,8 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
 async def tag_alias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
 
 
@@ -254,7 +258,9 @@ async def tag_alias_name_ac(
 @lightbulb.command("delalias", "Remove an alias from a tag you own.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
+    assert ctx.guild_id is not None
+
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id)
     if tag and tag.owner_id == ctx.author.id:
 
         if tag.aliases and alias.casefold() in tag.aliases:
@@ -269,7 +275,8 @@ async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
-        await tags.d.tag_handler.update(tag)
+        await tag.update()
+
         embed = hikari.Embed(
             title="✅ Alias removed",
             description=f"Alias `{alias.casefold()}` for tag `{tag.name}` has been deleted.",
@@ -291,8 +298,8 @@ async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
 async def tag_delalias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
 
 
@@ -307,13 +314,14 @@ async def tag_delalias_name_ac(
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member) -> None:
     helpers.is_member(receiver)
+    assert ctx.guild_id is not None
 
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if tag and tag.owner_id == ctx.author.id:
 
         tag.owner_id = receiver.id
-        await tags.d.tag_handler.update(tag)
+        await tag.update()
 
         embed = hikari.Embed(
             title="✅ Tag transferred",
@@ -336,8 +344,8 @@ async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member
 async def tag_transfer_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
 
 
@@ -353,7 +361,7 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
 
     assert ctx.guild_id is not None and ctx.member is not None
 
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if tag:
         members = ctx.app.cache.get_members_view_for_guild(ctx.guild_id)
@@ -364,7 +372,7 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
             and tag.owner_id != ctx.member.id
         ):
             tag.owner_id = ctx.author.id
-            await tags.d.tag_handler.update(tag)
+            await tag.update()
 
             embed = hikari.Embed(
                 title="✅ Tag claimed",
@@ -396,8 +404,8 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
 async def tag_claim_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_name(option.value, interaction.guild_id)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
 
 
@@ -407,9 +415,9 @@ async def tag_claim_name_ac(
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
 
-    assert ctx.member is not None
+    assert ctx.member is not None and ctx.guild_id is not None
 
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if not tag or tag.owner_id != ctx.author.id:
         embed = hikari.Embed(
@@ -430,7 +438,7 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
 
     tag.content = modal.tag_content
 
-    await tags.d.tag_handler.update(tag)
+    await tag.update()
 
     embed = hikari.Embed(
         title="✅ Tag edited",
@@ -444,8 +452,8 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
 async def tag_edit_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
 
 
@@ -455,16 +463,17 @@ async def tag_edit_name_ac(
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
 
-    assert ctx.member is not None
+    assert ctx.member is not None and ctx.guild_id is not None
 
-    tag: Tag = await tags.d.tag_handler.get(name.casefold(), ctx.guild_id)
+    tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if tag and (
         (tag.owner_id == ctx.author.id)
         or helpers.includes_permissions(lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES)
     ):
 
-        await tags.d.tag_handler.delete(name.casefold(), ctx.guild_id)
+        await tag.delete()
+
         embed = hikari.Embed(
             title="✅ Tag deleted",
             description=f"Tag `{tag.name}` has been deleted.",
@@ -486,8 +495,8 @@ async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
 async def tag_delete_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
 ) -> t.List[str]:
-    if option.value:
-        return await tags.d.tag_handler.get_closest_owned_name(option.value, interaction.guild_id, interaction.user)
+    if option.value and interaction.guild_id:
+        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
 
 
@@ -496,25 +505,25 @@ async def tag_delete_name_ac(
 @lightbulb.command("list", "List all tags this server has.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_list(ctx: SnedSlashContext, owner: t.Optional[hikari.User] = None) -> None:
-    assert ctx.member is not None
-    tags_list: List[Tag] = await tags.d.tag_handler.get_all(ctx.guild_id, owner)
+    assert ctx.member is not None and ctx.guild_id is not None
 
-    if tags_list:
-        tags_fmt = []
-        for i, tag in enumerate(tags_list):
-            tags_fmt.append(f"**#{i+1}** - `{tag.uses}` uses: `{tag.name}`")
+    tags = await Tag.fetch_all(ctx.guild_id, owner)
+
+    if tags is not None:
+        tags_fmt = [f"**#{i+1}** - `{tag.uses}` uses: `{tag.name}`" for i, tag in enumerate(tags)]
         # Only show 8 tags per page
         tags_fmt = [tags_fmt[i * 8 : (i + 1) * 8] for i in range((len(tags_fmt) + 8 - 1) // 8)]
-        embeds = []
-        for contents in tags_fmt:
-            embed = hikari.Embed(
+
+        embeds = [
+            hikari.Embed(
                 title=f"💬 Available tags{f' owned by {owner.username}' if owner else ''}:",
                 description="\n".join(contents),
                 color=const.EMBED_BLUE,
             )
-            embeds.append(embed)
+            for contents in tags_fmt
+        ]
 
-        navigator = AuthorOnlyNavigator(ctx, pages=embeds)
+        navigator = AuthorOnlyNavigator(ctx, pages=embeds)  # type: ignore
         await navigator.send(ctx.interaction)
 
     else:
@@ -532,24 +541,17 @@ async def tag_list(ctx: SnedSlashContext, owner: t.Optional[hikari.User] = None)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_search(ctx: SnedSlashContext, query: str) -> None:
 
-    assert ctx.member is not None
+    assert ctx.member is not None and ctx.guild_id is not None
 
-    tags_list = await tags.d.tag_handler.get_all(ctx.guild_id)
+    tags = await Tag.fetch_all(ctx.guild_id)
 
-    if tags_list:
-        names = [tag.name for tag in tags_list]
-        aliases = []
-        for tag in tags_list:
-            if tag.aliases:
-                aliases.append(tag.aliases)
-
+    if tags:
+        names = [tag.name for tag in tags]
+        aliases = [tag.aliases for tag in tags if tag.aliases]
         aliases = list(chain(*aliases))
 
-        name_matches = get_close_matches(query.casefold(), names)
-        alias_matches = get_close_matches(query.casefold(), aliases)
-
-        response = [name for name in name_matches]
-        response += [f"*{alias}*" for alias in alias_matches]
+        response = [name for name in get_close_matches(query.casefold(), names)]
+        response += [f"*{alias}*" for alias in get_close_matches(query.casefold(), aliases)]
 
         if response:
             embed = hikari.Embed(title=f"🔎 Search results for '{query}':", description="\n".join(response[:10]))
@@ -573,9 +575,7 @@ async def tag_search(ctx: SnedSlashContext, query: str) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    tag_handler = TagHandler(bot)
     bot.add_plugin(tags)
-    tags.d.tag_handler = tag_handler
 
 
 def unload(bot: SnedBot) -> None:

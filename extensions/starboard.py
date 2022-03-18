@@ -135,7 +135,7 @@ async def handle_starboard(
 
     else:
         # We store a channel_id but the channel was deleted, so we get rid of all data
-        async with plugin.app.pool.acquire() as con:
+        async with plugin.app.db.acquire() as con:
             await con.execute("""UPDATE starboard SET channel_id = null WHERE guild_id = $1""", event.guild_id)
             await con.execute("""DELETE FROM starboard_entries WHERE guild_id = $1""", event.guild_id)
         return
@@ -166,14 +166,14 @@ async def handle_starboard(
     payload = create_starboard_payload(message, stars)
 
     if not starboard_msg_id:
-        records = await plugin.app.pool.fetch(f"""SELECT * FROM starboard_entries WHERE orig_msg_id = $1""", message.id)
+        record = await plugin.app.db.fetchrow(f"""SELECT * FROM starboard_entries WHERE orig_msg_id = $1""", message.id)
 
-        if not records:
+        if not record:
             # Create new entry
             starboard_msg_id = (await plugin.app.rest.create_message(settings["channel_id"], **payload)).id
             starboard_messages[event.message_id] = starboard_msg_id
 
-            await plugin.app.pool.execute(
+            await plugin.app.db.execute(
                 """INSERT INTO starboard_entries 
                 (guild_id, channel_id, orig_msg_id, entry_msg_id) 
                 VALUES ($1, $2, $3, $4)""",
@@ -185,14 +185,14 @@ async def handle_starboard(
             return
 
         else:
-            starboard_msg_id = records[0]["entry_msg_id"]
+            starboard_msg_id = record["entry_msg_id"]
             starboard_messages[event.message_id] = starboard_msg_id
 
     try:
         await plugin.app.rest.edit_message(settings["channel_id"], starboard_msg_id, **payload)
     except hikari.NotFoundError:
         # Delete entry, re-run logic to create a new starboard entry
-        await plugin.app.pool.execute(f"""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
+        await plugin.app.db.execute(f"""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
         starboard_messages.pop(event.message_id, None)
         await handle_starboard(plugin, event)
 
@@ -244,18 +244,18 @@ async def star_show(ctx: SnedSlashContext, id: str) -> None:
 
     settings = records[0]
 
-    records = await ctx.app.pool.fetch(
+    record = await ctx.app.db.fetchrow(
         "SELECT entry_msg_id, channel_id FROM starboard_entries WHERE orig_msg_id = $1 AND guild_id = $2",
         orig_id,
         ctx.guild_id,
     )
 
-    if not records:
+    if not record:
         embed = hikari.Embed(title="❌ Not found", description="Starboard entry not found!", color=const.ERROR_COLOR)
         await ctx.respond(embed=embed)
         return
 
-    message = await ctx.app.rest.fetch_message(settings["channel_id"], records[0].get("entry_msg_id"))
+    message = await ctx.app.rest.fetch_message(settings["channel_id"], record.get("entry_msg_id"))
     await ctx.respond(
         f"Showing entry: `{orig_id}`\n[Jump to entry!]({message.make_link(ctx.guild_id)})", embed=message.embeds[0]
     )

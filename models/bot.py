@@ -15,11 +15,11 @@ from hikari.snowflakes import Snowflake
 import utils.db_backup as db_backup
 from config import Config
 from etc import constants as const
+from models.db import Database
 from models.errors import UserBlacklistedError
 from utils import cache
 from utils import helpers
 from utils import scheduler
-from utils.config_handler import ConfigHandler
 from utils.tasks import IntervalLoop
 
 from .context import *
@@ -115,8 +115,8 @@ class SnedBot(lightbulb.BotApp):
 
         # Initizaling configuration and database
         self._config = config
-        self._dsn = f"postgres://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}"
-        self._pool = self.loop.run_until_complete(asyncpg.create_pool(dsn=self._dsn))
+        self._db = Database()
+        self._pool = None
         miru.load(self)
 
         # Some global variables
@@ -149,6 +149,11 @@ class SnedBot(lightbulb.BotApp):
     def base_dir(self) -> str:
         """The absolute path to the bot's project."""
         return self._base_dir
+
+    @property
+    def db(self) -> Database:
+        """The main database connection pool of the bot."""
+        return self._db
 
     @property
     def pool(self) -> asyncpg.Pool:
@@ -231,16 +236,18 @@ class SnedBot(lightbulb.BotApp):
         self._initial_guilds.append(event.guild_id)
 
     async def on_starting(self, event: hikari.StartingEvent) -> None:
+        # Connect to the database, create asyncpg pool
+        await self.db.connect()
+        self._pool = self.db._pool
         # Create all the initial tables if they do not exist already
         with open(os.path.join(self.base_dir, "db", "schema.sql")) as file:
-            await self.pool.execute(file.read())
+            await self.db.execute(file.read())
 
     async def on_started(self, event: hikari.StartedEvent) -> None:
 
         user = self.get_me()
         self._user_id = user.id if user else None
-        self.db_cache = cache.Caching(self)
-        self.global_config = ConfigHandler(self)
+        self.db_cache = cache.DatabaseCache(self)
         self.scheduler = scheduler.Scheduler(self)
 
         if perspective_api_key := os.getenv("PERSPECTIVE_API_KEY"):
@@ -255,20 +262,10 @@ class SnedBot(lightbulb.BotApp):
         if self.dev_mode:
             logging.warning("Developer mode is enabled!")
 
-        # Insert all guilds the bot is member of into the db global config on startup
-        async with self.pool.acquire() as con:
-            for guild_id in self.cache.get_guilds_view():
-                await con.execute(
-                    """
-                    INSERT INTO global_config (guild_id) VALUES ($1)
-                    ON CONFLICT (guild_id) DO NOTHING""",
-                    guild_id,
-                )
-
     async def on_lightbulb_started(self, event: lightbulb.LightbulbStartedEvent) -> None:
 
         # Insert all guilds the bot is member of into the db global config on startup
-        async with self.pool.acquire() as con:
+        async with self.db.acquire() as con:
             for guild_id in self._initial_guilds:
                 await con.execute(
                     """
@@ -282,12 +279,13 @@ class SnedBot(lightbulb.BotApp):
         # Set this here so all guild_ids are in DB
         self._started.set()
         self._is_started = True
+        self.unsubscribe(hikari.GuildAvailableEvent, self.on_guild_available)
 
     async def on_stopping(self, event: hikari.StoppingEvent) -> None:
         logging.info("Bot is shutting down...")
 
     async def on_stop(self, event: hikari.StoppedEvent) -> None:
-        await self.pool.close()
+        await self.db.close()
         logging.info("Closed database connection.")
 
     async def on_message(self, event: hikari.MessageCreateEvent) -> None:
@@ -323,7 +321,7 @@ class SnedBot(lightbulb.BotApp):
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
         """Guild join behaviour"""
-        await self.pool.execute(
+        await self.db.execute(
             "INSERT INTO global_config (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING", event.guild_id
         )
 
@@ -353,8 +351,7 @@ class SnedBot(lightbulb.BotApp):
 
     async def on_guild_leave(self, event: hikari.GuildLeaveEvent) -> None:
         """Guild removal behaviour"""
-        await self.pool.execute("""DELETE FROM global_config WHERE guild_id = $1""", event.guild_id)
-        await self.db_cache.wipe(event.guild_id)
+        await self.db.wipe_guild(event.guild_id, keep_record=False)
         logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
 
     async def backup_db(self) -> None:

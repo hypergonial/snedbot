@@ -282,7 +282,7 @@ async def run_sql(ctx: SnedPrefixContext) -> None:
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
     sql: str = (await ctx.attachments[0].read()).decode("utf-8")
-    return_value = await ctx.app.pool.execute(sql)
+    return_value = await ctx.app.db.execute(sql)
     await ctx.event.message.add_reaction("✅")
     await send_paginated(ctx, ctx.channel_id, str(return_value), prefix="```sql\n", suffix="```")
 
@@ -343,7 +343,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     await ctx.app.db_cache.disable()
 
     # Drop all tables
-    async with ctx.app.pool.acquire() as con:
+    async with ctx.app.db.acquire() as con:
         records = await con.fetch(
             """
         SELECT * FROM pg_catalog.pg_tables 
@@ -354,7 +354,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
             await con.execute(f"""DROP TABLE IF EXISTS {record.get("tablename")} CASCADE""")
 
     arg = "-e" if not ctx.options["--ignore-errors"] else ""
-    code = os.system(f"pg_restore {path} {arg} -n 'public' -j 4 -d {ctx.app._dsn}")
+    code = os.system(f"pg_restore {path} {arg} -n 'public' -j 4 -d {ctx.app.db.dsn}")
 
     if code != 0 and not ctx.options["--ignore-errors"]:
         await ctx.respond("❌ **Fatal:** Failed to load database backup, database corrupted. Shutting down...")
@@ -391,7 +391,7 @@ async def blacklist_cmd(ctx: SnedPrefixContext, mode: str, user: hikari.User) ->
             await ctx.respond("❌ Already blacklisted")
             return
 
-        await ctx.app.pool.execute("""INSERT INTO blacklist (user_id) VALUES ($1)""", user.id)
+        await ctx.app.db.execute("""INSERT INTO blacklist (user_id) VALUES ($1)""", user.id)
         await ctx.app.db_cache.refresh(table="blacklist", user_id=user.id)
         await ctx.event.message.add_reaction("✅")
         await ctx.respond("✅ User added to blacklist")
@@ -401,7 +401,7 @@ async def blacklist_cmd(ctx: SnedPrefixContext, mode: str, user: hikari.User) ->
             await ctx.respond("❌ Not blacklisted")
             return
 
-        await ctx.app.pool.execute("""DELETE FROM blacklist WHERE user_id = $1""", user.id)
+        await ctx.app.db.execute("""DELETE FROM blacklist WHERE user_id = $1""", user.id)
         await ctx.app.db_cache.refresh(table="blacklist", user_id=user.id)
         await ctx.event.message.add_reaction("✅")
         await ctx.respond("✅ User removed from blacklist")
@@ -432,7 +432,7 @@ async def resetsettings_cmd(ctx: SnedPrefixContext, guild_id: int) -> None:
     if not confirmed:
         return await ctx.event.message.add_reaction("❌")
 
-    await ctx.app.global_config.wipe_data(guild)
+    await ctx.app.db.wipe_guild(guild)
     await ctx.app.db_cache.wipe(guild)
 
     await ctx.event.message.add_reaction("✅")

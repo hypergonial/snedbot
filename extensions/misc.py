@@ -459,7 +459,7 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    await ctx.app.pool.execute(
+    await ctx.app.db.execute(
         """
     INSERT INTO preferences (user_id, timezone) 
     VALUES ($1, $2) 

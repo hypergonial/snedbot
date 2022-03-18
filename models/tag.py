@@ -1,11 +1,20 @@
+from __future__ import annotations
+
 import typing as t
+from difflib import get_close_matches
+from itertools import chain
 
 import attr
 import hikari
 
+from models.db import DatabaseModel
+
+if t.TYPE_CHECKING:
+    from models.context import SnedContext
+
 
 @attr.define()
-class Tag:
+class Tag(DatabaseModel):
     """
     Represents a tag object.
     """
@@ -17,3 +26,145 @@ class Tag:
     content: str
     creator_id: t.Optional[hikari.Snowflake] = None
     uses: int = 0
+
+    @classmethod
+    async def fetch(
+        cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild], add_use: bool = False
+    ) -> t.Optional[Tag]:
+        guild_id = hikari.Snowflake(guild)
+
+        if add_use:
+            sql = "UPDATE tags SET uses = uses + 1 WHERE tagname = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2 RETURNING *"
+        else:
+            sql = "SELECT * FROM tags WHERE tagname = $1 AND guild_id = $2 OR $1 = ANY(aliases) AND guild_id = $2"
+
+        record = await cls._db.fetchrow(sql, name.lower(), guild_id)
+
+        if not record:
+            return
+
+        return cls(
+            guild_id=hikari.Snowflake(record.get("guild_id")),
+            name=record.get("tagname"),
+            owner_id=hikari.Snowflake(record.get("owner_id")),
+            creator_id=hikari.Snowflake(record.get("creator_id")) if record.get("creator_id") else None,
+            aliases=record.get("aliases"),
+            content=record.get("content"),
+            uses=record.get("uses"),
+        )
+
+    @classmethod
+    async def fetch_closest_names(
+        cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+    ) -> t.Optional[t.List[str]]:
+        guild_id = hikari.Snowflake(guild)
+        # TODO: Figure out how to fuzzymatch within arrays via SQL
+        results = await cls._db.fetch("""SELECT tagname, aliases FROM tags WHERE guild_id = $1""", guild_id)
+
+        names = [result.get("tagname") for result in results] if results else []
+
+        if results is not None:
+            names += list(chain(*[result.get("aliases") or [] for result in results]))
+
+        return get_close_matches(name, names)
+
+    @classmethod
+    async def fetch_closest_owned_names(
+        cls,
+        name: str,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        owner: hikari.SnowflakeishOr[hikari.PartialUser],
+    ) -> t.Optional[t.List[str]]:
+        guild_id = hikari.Snowflake(guild)
+        owner_id = hikari.Snowflake(owner)
+        # TODO: Figure out how to fuzzymatch within arrays via SQL
+        results = await cls._db.fetch(
+            """SELECT tagname, aliases FROM tags WHERE guild_id = $1 AND owner_id = $2""", guild_id, owner_id
+        )
+
+        names = [result.get("tagname") for result in results] if results else []
+
+        if results is not None:
+            names += list(chain(*[result.get("aliases") or [] for result in results]))
+
+        return get_close_matches(name, names)
+
+    @classmethod
+    async def fetch_all(
+        cls,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        owner: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
+    ) -> t.Optional[t.List[Tag]]:
+        guild_id = hikari.Snowflake(guild)
+        if not owner:
+            records = await cls._db.fetch("""SELECT * FROM tags WHERE guild_id = $1 ORDER BY uses DESC""", guild_id)
+        else:
+            records = await cls._db.fetch(
+                """SELECT * FROM tags WHERE guild_id = $1 AND owner_id = $2 ORDER BY uses DESC""",
+                guild_id,
+                hikari.Snowflake(owner),
+            )
+
+        if records:
+            return [
+                cls(
+                    guild_id=hikari.Snowflake(record.get("guild_id")),
+                    name=record.get("tagname"),
+                    owner_id=hikari.Snowflake(record.get("owner_id")),
+                    creator_id=hikari.Snowflake(record.get("creator_id")) if record.get("creator_id") else None,
+                    aliases=record.get("aliases"),
+                    content=record.get("content"),
+                    uses=record.get("uses"),
+                )
+                for record in records
+            ]
+
+    @classmethod
+    async def create(
+        cls,
+        name: str,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        creator: hikari.SnowflakeishOr[hikari.PartialUser],
+        owner: hikari.SnowflakeishOr[hikari.PartialUser],
+        aliases: t.List[str],
+        content: str,
+    ) -> Tag:
+
+        await cls._db.execute(
+            """
+            INSERT INTO tags (guild_id, tagname, creator_id, owner_id, aliases, content)
+            VALUES ($1, $2, $3, $4, $5, $6)""",
+            hikari.Snowflake(guild),
+            name,
+            hikari.Snowflake(creator),
+            hikari.Snowflake(owner),
+            aliases,
+            content,
+        )
+        return cls(
+            guild_id=hikari.Snowflake(guild),
+            name=name,
+            owner_id=hikari.Snowflake(owner),
+            creator_id=hikari.Snowflake(creator),
+            aliases=aliases,
+            content=content,
+        )
+
+    async def delete(self) -> None:
+        await self._db.execute("""DELETE FROM tags WHERE tagname = $1 AND guild_id = $2""", self.name, self.guild_id)
+
+    async def update(self) -> None:
+
+        await self._db.execute(
+            """INSERT INTO tags (guild_id, tagname, owner_id, aliases, content)
+        VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, tagname) DO
+        UPDATE SET aliases = $4, content = $5""",
+            self.guild_id,
+            self.name,
+            self.owner_id,
+            self.aliases,
+            self.content,
+        )
+
+    def parse_content(self, ctx: SnedContext) -> str:
+        return self.content.replace("{user}", ctx.author.mention).replace("{channel}", f"<#{ctx.channel_id}>")

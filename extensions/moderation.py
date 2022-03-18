@@ -126,7 +126,7 @@ async def get_notes(
     user_id = hikari.Snowflake(user)
     guild_id = hikari.Snowflake(guild)
 
-    db_user = await mod.app.global_config.get_user(user_id, guild_id)
+    db_user = await DatabaseUser.fetch(user_id, guild_id)
     return db_user.notes
 
 
@@ -145,13 +145,13 @@ async def add_note(
 
     note = helpers.format_reason(note, max_length=256)
 
-    db_user = await mod.app.global_config.get_user(user_id, guild_id)
+    db_user = await DatabaseUser.fetch(user_id, guild_id)
 
     notes = db_user.notes if db_user.notes else []
     notes.append(f"{helpers.format_dt(helpers.utcnow(), style='d')}: {note}")
     db_user.notes = notes
 
-    await mod.app.global_config.update_user(db_user)
+    await db_user.update()
 
 
 mod.d.actions.add_note = add_note
@@ -167,9 +167,9 @@ async def clear_notes(
     user_id = hikari.Snowflake(user)
     guild_id = hikari.Snowflake(guild)
 
-    db_user = await mod.app.global_config.get_user(user_id, guild_id)
+    db_user = await DatabaseUser.fetch(user_id, guild_id)
     db_user.notes = []
-    await mod.app.global_config.update_user(db_user)
+    await db_user.update()
 
 
 mod.d.actions.clear_notes = clear_notes
@@ -195,9 +195,9 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: t.Option
 
     assert isinstance(mod.app, SnedBot)
 
-    db_user = await mod.app.global_config.get_user(member.id, member.guild_id)
+    db_user = await DatabaseUser.fetch(member.id, member.guild_id)
     db_user.warns += 1
-    await mod.app.global_config.update_user(db_user)
+    await db_user.update()
     reason = helpers.format_reason(reason, max_length=1000)
 
     embed = hikari.Embed(
@@ -267,13 +267,13 @@ async def timeout_extend(event: models.TimerCompleteEvent) -> None:
             await member.edit(communication_disabled_until=timeout_for, reason="Automatic timeout extension applied.")
 
     else:
-        db_user = await event.app.global_config.get_user(timer.user_id, timer.guild_id)
+        db_user = await DatabaseUser.fetch(timer.user_id, timer.guild_id)
         if not db_user.flags:
             db_user.flags = {}
 
         if "timeout_on_join" not in db_user.flags.keys():
             db_user.flags["timeout_on_join"] = expiry
-            await event.app.global_config.update_user(db_user)
+            await db_user.update()
 
 
 @mod.listener(hikari.MemberCreateEvent)
@@ -290,7 +290,7 @@ async def member_create(event: hikari.MemberCreateEvent):
     if not helpers.can_harm(me, event.member, hikari.Permissions.MODERATE_MEMBERS):
         return
 
-    db_user: DatabaseUser = await event.app.global_config.get_user(event.member.id, event.guild_id)
+    db_user = await DatabaseUser.fetch(event.member.id, event.guild_id)
 
     if not db_user.flags or "timeout_on_join" not in db_user.flags.keys():
         return
@@ -336,7 +336,7 @@ async def member_update(event: hikari.MemberUpdateEvent):
         return
 
     if event.member.communication_disabled_until() is None:
-        records = await event.app.pool.fetch(
+        records = await event.app.db.fetch(
             """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = $3""",
             event.guild_id,
             event.member.id,
@@ -883,7 +883,7 @@ async def warns_list(ctx: SnedSlashContext, user: hikari.Member) -> None:
     helpers.is_member(user)
     assert ctx.guild_id is not None
 
-    db_user: DatabaseUser = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
+    db_user = await DatabaseUser.fetch(user.id, ctx.guild_id)
     warns = db_user.warns
     embed = hikari.Embed(
         title=f"{user}'s warnings",
@@ -905,9 +905,9 @@ async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opti
 
     assert ctx.guild_id is not None and ctx.member is not None
 
-    db_user: DatabaseUser = await ctx.app.global_config.get_user(user, ctx.guild_id)
+    db_user = await DatabaseUser.fetch(user, ctx.guild_id)
     db_user.warns = 0
-    await ctx.app.global_config.update_user(db_user)
+    await db_user.update()
 
     reason = helpers.format_reason(reason)
 
@@ -937,7 +937,7 @@ async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opt
 
     assert ctx.guild_id is not None and ctx.member is not None
 
-    db_user: DatabaseUser = await ctx.app.global_config.get_user(user, ctx.guild_id)
+    db_user = await DatabaseUser.fetch(user, ctx.guild_id)
 
     if db_user.warns == 0:
         embed = hikari.Embed(
@@ -949,7 +949,7 @@ async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opt
         return
 
     db_user.warns -= 1
-    await ctx.app.global_config.update_user(db_user)
+    await db_user.update()
 
     reason = helpers.format_reason(reason)
 

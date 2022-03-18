@@ -4,8 +4,9 @@ import logging
 import re
 import typing as t
 
-import asyncpg
 import hikari
+
+from models.db import DatabaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ if t.TYPE_CHECKING:
     from models import SnedBot
 
 
-class Caching:
+class DatabaseCache:
     """
     A class aimed squarely at making caching of values easier to handle, and
     centralize it. It tries lazy-loading a dict whenever requesting data,
@@ -25,6 +26,7 @@ class Caching:
         self._cache: t.Dict[str, t.List[t.Dict[str, t.Any]]] = {}
         self.is_ready: bool = False
         self.bot.loop.create_task(self.startup())
+        DatabaseModel._db_cache = self
 
     def _clean_kwarg(self, kwarg: str) -> str:
         return re.sub(r"\W|^(?=\d)", "_", kwarg)
@@ -37,7 +39,7 @@ class Caching:
         self._cache = {}
 
         await self.bot.wait_until_started()
-        records = await self.bot.pool.fetch(
+        records = await self.bot.db.fetch(
             """
         SELECT tablename FROM pg_catalog.pg_tables 
         WHERE schemaname='public'
@@ -114,9 +116,7 @@ class Caching:
 
         # Construct sql args, remove invalid python chars
         sql_args = [f"{self._clean_kwarg(kwarg)} = ${i+1}" for i, kwarg in enumerate(kwargs)]
-        records = await self.bot.pool.fetch(
-            f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values()
-        )
+        records = await self.bot.db.fetch(f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values())
 
         for i, row in enumerate(self._cache[table]):
             # Pop old values that match the kwargs

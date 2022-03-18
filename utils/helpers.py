@@ -98,7 +98,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
     if not ctx.guild_id:
         raise RuntimeError("Cannot use get_userinfo outside of a guild.")
 
-    db_user: DatabaseUser = await ctx.app.global_config.get_user(user.id, ctx.guild_id)
+    db_user = await DatabaseUser.fetch(user.id, ctx.guild_id)
 
     member = ctx.app.cache.get_member(ctx.guild_id, user)
 

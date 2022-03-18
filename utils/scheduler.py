@@ -183,7 +183,7 @@ class Scheduler:
             The timer object that was found, if any.
         """
         await self.bot.wait_until_started()
-        result = await self.bot.pool.fetch(
+        result = await self.bot.db.fetch(
             """SELECT * FROM timers WHERE expires < $1 ORDER BY expires LIMIT 1""",
             round((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)).timestamp()),
         )
@@ -210,7 +210,7 @@ class Scheduler:
             The timer to be called.
         """
 
-        await self.bot.pool.execute("""DELETE FROM timers WHERE id = $1""", timer.id)
+        await self.bot.db.execute("""DELETE FROM timers WHERE id = $1""", timer.id)
 
         self._current_timer = None
         event = TimerCompleteEvent(self.bot, timer, timer.guild_id)
@@ -259,7 +259,7 @@ class Scheduler:
             The timer object to update.
         """
 
-        await self.bot.pool.execute(
+        await self.bot.db.execute(
             """UPDATE timers SET user_id = $1, channel_id = $2, event = $3, expires = $4, notes = $5 WHERE id = $6 AND guild_id = $7""",
             timer.user_id,
             timer.channel_id,
@@ -296,7 +296,7 @@ class Scheduler:
         """
 
         guild_id = hikari.Snowflake(guild)
-        records = await self.bot.pool.fetch(
+        records = await self.bot.db.fetch(
             """SELECT * FROM timers WHERE id = $1 AND guild_id = $2 LIMIT 1""",
             entry_id,
             guild_id,
@@ -356,7 +356,7 @@ class Scheduler:
         channel_id = hikari.Snowflake(channel) if channel else None
         timestamp = round(expires.timestamp())
 
-        records = await self.bot.pool.fetch(
+        records = await self.bot.db.fetch(
             """INSERT INTO timers (guild_id, channel_id, user_id, event, expires, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *""",
             guild_id,
             channel_id,
@@ -410,7 +410,7 @@ class Scheduler:
         except ValueError:
             raise
         else:
-            await self.bot.pool.execute(
+            await self.bot.db.execute(
                 """DELETE FROM timers WHERE id = $1 AND guild_id = $2""", timer.id, timer.guild_id
             )
 

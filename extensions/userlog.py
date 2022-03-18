@@ -97,7 +97,7 @@ async def set_log_channel(log_event: str, guild_id: int, channel_id: t.Optional[
 
     log_channels = await get_log_channel_ids_view(guild_id)
     log_channels[log_event] = channel_id
-    await userlog.app.pool.execute(
+    await userlog.app.db.execute(
         """
         INSERT INTO log_config (log_channels, guild_id) VALUES ($1, $2)
         ON CONFLICT (guild_id) DO

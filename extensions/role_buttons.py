@@ -196,7 +196,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    await ctx.app.pool.execute(
+    await ctx.app.db.execute(
         """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""",
         ctx.guild_id,
         button_id,
@@ -258,8 +258,8 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    records = await ctx.app.pool.fetch("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC LIMIT 1""")
-    entry_id = records[0].get("entry_id") + 1 if records else 1
+    record = await ctx.app.db.fetchrow("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC""")
+    entry_id = record.get("entry_id") + 1 if record else 1
     emoji = hikari.Emoji.parse(ctx.options.emoji) if ctx.options.emoji else None
     button_style = button_styles[buttonstyle.capitalize()]
 
@@ -286,7 +286,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
 
     message = await message.edit(components=view.build())
 
-    await ctx.app.pool.execute(
+    await ctx.app.db.execute(
         """
         INSERT INTO button_roles (entry_id, guild_id, channel_id, msg_id, emoji, buttonlabel, buttonstyle, role_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
