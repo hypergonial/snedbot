@@ -116,7 +116,6 @@ class SnedBot(lightbulb.BotApp):
         # Initizaling configuration and database
         self._config = config
         self._db = Database()
-        self._pool = None
         miru.load(self)
 
         # Some global variables
@@ -154,13 +153,6 @@ class SnedBot(lightbulb.BotApp):
     def db(self) -> Database:
         """The main database connection pool of the bot."""
         return self._db
-
-    @property
-    def pool(self) -> asyncpg.Pool:
-        """The database connection pool of the bot."""
-        if self._pool is None:
-            raise hikari.ComponentStateConflictError("The bot is not initialized and has no pool.")
-        return self._pool
 
     @property
     def perspective(self) -> kosu.Client:
@@ -238,7 +230,6 @@ class SnedBot(lightbulb.BotApp):
     async def on_starting(self, event: hikari.StartingEvent) -> None:
         # Connect to the database, create asyncpg pool
         await self.db.connect()
-        self._pool = self.db._pool
         # Create all the initial tables if they do not exist already
         with open(os.path.join(self.base_dir, "db", "schema.sql")) as file:
             await self.db.execute(file.read())
