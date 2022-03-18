@@ -24,6 +24,20 @@ LINK_REGEX = re.compile(
 )
 INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
 
+BADGE_EMOJI_MAPPING = {
+    hikari.UserFlag.BUG_HUNTER_LEVEL_1: const.EMOJI_BUGHUNTER,
+    hikari.UserFlag.BUG_HUNTER_LEVEL_2: const.EMOJI_BUGHUNTER_GOLD,
+    hikari.UserFlag.DISCORD_CERTIFIED_MODERATOR: const.EMOJI_CERT_MOD,
+    hikari.UserFlag.EARLY_SUPPORTER: const.EMOJI_EARLY_SUPPORTER,
+    hikari.UserFlag.EARLY_VERIFIED_DEVELOPER: const.EMOJI_VERIFIED_DEVELOPER,
+    hikari.UserFlag.HYPESQUAD_EVENTS: const.EMOJI_HYPESQUAD_EVENTS,
+    hikari.UserFlag.HYPESQUAD_BALANCE: const.EMOJI_HYPESQUAD_BALANCE,
+    hikari.UserFlag.HYPESQUAD_BRAVERY: const.EMOJI_HYPESQUAD_BRAVERY,
+    hikari.UserFlag.HYPESQUAD_BRILLIANCE: const.EMOJI_HYPESQUAD_BRILLIANCE,
+    hikari.UserFlag.PARTNERED_SERVER_OWNER: const.EMOJI_PARTNER,
+    hikari.UserFlag.DISCORD_EMPLOYEE: const.EMOJI_STAFF,
+}
+
 
 def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
     """
@@ -75,22 +89,7 @@ def sort_roles(roles: Sequence[hikari.Role]) -> Sequence[hikari.Role]:
 
 def get_badges(user: hikari.User) -> List[str]:
     """Return a list of badge emojies that the user has."""
-
-    badge_emoji_mapping = {
-        hikari.UserFlag.BUG_HUNTER_LEVEL_1: const.EMOJI_BUGHUNTER,
-        hikari.UserFlag.BUG_HUNTER_LEVEL_2: const.EMOJI_BUGHUNTER_GOLD,
-        hikari.UserFlag.DISCORD_CERTIFIED_MODERATOR: const.EMOJI_CERT_MOD,
-        hikari.UserFlag.EARLY_SUPPORTER: const.EMOJI_EARLY_SUPPORTER,
-        hikari.UserFlag.EARLY_VERIFIED_DEVELOPER: const.EMOJI_VERIFIED_DEVELOPER,
-        hikari.UserFlag.HYPESQUAD_EVENTS: const.EMOJI_HYPESQUAD_EVENTS,
-        hikari.UserFlag.HYPESQUAD_BALANCE: const.EMOJI_HYPESQUAD_BALANCE,
-        hikari.UserFlag.HYPESQUAD_BRAVERY: const.EMOJI_HYPESQUAD_BRAVERY,
-        hikari.UserFlag.HYPESQUAD_BRILLIANCE: const.EMOJI_HYPESQUAD_BRILLIANCE,
-        hikari.UserFlag.PARTNERED_SERVER_OWNER: const.EMOJI_PARTNER,
-        hikari.UserFlag.DISCORD_EMPLOYEE: const.EMOJI_STAFF,
-    }
-
-    return [emoji for flag, emoji in badge_emoji_mapping.items() if flag & user.flags]
+    return [emoji for flag, emoji in BADGE_EMOJI_MAPPING.items() if flag & user.flags]
 
 
 async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
