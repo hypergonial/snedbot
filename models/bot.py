@@ -5,7 +5,6 @@ import os
 import pathlib
 import typing as t
 
-import asyncpg
 import hikari
 import kosu
 import lightbulb
