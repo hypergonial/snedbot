@@ -31,6 +31,22 @@ class Tag(DatabaseModel):
     async def fetch(
         cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild], add_use: bool = False
     ) -> t.Optional[Tag]:
+        """Fetches a tag from the database.
+
+        Parameters
+        ----------
+        name : str
+            The name of the tag to fetch.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the tag is located in.
+        add_use : bool, optional
+            If True, increments the usage counter, by default False
+
+        Returns
+        -------
+        t.Optional[Tag]
+            The tag object, if found.
+        """
         guild_id = hikari.Snowflake(guild)
 
         if add_use:
@@ -57,6 +73,20 @@ class Tag(DatabaseModel):
     async def fetch_closest_names(
         cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
     ) -> t.Optional[t.List[str]]:
+        """Fetch the closest tagnames for the provided name.
+
+        Parameters
+        ----------
+        name : str
+            The name to use for finding close matches.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the tags are located in.
+
+        Returns
+        -------
+        t.Optional[t.List[str]]
+            A list of tag names and aliases.
+        """
         guild_id = hikari.Snowflake(guild)
         # TODO: Figure out how to fuzzymatch within arrays via SQL
         results = await cls._db.fetch("""SELECT tagname, aliases FROM tags WHERE guild_id = $1""", guild_id)
@@ -75,6 +105,22 @@ class Tag(DatabaseModel):
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         owner: hikari.SnowflakeishOr[hikari.PartialUser],
     ) -> t.Optional[t.List[str]]:
+        """Fetch the closest tagnames for the provided name and owner.
+
+        Parameters
+        ----------
+        name : str
+            The name to use for finding close matches.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the tags are located in.
+        owner : hikari.SnowflakeishOr[hikari.PartialUser]
+            The owner of the tags.
+
+        Returns
+        -------
+        t.Optional[t.List[str]]
+            A list of tag names and aliases.
+        """
         guild_id = hikari.Snowflake(guild)
         owner_id = hikari.Snowflake(owner)
         # TODO: Figure out how to fuzzymatch within arrays via SQL
@@ -95,6 +141,20 @@ class Tag(DatabaseModel):
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         owner: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
     ) -> t.Optional[t.List[Tag]]:
+        """Fetch all tags that belong to a guild, and optionally a user.
+
+        Parameters
+        ----------
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the tags belong to.
+        owner : t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]], optional
+            The owner the tags belong to, by default None
+
+        Returns
+        -------
+        t.Optional[t.List[Tag]]
+            A list of tags that match the criteria.
+        """
         guild_id = hikari.Snowflake(guild)
         if not owner:
             records = await cls._db.fetch("""SELECT * FROM tags WHERE guild_id = $1 ORDER BY uses DESC""", guild_id)
@@ -129,6 +189,28 @@ class Tag(DatabaseModel):
         aliases: t.List[str],
         content: str,
     ) -> Tag:
+        """Create a new tag object and save it to the database.
+
+        Parameters
+        ----------
+        name : str
+            The name of the tag.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the tag belongs to.
+        creator : hikari.SnowflakeishOr[hikari.PartialUser]
+            The creator of the tag.
+        owner : hikari.SnowflakeishOr[hikari.PartialUser]
+            The current owner of the tag.
+        aliases : t.List[str]
+            A list of all aliases the tag has.
+        content : str
+            The content of the tag.
+
+        Returns
+        -------
+        Tag
+            The created tag object.
+        """
 
         await cls._db.execute(
             """
@@ -151,9 +233,11 @@ class Tag(DatabaseModel):
         )
 
     async def delete(self) -> None:
+        """Delete the tag from the database."""
         await self._db.execute("""DELETE FROM tags WHERE tagname = $1 AND guild_id = $2""", self.name, self.guild_id)
 
     async def update(self) -> None:
+        """Update the tag's attributes and sync it up to the database."""
 
         await self._db.execute(
             """INSERT INTO tags (guild_id, tagname, owner_id, aliases, content)
@@ -167,4 +251,16 @@ class Tag(DatabaseModel):
         )
 
     def parse_content(self, ctx: SnedContext) -> str:
+        """Parse a tag's contents and substitute any variables with data.
+
+        Parameters
+        ----------
+        ctx : SnedContext
+            The context to evaluate variables under.
+
+        Returns
+        -------
+        str
+            The parsed tag contents.
+        """
         return self.content.replace("{user}", ctx.author.mention).replace("{channel}", f"<#{ctx.channel_id}>")

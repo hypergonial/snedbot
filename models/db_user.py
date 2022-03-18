@@ -12,7 +12,7 @@ from models.db import DatabaseModel
 @attr.define()
 class DatabaseUser(DatabaseModel):
     """
-    Represents a user stored inside the database.
+    Represents user data stored inside the database.
     """
 
     id: hikari.Snowflake
@@ -42,7 +42,20 @@ class DatabaseUser(DatabaseModel):
     async def fetch(
         cls, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
     ) -> DatabaseUser:
-        """Fetch a user from the database. If not present, returns a default DatabaseUser object."""
+        """Fetch a user from the database. If not present, returns a default DatabaseUser object.
+
+        Parameters
+        ----------
+        user : hikari.SnowflakeishOr[hikari.PartialUser]
+            The user to retrieve database information for.
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the user belongs to.
+
+        Returns
+        -------
+        DatabaseUser
+            An object representing stored user data.
+        """
 
         record = await cls._db.fetchrow(
             """SELECT * FROM users WHERE user_id = $1 AND guild_id = $2""",
@@ -63,7 +76,18 @@ class DatabaseUser(DatabaseModel):
 
     @classmethod
     async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[DatabaseUser]]:
-        """Fetch all stored users for a specific guild."""
+        """Fetch all stored user data that belongs to the specified guild.
+
+        Parameters
+        ----------
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild the users belongs to.
+
+        Returns
+        -------
+        Optional[List[DatabaseUser]]
+            A list of objects representing stored user data.
+        """
 
         records = await cls._db.fetch("""SELECT * FROM users WHERE guild_id = $1""", hikari.Snowflake(guild))
 

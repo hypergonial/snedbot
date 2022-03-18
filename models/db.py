@@ -65,12 +65,14 @@ class Database:
         return f"postgres://{self.user}:{self.password}@{self.host}/{self.db_name}"
 
     async def connect(self) -> None:
+        """Start a new connection and create a connection pool."""
         if self._is_closed:
             raise DatabaseStateConflictError("The database is closed.")
 
         self._pool = await asyncpg.create_pool(dsn=self.dsn)
 
     async def close(self) -> None:
+        """Close the connection pool."""
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
         if self._is_closed:
@@ -80,6 +82,7 @@ class Database:
         self._is_closed = True
 
     def terminate(self) -> None:
+        """Terminate the connection pool."""
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
         if self._is_closed:
@@ -90,6 +93,7 @@ class Database:
 
     @asynccontextmanager
     async def acquire(self) -> t.AsyncIterator[asyncpg.Connection]:
+        """Acquire a database connection from the connection pool."""
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
 
@@ -100,30 +104,128 @@ class Database:
             await self._pool.release(con)
 
     async def execute(self, query: str, *args, timeout: t.Optional[float] = None) -> str:
+        """Execute an SQL command.
+
+        Parameters
+        ----------
+        query : str
+            The SQL query to run.
+        timeout : Optional[float], optional
+            The timeout in seconds, by default None
+
+        Returns
+        -------
+        str
+            The SQL return code.
+
+        Raises
+        ------
+        DatabaseStateConflictError
+            The application is not connected to the database server.
+        """
+
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
 
         return await self._pool.execute(query, *args, timeout=timeout)  # type: ignore
 
     async def fetch(self, query: str, *args, timeout: t.Optional[float] = None) -> t.List[asyncpg.Record]:
+        """Run a query and return the results as a list of `Record`.
+
+        Parameters
+        ----------
+        query : str
+            The SQL query to be ran.
+        timeout : Optional[float], optional
+            The timeout in seconds, by default None
+
+        Returns
+        -------
+        List[asyncpg.Record]
+            A list of records that matched the query parameters.
+
+        Raises
+        ------
+        DatabaseStateConflictError
+            The application is not connected to the database server.
+        """
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
 
         return await self._pool.fetch(query, *args, timeout=timeout)
 
     async def executemany(self, command: str, args: t.Tuple[t.Any], *, timeout: t.Optional[float] = None) -> str:
+        """Execute an SQL command for each sequence of arguments in `args`.
+
+        Parameters
+        ----------
+        query : str
+            The SQL query to run.
+        args : Tuple[t.Any]
+            Tuples of arguments to execute.
+        timeout : Optional[float], optional
+            The timeout in seconds, by default None
+
+        Returns
+        -------
+        str
+            The SQL return code.
+
+        Raises
+        ------
+        DatabaseStateConflictError
+            The application is not connected to the database server.
+        """
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
 
         return await self._pool.executemany(command, args, timeout=timeout)  # type: ignore
 
     async def fetchrow(self, query: str, *args, timeout: t.Optional[float] = None) -> asyncpg.Record:
+        """Run a query and return the first row that matched query parameters.
+
+        Parameters
+        ----------
+        query : str
+            The SQL query to be ran.
+        timeout : t.Optional[float], optional
+            The timeout in seconds, by default None
+
+        Returns
+        -------
+        asyncpg.Record
+            The record that matched query parameters.
+
+        Raises
+        ------
+        DatabaseStateConflictError
+            The application is not connected to the database server.
+        """
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
 
         return await self._pool.fetchrow(query, *args, timeout=timeout)
 
     async def fetchval(self, query: str, *args, column: int = 0, timeout: t.Optional[float] = None) -> t.Any:
+        """Run a query and return a value in the first row that matched query parameters.
+
+        Parameters
+        ----------
+        query : str
+            The SQL query to be ran.
+        timeout : t.Optional[float], optional
+            The timeout in seconds, by default None
+
+        Returns
+        -------
+        Any
+            The value that matched the query parameters.
+
+        Raises
+        ------
+        DatabaseStateConflictError
+            The application is not connected to the database server.
+        """
         if not self._pool:
             raise DatabaseStateConflictError("The database is not connected.")
 
