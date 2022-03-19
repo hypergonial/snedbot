@@ -97,7 +97,7 @@ class Scheduler:
         if not conversion_mode or conversion_mode == ConversionMode.RELATIVE:
             # Relative time conversion
             # Get any pair of <number><word> with a single optional space in between, and return them as a dict (sort of)
-            time_regex = re.compile(r"(\d+(?:[.,]\d+)?)\s{0,1}([a-zA-Z]+)")
+            time_regex = re.compile(r"(\d+(?:[.,]\d+)?)\s?(\w+)")
             time_letter_dict = {
                 "h": 3600,
                 "s": 1,
