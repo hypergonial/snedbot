@@ -242,7 +242,7 @@ class Tag(DatabaseModel):
         await self._db.execute(
             """INSERT INTO tags (guild_id, tagname, owner_id, aliases, content)
         VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, tagname) DO
-        UPDATE SET aliases = $4, content = $5""",
+        UPDATE SET owner_id = $3, aliases = $4, content = $5""",
             self.guild_id,
             self.name,
             self.owner_id,
