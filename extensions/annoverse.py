@@ -4,6 +4,7 @@ import hikari
 import lightbulb
 
 import etc.constants as const
+from models.bot import SnedBot
 from models.context import SnedContext
 from utils import helpers
 
@@ -81,3 +82,11 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
             color=const.EMBED_GREEN,
         )
     await ctx.respond(embed=embed)
+
+
+def load(bot: SnedBot) -> None:
+    bot.add_plugin(annoverse)
+
+
+def unload(bot: SnedBot) -> None:
+    bot.remove_plugin(annoverse)
