@@ -556,7 +556,7 @@ async def channel_delete(plugin: lightbulb.Plugin, event: hikari.GuildChannelDel
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title=f"#️⃣ Channel deleted",
-            description=f"**Channel:** `{event.channel.name}` `({event.channel.type.name})`\n**Moderator:** `{moderator} {f'({moderator.id})`' if moderator else ''} ",  # type: ignore
+            description=f"**Channel:** `{event.channel.name}` `({event.channel.type.name})`\n**Moderator:** `{moderator}` {f'`({moderator.id})`' if moderator else ''} ",  # type: ignore
             color=const.ERROR_COLOR,
         )
         await log("channels", embed, event.guild_id)
@@ -571,7 +571,7 @@ async def channel_create(plugin: lightbulb.Plugin, event: hikari.GuildChannelCre
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title=f"#️⃣ Channel created",
-            description=f"**Channel:** {event.channel.mention} `({event.channel.type.name})`\n**Moderator:** `{moderator} {f'({moderator.id})`' if moderator else ''}`",  # type: ignore
+            description=f"**Channel:** {event.channel.mention} `({event.channel.type.name})`\n**Moderator:** `{moderator}` {f'`({moderator.id})`' if moderator else ''}`",  # type: ignore
             color=const.EMBED_GREEN,
         )
         await log("channels", embed, event.guild_id)
