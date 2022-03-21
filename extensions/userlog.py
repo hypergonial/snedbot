@@ -617,7 +617,7 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
 
         embed = hikari.Embed(
             title=f"#️⃣ Channel updated",
-            description=f"Channel {event.channel.mention} was updated by `{moderator}` `{f'({moderator.id})`' if moderator else ''}`.\n**Changes:**\n```ansi\n{diff}```",
+            description=f"Channel {event.channel.mention} was updated by `{moderator}` {f'`({moderator.id})`' if moderator else ''}.\n**Changes:**\n```ansi\n{diff}```",
             color=const.EMBED_BLUE,
         )
         await log("channels", embed, event.guild_id)
