@@ -72,13 +72,13 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
     if ctx.interaction.locale == "de-DE":
         embed = hikari.Embed(
             title="✅ Frage eingereicht!",
-            description="Andere können ihre Fragen über `/question` stellen!",
+            description="Andere können ihre Fragen über `/ask` stellen!",
             color=const.EMBED_GREEN,
         )
     else:
         embed = hikari.Embed(
             title="✅ Question submitted!",
-            description="Others can submit their question by using `/question`!",
+            description="Others can submit their question by using `/ask`!",
             color=const.EMBED_GREEN,
         )
     await ctx.respond(embed=embed)
