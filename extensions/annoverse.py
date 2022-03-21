@@ -25,7 +25,7 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
     assert ctx.member is not None and ctx.interaction is not None
 
     if ctx.channel_id != QUESTIONS_CHANNEL_ID:
-        if ctx.interaction.locale == "de-DE":
+        if ctx.interaction.locale == "de":
             embed = hikari.Embed(
                 title="❌ Ungültiger Kanal!",
                 description=f"Stelle deine Frage in <#{QUESTIONS_CHANNEL_ID}>",
@@ -48,7 +48,7 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
             lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
         )
     ):
-        if ctx.interaction.locale == "de-DE":
+        if ctx.interaction.locale == "de":
             embed = hikari.Embed(
                 title="❌ zu viele Fragen! :)",
                 description="Sorry, du kannst leider nur bis zu drei Fragen stellen!",
@@ -69,7 +69,7 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
         question_counters[ctx.author.id] = 0
     question_counters[ctx.author.id] += 1
 
-    if ctx.interaction.locale == "de-DE":
+    if ctx.interaction.locale == "de":
         embed = hikari.Embed(
             title="✅ Frage eingereicht!",
             description="Andere können ihre Fragen über `/ask` stellen!",
