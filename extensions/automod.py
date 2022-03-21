@@ -379,6 +379,9 @@ async def scan_messages(
                     reason="having too many links in a single message",
                 )
 
+            if not link_matches:
+                return
+
             await link_spam_ratelimiter.acquire(message)
 
             if link_spam_ratelimiter.is_rate_limited(message):
