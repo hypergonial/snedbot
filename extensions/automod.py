@@ -317,13 +317,14 @@ async def scan_messages(
     if policies["spam"]["state"] != AutoModState.DISABLED.value and spam_ratelimiter.is_rate_limited(message):
         return await punish(message, policies, AutomodActionType.SPAM, reason="spam")
 
-    if policies["attach_spam"]["state"] != AutoModState.DISABLED.value and message.attachments:
-        await attach_spam_ratelimiter.acquire(message)
+    if isinstance(event, hikari.GuildMessageCreateEvent):
+        if policies["attach_spam"]["state"] != AutoModState.DISABLED.value and message.attachments:
+            await attach_spam_ratelimiter.acquire(message)
 
-        if attach_spam_ratelimiter.is_rate_limited(message):
-            await punish(
-                message, policies, AutomodActionType.ATTACH_SPAM, reason="posting images/attachments too quickly"
-            )
+            if attach_spam_ratelimiter.is_rate_limited(message):
+                await punish(
+                    message, policies, AutomodActionType.ATTACH_SPAM, reason="posting images/attachments too quickly"
+                )
 
     # Everything that requires message content follows below
     if not message.content:
@@ -366,19 +367,18 @@ async def scan_messages(
                 reason="posting Discord invites",
             )
 
-    if policies["link_spam"]["state"] != AutoModState.DISABLED.value:
-        link_regex = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
-        link_matches = link_regex.findall(message.content)
-        if len(link_matches) > 7:
-            return await punish(
-                message,
-                policies,
-                AutomodActionType.LINK_SPAM,
-                reason="having too many links in a single message",
-            )
+    if isinstance(event, hikari.GuildMessageCreateEvent):
+        if policies["link_spam"]["state"] != AutoModState.DISABLED.value:
+            link_regex = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
+            link_matches = link_regex.findall(message.content)
+            if len(link_matches) > 7:
+                return await punish(
+                    message,
+                    policies,
+                    AutomodActionType.LINK_SPAM,
+                    reason="having too many links in a single message",
+                )
 
-        # If the user edited in a new link, that should not be counted
-        if link_matches and isinstance(event, hikari.GuildMessageCreateEvent):
             await link_spam_ratelimiter.acquire(message)
 
             if link_spam_ratelimiter.is_rate_limited(message):
