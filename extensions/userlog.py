@@ -358,7 +358,7 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, s
         old = getattr(old_object, attribute)
         new = getattr(object, attribute)
 
-        if hasattr(old, "name"):  # Handling flags enums
+        if hasattr(old, "name") and hasattr(new, "name"):  # Handling flags enums
             diff = (
                 f"{diff}\n{white}{attrs[attribute]}: {red}{old.name} {gray}-> {green}{new.name}" if old != new else diff
             )
