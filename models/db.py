@@ -62,7 +62,7 @@ class Database:
     @property
     def dsn(self) -> str:
         """The connection URI used to connect to the database."""
-        return f"postgres://{self.user}:{self.password}@{self.host}/{self.db_name}"
+        return f"postgres://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
 
     async def connect(self) -> None:
         """Start a new connection and create a connection pool."""
