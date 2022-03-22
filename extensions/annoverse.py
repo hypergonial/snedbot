@@ -8,7 +8,7 @@ from models.bot import SnedBot
 from models.context import SnedContext
 from utils import helpers
 
-annoverse = lightbulb.Plugin("annoverse")
+annoverse = lightbulb.Plugin("Annoverse")
 annoverse.default_enabled_guilds = (372128553031958529,)
 
 QUESTIONS_CHANNEL_ID = 955463477760229397
