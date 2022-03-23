@@ -4,12 +4,13 @@ import hikari
 import lightbulb
 
 import etc.constants as const
+from config import Config
 from models.bot import SnedBot
 from models.context import SnedContext
 from utils import helpers
 
 annoverse = lightbulb.Plugin("Annoverse")
-annoverse.default_enabled_guilds = (372128553031958529,)
+annoverse.default_enabled_guilds = Config().DEBUG_GUILDS or (372128553031958529,)
 
 QUESTIONS_CHANNEL_ID = 955463477760229397
 OUTPUT_CHANNEL_ID = 955463511767654450

@@ -2,6 +2,7 @@ import aiohttp
 import hikari
 import lightbulb
 
+from config import Config
 from etc import constants as const
 from models.bot import SnedBot
 from models.context import SnedSlashContext
@@ -86,7 +87,7 @@ async def fandom_cmd(ctx: SnedSlashContext, wiki: str, query: str) -> None:
     "annowiki",
     "Search an Anno Wiki for articles!",
     pass_options=True,
-    guilds=(581296099826860033, 627876365223591976, 372128553031958529),
+    guilds=Config().DEBUG_GUILDS or (581296099826860033, 627876365223591976, 372128553031958529),
 )
 @lightbulb.implements(lightbulb.SlashCommand)
 async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> None:
@@ -115,7 +116,7 @@ async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> Non
     "ffwiki",
     "Search the Falling Frontier Wiki for articles!",
     pass_options=True,
-    guilds=(684324252786360476, 813803567445049414),
+    guilds=Config().DEBUG_GUILDS or (684324252786360476, 813803567445049414),
 )
 @lightbulb.implements(lightbulb.SlashCommand)
 async def ffwiki(ctx: SnedSlashContext, query: str) -> None:

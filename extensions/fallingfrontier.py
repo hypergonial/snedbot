@@ -1,10 +1,11 @@
 import hikari
 import lightbulb
 
+from config import Config
 from models.bot import SnedBot
 
 ff = lightbulb.Plugin("Falling Frontier")
-ff.default_enabled_guilds = (684324252786360476, 813803567445049414)
+ff.default_enabled_guilds = Config().DEBUG_GUILDS or (684324252786360476, 813803567445049414)
 
 
 @ff.listener(hikari.GuildMessageCreateEvent)

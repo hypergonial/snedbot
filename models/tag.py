@@ -44,7 +44,7 @@ class Tag(DatabaseModel):
 
         Returns
         -------
-        t.Optional[Tag]
+        Optional[Tag]
             The tag object, if found.
         """
         guild_id = hikari.Snowflake(guild)
@@ -84,7 +84,7 @@ class Tag(DatabaseModel):
 
         Returns
         -------
-        t.Optional[t.List[str]]
+        Optional[List[str]]
             A list of tag names and aliases.
         """
         guild_id = hikari.Snowflake(guild)
@@ -118,7 +118,7 @@ class Tag(DatabaseModel):
 
         Returns
         -------
-        t.Optional[t.List[str]]
+        Optional[List[str]]
             A list of tag names and aliases.
         """
         guild_id = hikari.Snowflake(guild)
@@ -140,7 +140,7 @@ class Tag(DatabaseModel):
         cls,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         owner: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
-    ) -> t.Optional[t.List[Tag]]:
+    ) -> t.List[Tag]:
         """Fetch all tags that belong to a guild, and optionally a user.
 
         Parameters
@@ -152,7 +152,7 @@ class Tag(DatabaseModel):
 
         Returns
         -------
-        t.Optional[t.List[Tag]]
+        List[Tag]
             A list of tags that match the criteria.
         """
         guild_id = hikari.Snowflake(guild)
@@ -165,19 +165,21 @@ class Tag(DatabaseModel):
                 hikari.Snowflake(owner),
             )
 
-        if records:
-            return [
-                cls(
-                    guild_id=hikari.Snowflake(record.get("guild_id")),
-                    name=record.get("tagname"),
-                    owner_id=hikari.Snowflake(record.get("owner_id")),
-                    creator_id=hikari.Snowflake(record.get("creator_id")) if record.get("creator_id") else None,
-                    aliases=record.get("aliases"),
-                    content=record.get("content"),
-                    uses=record.get("uses"),
-                )
-                for record in records
-            ]
+        if not records:
+            return []
+
+        return [
+            cls(
+                guild_id=hikari.Snowflake(record.get("guild_id")),
+                name=record.get("tagname"),
+                owner_id=hikari.Snowflake(record.get("owner_id")),
+                creator_id=hikari.Snowflake(record.get("creator_id")) if record.get("creator_id") else None,
+                aliases=record.get("aliases"),
+                content=record.get("content"),
+                uses=record.get("uses"),
+            )
+            for record in records
+        ]
 
     @classmethod
     async def create(

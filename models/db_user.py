@@ -75,7 +75,7 @@ class DatabaseUser(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Optional[t.List[DatabaseUser]]:
+    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.List[DatabaseUser]:
         """Fetch all stored user data that belongs to the specified guild.
 
         Parameters
@@ -85,14 +85,14 @@ class DatabaseUser(DatabaseModel):
 
         Returns
         -------
-        Optional[List[DatabaseUser]]
+        List[DatabaseUser]
             A list of objects representing stored user data.
         """
 
         records = await cls._db.fetch("""SELECT * FROM users WHERE guild_id = $1""", hikari.Snowflake(guild))
 
         if not records:
-            return
+            return []
 
         return [
             cls(
