@@ -196,6 +196,36 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
+    try:
+        message = await ctx.app.rest.fetch_message(records[0]["channel_id"], records[0]["msg_id"])
+    except hikari.ForbiddenError:
+        embed = hikari.Embed(
+            title="❌ Insufficient permissions",
+            description="The bot cannot see the channel where the button is supposed to be located, and thus cannot remove it!",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    except hikari.NotFoundError:
+        pass
+    else:  # Remove button if message still exists
+        view = miru.View.from_message(message, timeout=None)
+
+        for item in view.children:
+            if item.custom_id == f"RB:{button_id}:{records[0]['role_id']}":
+                view.remove_item(item)
+        try:
+            message = await message.edit(components=view.build())
+        except hikari.ForbiddenError:
+            embed = hikari.Embed(
+                title="❌ Insufficient permissions",
+                description="The bot cannot send messages in the channel where the button is located, and thus cannot remove it!",
+                color=const.ERROR_COLOR,
+            )
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
     await ctx.app.db.execute(
         """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""",
         ctx.guild_id,
