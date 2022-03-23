@@ -5,8 +5,6 @@ import typing as t
 import hikari
 import miru
 
-import etc.constants as const
-from models.context import SnedContext
 from models.db import DatabaseModel
 
 
