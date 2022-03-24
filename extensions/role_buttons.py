@@ -256,6 +256,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
             return
         params["role_id"] = role.id
 
+    await ctx.app.rest.create_message(ctx.app.config.ERROR_LOGGING_CHANNEL, f"```{params}```")
     for param, value in params.items():
         setattr(button, param, value)
 
