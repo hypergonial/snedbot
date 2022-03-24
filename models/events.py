@@ -5,11 +5,11 @@ import typing as t
 import attr
 import hikari
 
-from models.rolebutton import RoleButton
 from models.timer import Timer
 
 if t.TYPE_CHECKING:
     from models.bot import SnedBot
+    from models.rolebutton import RoleButton
 
 
 class SnedEvent(hikari.Event):
