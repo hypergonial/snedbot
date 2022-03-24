@@ -157,6 +157,7 @@ class RoleButtonEvent(SnedGuildEvent):
     app: SnedBot
     _guild_id: hikari.Snowflakeish
     rolebutton: RoleButton
+    moderator: t.Optional[hikari.PartialUser] = None
 
 
 @attr.define()

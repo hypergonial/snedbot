@@ -11,9 +11,13 @@ from etc import get_perm_str
 from models import SnedBot
 from models.events import AutoModMessageFlagEvent
 from models.events import MassBanEvent
+from models.events import RoleButtonCreateEvent
+from models.events import RoleButtonDeleteEvent
+from models.events import RoleButtonUpdateEvent
 from models.events import WarnCreateEvent
 from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
+from models.rolebutton import RoleButton
 from utils import helpers
 
 userlog = lightbulb.Plugin("Logging", include_datastore=True)
@@ -990,8 +994,8 @@ async def flag_message(plugin: lightbulb.Plugin, event: AutoModMessageFlagEvent)
     await log("flags", embed, event.guild_id)
 
 
-@userlog.listener(MassBanEvent, bind=True)
-async def massban_execute(plugin: lightbulb.Plugin, event: MassBanEvent) -> None:
+@userlog.listener(MassBanEvent)
+async def massban_execute(event: MassBanEvent) -> None:
 
     log_embed = hikari.Embed(
         title="🔨 Smartban concluded",
@@ -999,6 +1003,42 @@ async def massban_execute(plugin: lightbulb.Plugin, event: MassBanEvent) -> None
         color=const.ERROR_COLOR,
     )
     await log("ban", log_embed, event.guild_id, file=event.users_file, bypass=True)
+
+
+@userlog.listener(RoleButtonCreateEvent)
+async def rolebutton_create(event: RoleButtonCreateEvent) -> None:
+    moderator = f"{event.moderator} ({event.moderator.id})" if event.moderator else "Unknown"
+
+    log_embed = hikari.Embed(
+        title="❇️ Rolebutton Added",
+        description=f"**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        color=const.EMBED_GREEN,
+    )
+    await log("roles", log_embed, event.guild_id)
+
+
+@userlog.listener(RoleButtonDeleteEvent)
+async def rolebutton_delete(event: RoleButtonDeleteEvent) -> None:
+    moderator = f"{event.moderator} ({event.moderator.id})" if event.moderator else "Unknown"
+
+    log_embed = hikari.Embed(
+        title="🗑️ Rolebutton Deleted",
+        description=f"**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        color=const.ERROR_COLOR,
+    )
+    await log("roles", log_embed, event.guild_id)
+
+
+@userlog.listener(RoleButtonUpdateEvent)
+async def rolebutton_update(event: RoleButtonUpdateEvent) -> None:
+    moderator = f"{event.moderator} ({event.moderator.id})" if event.moderator else "Unknown"
+
+    log_embed = hikari.Embed(
+        title="🖊️ Rolebutton Updated",
+        description=f"**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        color=const.EMBED_BLUE,
+    )
+    await log("roles", log_embed, event.guild_id)
 
 
 def load(bot: SnedBot) -> None:

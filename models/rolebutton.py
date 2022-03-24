@@ -29,6 +29,7 @@ class RoleButton(DatabaseModel):
         self._guild_id = guild_id
         self._channel_id = channel_id
         self._message_id = message_id
+        self._custom_id = f"RB:{id}:{role_id}"
         # May be changed
         self.emoji = emoji
         self.label = label
@@ -50,6 +51,10 @@ class RoleButton(DatabaseModel):
     @property
     def message_id(self) -> hikari.Snowflake:
         return self._message_id
+
+    @property
+    def custom_id(self) -> str:
+        return self._custom_id
 
     @classmethod
     async def fetch(cls, id: int) -> t.Optional[RoleButton]:
@@ -123,6 +128,7 @@ class RoleButton(DatabaseModel):
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
         label: t.Optional[str] = None,
+        moderator: t.Optional[hikari.PartialUser] = None,
     ) -> RoleButton:
         """Create a new rolebutton with the provided parameters.
 
@@ -140,6 +146,8 @@ class RoleButton(DatabaseModel):
             The label of the button.
         style : hikari.ButtonStyle
             The style of the button.
+        moderator : Optional[hikari.PartialUser]
+            The user to log the rolebutton creation under.
 
         Returns
         -------
@@ -193,28 +201,39 @@ class RoleButton(DatabaseModel):
             role_id=hikari.Snowflake(role),
         )
 
-        cls._app.dispatch(RoleButtonCreateEvent(cls._app, rolebutton.guild_id, rolebutton))
+        cls._app.dispatch(RoleButtonCreateEvent(cls._app, rolebutton.guild_id, rolebutton, moderator))
         return rolebutton
 
-    async def update(self) -> None:
+    async def update(self, moderator: t.Optional[hikari.PartialUser] = None) -> None:
         """Update the rolebutton with the current state of this object.
+
+        Parameters
+        ----------
+        moderator : Optional[hikari.PartialUser]
+            The user to log the rolebutton update under.
 
         Raises
         ------
         hikari.ForbiddenError
             Failed to edit or fetch the message the button belongs to.
         """
-        button = miru.Button(
-            custom_id=f"RB:{self.id}:{self.role_id}",
-            emoji=self.emoji,
-            label=self.label,
-            style=self.style,
-        )
 
         message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
 
         view = miru.View.from_message(message, timeout=None)
-        view.add_item(button)
+        buttons = [item for item in view.children if item.custom_id == self.custom_id and isinstance(item, miru.Button)]
+
+        if not buttons:
+            raise ValueError("Rolebutton not found on message.")
+
+        button = buttons[0]
+
+        button.emoji = self.emoji
+        button.label = self.label
+        button.style = self.style
+        button.custom_id = f"RB:{self.id}:{self.role_id}"
+        self._custom_id = button.custom_id
+
         message = await message.edit(components=view.build())
 
         await self._db.execute(
@@ -228,10 +247,15 @@ class RoleButton(DatabaseModel):
             self.id,
             self.guild_id,
         )
-        self._app.dispatch(RoleButtonUpdateEvent(self._app, self.guild_id, self))
+        self._app.dispatch(RoleButtonUpdateEvent(self._app, self.guild_id, self, moderator))
 
-    async def delete(self) -> None:
+    async def delete(self, moderator: t.Optional[hikari.PartialUser] = None) -> None:
         """Delete this rolebutton, removing it from the message and the database.
+
+        Parameters
+        ----------
+        moderator : Optional[hikari.PartialUser]
+            The user to log the rolebutton deletion under.
 
         Raises
         ------
@@ -256,4 +280,4 @@ class RoleButton(DatabaseModel):
             self.guild_id,
             self.id,
         )
-        self._app.dispatch(RoleButtonDeleteEvent(self._app, self.guild_id, self))
+        self._app.dispatch(RoleButtonDeleteEvent(self._app, self.guild_id, self, moderator))

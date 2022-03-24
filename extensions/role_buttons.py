@@ -184,7 +184,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
         return
 
     try:
-        await button.delete()
+        await button.delete(ctx.member)
     except hikari.ForbiddenError:
         embed = hikari.Embed(
             title="❌ Insufficient permissions",
@@ -254,7 +254,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
         setattr(button, param, value)
 
     try:
-        await button.update()
+        await button.update(ctx.member)
     except hikari.ForbiddenError:
         embed = hikari.Embed(
             title="❌ Insufficient permissions",
@@ -329,7 +329,7 @@ async def rolebutton_add(
     style = button_styles[buttonstyle.capitalize()]
 
     try:
-        button = await RoleButton.create(ctx.guild_id, message, role, parsed_emoji, style, label)
+        button = await RoleButton.create(ctx.guild_id, message, role, parsed_emoji, style, label, ctx.member)
     except ValueError:
         embed = hikari.Embed(
             title="❌ Too many buttons",
@@ -354,16 +354,6 @@ async def rolebutton_add(
     )
     embed.set_footer(f"Button ID: {button.id}")
     await ctx.respond(embed=embed)
-
-    embed = hikari.Embed(
-        title="❇️ Role-Button was added",
-        description=f"A role-button for role {ctx.options.role.mention} has been created by {ctx.author.mention} in channel <#{message.channel_id}>.\n\n__Note:__ Anyone who can see this channel can now obtain this role!",
-        color=const.EMBED_GREEN,
-    )
-
-    userlog = ctx.app.get_plugin("Logging")
-    assert userlog is not None
-    await userlog.d.actions.log("roles", embed, ctx.guild_id)
 
 
 def load(bot: SnedBot) -> None:
