@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS schema_info
 (
-    schema_version int NOT NULL DEFAULT 1
+    schema_version int NOT NULL DEFAULT 2
 );
 
 CREATE TABLE IF NOT EXISTS global_config
