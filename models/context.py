@@ -167,15 +167,11 @@ class SnedContext(lightbulb.Context):
 
     @property
     def app(self) -> SnedBot:
-        app = super().app
-        assert isinstance(app, SnedBot)
-        return app
+        return super().app  # type: ignore
 
     @property
     def bot(self) -> SnedBot:
-        bot = super().bot
-        assert isinstance(bot, SnedBot)
-        return bot
+        return super().bot  # type: ignore
 
 
 class SnedSlashContext(SnedContext, lightbulb.SlashContext):
