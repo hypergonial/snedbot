@@ -1,7 +1,6 @@
 import logging
 import typing as t
 
-import asyncpg
 import hikari
 import lightbulb
 import miru
