@@ -225,7 +225,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     assert ctx.guild_id is not None
     params = {opt: value for opt, value in kwargs.items() if opt is not None}
 
-    button = await RoleButton.fetch(params["button_id"])
+    button = await RoleButton.fetch(params.pop("button_id"))
 
     if not button:
         embed = hikari.Embed(
@@ -239,14 +239,13 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     if label := params.get("label"):
         params["label"] = label if label.casefold() != "removelabel" else None
 
-    if buttonstyle := params.get("buttonstyle"):
+    if buttonstyle := params.pop("buttonstyle", None):
         params["style"] = button_styles[buttonstyle]
-        params.pop("buttonstyle")
 
     if emoji := params.get("emoji"):
         params["emoji"] = hikari.Emoji.parse(emoji)
 
-    if role := params.get("role"):
+    if role := params.pop("role", None):
         if role.is_managed or role.is_premium_subscriber_role:
             embed = hikari.Embed(
                 title="❌ Role is managed",
@@ -255,8 +254,8 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
+        params["role_id"] = role.id
 
-    print(params)
     for param, value in params.items():
         setattr(button, param, value)
 
