@@ -509,7 +509,7 @@ async def tag_list(ctx: SnedSlashContext, owner: t.Optional[hikari.User] = None)
 
     tags = await Tag.fetch_all(ctx.guild_id, owner)
 
-    if tags is not None:
+    if tags:
         tags_fmt = [f"**#{i+1}** - `{tag.uses}` uses: `{tag.name}`" for i, tag in enumerate(tags)]
         # Only show 8 tags per page
         tags_fmt = [tags_fmt[i * 8 : (i + 1) * 8] for i in range((len(tags_fmt) + 8 - 1) // 8)]

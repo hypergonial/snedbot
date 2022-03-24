@@ -40,7 +40,25 @@ class AuthorOnlyView(miru.View):
         return ctx.user.id == self.lctx.author.id
 
 
-class AuthorOnlyNavigator(nav.NavigatorView):
+class SnedNavigator(nav.NavigatorView):
+    def __init__(
+        self,
+        *,
+        pages: List[Union[str, hikari.Embed]],
+        timeout: Optional[float] = 120,
+        autodefer: bool = True,
+    ) -> None:
+        buttons = [
+            nav.FirstButton(emoji=const.EMOJI_FIRST),
+            nav.PrevButton(emoji=const.EMOJI_PREV),
+            nav.IndicatorButton(),
+            nav.NextButton(emoji=const.EMOJI_NEXT),
+            nav.LastButton(emoji=const.EMOJI_LAST),
+        ]
+        super().__init__(pages=pages, buttons=buttons, timeout=timeout, autodefer=autodefer)
+
+
+class AuthorOnlyNavigator(SnedNavigator):
     """
     A navigator that only works for the user who invoked it.
     """
@@ -50,12 +68,12 @@ class AuthorOnlyNavigator(nav.NavigatorView):
         lctx: lightbulb.Context,
         *,
         pages: List[Union[str, hikari.Embed]],
-        buttons: Optional[List[nav.NavButton[nav.NavigatorView]]] = None,
         timeout: Optional[float] = 120,
         autodefer: bool = True,
     ) -> None:
         self.lctx = lctx
-        super().__init__(pages=pages, buttons=buttons, timeout=timeout, autodefer=autodefer)
+
+        super().__init__(pages=pages, timeout=timeout, autodefer=autodefer)
 
     async def view_check(self, ctx: miru.Context) -> bool:
         if ctx.user.id != self.lctx.author.id:
