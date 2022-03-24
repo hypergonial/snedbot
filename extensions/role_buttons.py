@@ -223,7 +223,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     assert ctx.guild_id is not None
-    params = {opt: value for opt, value in kwargs.items() if opt is not None}
+    params = {opt: value for opt, value in kwargs.items() if value is not None}
 
     button = await RoleButton.fetch(params.pop("button_id"))
 
@@ -256,7 +256,6 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
             return
         params["role_id"] = role.id
 
-    await ctx.app.rest.create_message(ctx.app.config.ERROR_LOGGING_CHANNEL, f"```{params}```")
     for param, value in params.items():
         setattr(button, param, value)
 
