@@ -82,7 +82,7 @@ class RoleButton(DatabaseModel):
             message_id=hikari.Snowflake(record.get("msg_id")),
             emoji=hikari.Emoji.parse(record.get("emoji")),
             label=record.get("buttonlabel"),
-            style=hikari.ButtonStyle(record.get("buttonstyle")),
+            style=hikari.ButtonStyle[record.get("buttonstyle")],
             role_id=record.get("role_id"),
         )
 
@@ -113,7 +113,7 @@ class RoleButton(DatabaseModel):
                 message_id=hikari.Snowflake(record.get("msg_id")),
                 emoji=hikari.Emoji.parse(record.get("emoji")),
                 label=record.get("buttonlabel"),
-                style=hikari.ButtonStyle(record.get("buttonstyle")),
+                style=hikari.ButtonStyle[record.get("buttonstyle")],
                 role_id=record.get("role_id"),
             )
             for record in records
@@ -240,7 +240,7 @@ class RoleButton(DatabaseModel):
             """
             UPDATE button_roles SET emoji = $1, buttonlabel = $2, buttonstyle = $3, role_id = $4 WHERE entry_id = $5 AND guild_id = $6
             """,
-            self.emoji,
+            str(self.emoji),
             self.label,
             self.style.name,
             self.role_id,

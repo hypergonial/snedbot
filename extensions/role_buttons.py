@@ -213,8 +213,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 @lightbulb.option("emoji", "Change the emoji that should appear in the button.", type=hikari.Emoji, required=False)
 @lightbulb.option("role", "Change the role handed out by this button.", type=hikari.Role, required=False)
 @lightbulb.option(
-    "button_id",
-    "The ID of the rolebutton to edit. You can get this via /rolebutton list",
+    "button_id", "The ID of the rolebutton to edit. You can get this via /rolebutton list", type=int, min_value=0
 )
 @lightbulb.command(
     "edit",
@@ -240,6 +239,13 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     if label := params.get("label"):
         params["label"] = label if label.casefold() != "removelabel" else None
 
+    if buttonstyle := params.get("buttonstyle"):
+        params["style"] = button_styles[buttonstyle]
+        params.pop("buttonstyle")
+
+    if emoji := params.get("emoji"):
+        params["emoji"] = hikari.Emoji.parse(emoji)
+
     if role := params.get("role"):
         if role.is_managed or role.is_premium_subscriber_role:
             embed = hikari.Embed(
@@ -250,6 +256,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
+    print(params)
     for param, value in params.items():
         setattr(button, param, value)
 
@@ -269,7 +276,6 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
         description=f"Rolebutton **#{button.id}** was updated!",
         color=const.EMBED_GREEN,
     )
-    embed.set_footer(f"Button ID: {button.id}")
     await ctx.respond(embed=embed)
 
 
@@ -293,6 +299,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_add(
     ctx: SnedSlashContext,
+    message_link: str,
     role: hikari.Role,
     emoji: str,
     buttonstyle: t.Optional[str] = None,
@@ -303,7 +310,7 @@ async def rolebutton_add(
 
     buttonstyle = buttonstyle or "Grey"
 
-    message = await helpers.parse_message_link(ctx, ctx.options.message_link)
+    message = await helpers.parse_message_link(ctx, message_link)
     if not message:
         return
 
