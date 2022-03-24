@@ -11,13 +11,15 @@ import hikari
 from models.errors import DatabaseStateConflictError
 
 if t.TYPE_CHECKING:
+    from models.bot import SnedBot
     from utils.cache import DatabaseCache
 
 
 class Database:
     """A database object that wraps an asyncpg pool and provides additional methods for convenience."""
 
-    def __init__(self) -> None:
+    def __init__(self, app: SnedBot) -> None:
+        self._app: SnedBot = app
         self._user = os.getenv("POSTGRES_USER") or "postgres"
         self._host = os.getenv("POSTGRES_HOST") or "sned-db"
         self._db_name = os.getenv("POSTGRES_DB") or "sned"
@@ -28,6 +30,12 @@ class Database:
         self._is_closed: bool = False
 
         DatabaseModel._db = self
+        DatabaseModel._app = self.app
+
+    @property
+    def app(self) -> SnedBot:
+        """The currently running application."""
+        return self._app
 
     @property
     def user(self) -> str:
@@ -247,4 +255,5 @@ class DatabaseModel(abc.ABC):
     """Common base-class for all database model objects."""
 
     _db: Database
+    _app: SnedBot
     _db_cache: DatabaseCache

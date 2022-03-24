@@ -184,7 +184,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
         return
 
     try:
-        await button.delete(ctx.app.rest)
+        await button.delete()
     except hikari.ForbiddenError:
         embed = hikari.Embed(
             title="❌ Insufficient permissions",
@@ -204,9 +204,82 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 
 @rolebutton.child
 @lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
-@lightbulb.option("buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"])
+@lightbulb.option(
+    "buttonstyle", "Change the style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False
+)
+@lightbulb.option(
+    "label", "Change the label that should appear on the button. Type 'removelabel' to remove it.", required=False
+)
+@lightbulb.option("emoji", "Change the emoji that should appear in the button.", type=hikari.Emoji, required=False)
+@lightbulb.option("role", "Change the role handed out by this button.", type=hikari.Role, required=False)
+@lightbulb.option(
+    "button_id",
+    "The ID of the rolebutton to edit. You can get this via /rolebutton list",
+)
+@lightbulb.command(
+    "edit",
+    "Edit an existing rolebutton.",
+    pass_options=True,
+)
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
+    assert ctx.guild_id is not None
+    params = {opt: value for opt, value in kwargs.items() if opt is not None}
+
+    button = await RoleButton.fetch(params["button_id"])
+
+    if not button:
+        embed = hikari.Embed(
+            title="❌ Not found",
+            description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    if label := params.get("label"):
+        params["label"] = label if label.casefold() != "removelabel" else None
+
+    if role := params.get("role"):
+        if role.is_managed or role.is_premium_subscriber_role:
+            embed = hikari.Embed(
+                title="❌ Role is managed",
+                description="This role is managed by another integration and cannot be assigned manually to a user.",
+                color=const.ERROR_COLOR,
+            )
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
+    for param, value in params.items():
+        setattr(button, param, value)
+
+    try:
+        await button.update()
+    except hikari.ForbiddenError:
+        embed = hikari.Embed(
+            title="❌ Insufficient permissions",
+            description=f"The bot cannot edit the provided message due to insufficient permissions.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    embed = hikari.Embed(
+        title="✅ Done!",
+        description=f"Rolebutton **#{button.id}** was updated!",
+        color=const.EMBED_GREEN,
+    )
+    embed.set_footer(f"Button ID: {button.id}")
+    await ctx.respond(embed=embed)
+
+
+@rolebutton.child
+@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
-@lightbulb.option("emoji", "The emoji that should appear in the button.", type=hikari.Emoji)
+@lightbulb.option(
+    "buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False
+)
+@lightbulb.option("emoji", "The emoji that should appear in the button.", type=str)
 @lightbulb.option("role", "The role that should be handed out by the button.", type=hikari.Role)
 @lightbulb.option(
     "message_link",
@@ -215,13 +288,20 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 @lightbulb.command(
     "add",
     "Add a new rolebutton.",
+    pass_options=True,
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_add(ctx: SnedSlashContext) -> None:
+async def rolebutton_add(
+    ctx: SnedSlashContext,
+    role: hikari.Role,
+    emoji: str,
+    buttonstyle: t.Optional[str] = None,
+    label: t.Optional[str] = None,
+) -> None:
 
     assert ctx.guild_id is not None
 
-    buttonstyle = ctx.options.buttonstyle or "Grey"
+    buttonstyle = buttonstyle or "Grey"
 
     message = await helpers.parse_message_link(ctx, ctx.options.message_link)
     if not message:
@@ -236,13 +316,20 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    record = await ctx.app.db.fetchrow("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC""")
-    entry_id = record.get("entry_id") + 1 if record else 1
-    emoji = hikari.Emoji.parse(ctx.options.emoji)
+    if role.is_managed or role.is_premium_subscriber_role:
+        embed = hikari.Embed(
+            title="❌ Role is managed",
+            description="This role is managed by another integration and cannot be assigned manually to a user.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    parsed_emoji = hikari.Emoji.parse(emoji)
     style = button_styles[buttonstyle.capitalize()]
 
     try:
-        button = await RoleButton.create(ctx.guild_id, message, ctx.options.role, emoji, style, ctx.options.label)
+        button = await RoleButton.create(ctx.guild_id, message, role, parsed_emoji, style, label)
     except ValueError:
         embed = hikari.Embed(
             title="❌ Too many buttons",
@@ -265,6 +352,7 @@ async def rolebutton_add(ctx: SnedSlashContext) -> None:
         description=f"A new rolebutton for role {ctx.options.role.mention} in channel <#{message.channel_id}> has been created!",
         color=const.EMBED_GREEN,
     )
+    embed.set_footer(f"Button ID: {button.id}")
     await ctx.respond(embed=embed)
 
     embed = hikari.Embed(

@@ -5,6 +5,7 @@ import typing as t
 import attr
 import hikari
 
+from models.rolebutton import RoleButton
 from models.timer import Timer
 
 if t.TYPE_CHECKING:
@@ -145,3 +146,41 @@ class AutoModMessageFlagEvent(SnedGuildEvent):
     user: hikari.PartialUser
     _guild_id: hikari.Snowflakeish
     reason: t.Optional[str] = None
+
+
+@attr.define()
+class RoleButtonEvent(SnedGuildEvent):
+    """
+    Base class for all rolebutton-related events.
+    """
+
+    app: SnedBot
+    _guild_id: hikari.Snowflakeish
+    rolebutton: RoleButton
+
+
+@attr.define()
+class RoleButtonCreateEvent(RoleButtonEvent):
+    """
+    Dispatched when a new rolebutton is created.
+    """
+
+    ...
+
+
+@attr.define()
+class RoleButtonDeleteEvent(RoleButtonEvent):
+    """
+    Dispatched when a rolebutton is deleted.
+    """
+
+    ...
+
+
+@attr.define()
+class RoleButtonUpdateEvent(RoleButtonEvent):
+    """
+    Dispatched when a rolebutton is updated.
+    """
+
+    ...

@@ -6,6 +6,9 @@ import hikari
 import miru
 
 from models.db import DatabaseModel
+from models.events import RoleButtonCreateEvent
+from models.events import RoleButtonDeleteEvent
+from models.events import RoleButtonUpdateEvent
 
 
 class RoleButton(DatabaseModel):
@@ -179,7 +182,7 @@ class RoleButton(DatabaseModel):
             hikari.Snowflake(role),
         )
 
-        return cls(
+        rolebutton = cls(
             id=id,
             guild_id=hikari.Snowflake(guild),
             channel_id=message.channel_id,
@@ -190,13 +193,11 @@ class RoleButton(DatabaseModel):
             role_id=hikari.Snowflake(role),
         )
 
-    async def update(self, rest: hikari.api.RESTClient) -> None:
-        """Update the rolebutton with the current state of this object.
+        cls._app.dispatch(RoleButtonCreateEvent(cls._app, rolebutton.guild_id, rolebutton))
+        return rolebutton
 
-        Parameters
-        ----------
-        rest : hikari.api.RESTClient
-            The rest client to use for API calls.
+    async def update(self) -> None:
+        """Update the rolebutton with the current state of this object.
 
         Raises
         ------
@@ -210,7 +211,7 @@ class RoleButton(DatabaseModel):
             style=self.style,
         )
 
-        message = await rest.fetch_message(self.channel_id, self.message_id)
+        message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
 
         view = miru.View.from_message(message, timeout=None)
         view.add_item(button)
@@ -227,14 +228,10 @@ class RoleButton(DatabaseModel):
             self.id,
             self.guild_id,
         )
+        self._app.dispatch(RoleButtonUpdateEvent(self._app, self.guild_id, self))
 
-    async def delete(self, rest: hikari.api.RESTClient) -> None:
+    async def delete(self) -> None:
         """Delete this rolebutton, removing it from the message and the database.
-
-        Parameters
-        ----------
-        rest : hikari.api.RESTClient
-            The rest client to use for API calls.
 
         Raises
         ------
@@ -243,7 +240,7 @@ class RoleButton(DatabaseModel):
         """
 
         try:
-            message = await rest.fetch_message(self.channel_id, self.message_id)
+            message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
         except hikari.NotFoundError:
             pass
         else:  # Remove button if message still exists
@@ -259,3 +256,4 @@ class RoleButton(DatabaseModel):
             self.guild_id,
             self.id,
         )
+        self._app.dispatch(RoleButtonDeleteEvent(self._app, self.guild_id, self))

@@ -45,6 +45,8 @@ class ConfirmView(AuthorOnlyView):
 
 
 class SnedContext(lightbulb.Context):
+    """Custom context for use across the bot."""
+
     async def confirm(
         self,
         *args,
@@ -165,11 +167,15 @@ class SnedContext(lightbulb.Context):
 
     @property
     def app(self) -> SnedBot:
-        return super().app  # type: ignore
+        app = super().app
+        assert isinstance(app, SnedBot)
+        return app
 
     @property
     def bot(self) -> SnedBot:
-        return super().bot  # type: ignore
+        bot = super().bot
+        assert isinstance(bot, SnedBot)
+        return bot
 
 
 class SnedSlashContext(SnedContext, lightbulb.SlashContext):

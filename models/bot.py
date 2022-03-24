@@ -114,7 +114,7 @@ class SnedBot(lightbulb.BotApp):
 
         # Initizaling configuration and database
         self._config = config
-        self._db = Database()
+        self._db = Database(self)
         miru.load(self)
 
         # Some global variables
