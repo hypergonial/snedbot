@@ -57,9 +57,12 @@ def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
     return string[matches.span()[0] : matches.span()[1]]
 
 
-def create_starboard_payload(message: hikari.Message, stars: int) -> t.Dict[str, t.Any]:
+def create_starboard_payload(
+    guild: hikari.SnowflakeishOr[hikari.PartialGuild], message: hikari.Message, stars: int
+) -> t.Dict[str, t.Any]:
     """Create message payload for a starboard entry."""
 
+    guild_id = hikari.Snowflake(guild)
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
     content = f"{emoji} **{stars}** <#{message.channel_id}>"
     embed = (
@@ -85,10 +88,10 @@ def create_starboard_payload(message: hikari.Message, stars: int) -> t.Dict[str,
     if message.referenced_message:
         embed.add_field(
             "Replying to",
-            f"[{message.referenced_message.author}]({message.referenced_message.make_link(message.referenced_message.guild_id)})",
+            f"[{message.referenced_message.author}]({message.referenced_message.make_link(guild_id)})",
         )
 
-    embed.add_field("Original Message", f"[Jump!]({message.make_link(message.guild_id)})")
+    embed.add_field("Original Message", f"[Jump!]({message.make_link(guild_id)})")
 
     return {"content": content, "embed": embed}
 
@@ -163,7 +166,7 @@ async def handle_starboard(
     if stars < settings["star_limit"]:
         return
     starboard_msg_id = starboard_messages.get(event.message_id)
-    payload = create_starboard_payload(message, stars)
+    payload = create_starboard_payload(event.guild_id, message, stars)
 
     if not starboard_msg_id:
         record = await plugin.app.db.fetchrow(f"""SELECT * FROM starboard_entries WHERE orig_msg_id = $1""", message.id)
