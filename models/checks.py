@@ -27,6 +27,10 @@ async def is_above_target(ctx: SnedContext) -> bool:
     if not ctx.guild_id:
         return True
 
+    guild = ctx.get_guild()
+    if guild and guild.owner_id == ctx.options.user.id:
+        raise BotRoleHierarchyError("Cannot execute on the owner of the guild.")
+
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
     assert me is not None
 

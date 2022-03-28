@@ -789,6 +789,49 @@ async def purge(ctx: SnedSlashContext) -> None:
 
 
 @mod.command
+@lightbulb.add_checks(
+    bot_has_permissions(hikari.Permissions.MANAGE_NICKNAMES),
+    has_permissions(hikari.Permissions.MANAGE_NICKNAMES),
+    is_invoker_above_target,
+    is_above_target,
+)
+@lightbulb.option(
+    "strict",
+    "Defaults to True. If enabled, uses stricter filtering and may filter out certain valid letters.",
+    type=bool,
+    required=False,
+)
+@lightbulb.option("user", "The user who's nickname should be deobfuscated.", type=hikari.Member, required=True)
+@lightbulb.command("deobfuscate", "Deobfuscate a user's nickname.", pass_options=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def deobfuscate_nick(ctx: SnedSlashContext, user: hikari.Member, strict: bool = True) -> None:
+    helpers.is_member(user)
+
+    new_nick = helpers.normalize_string(user.display_name, strict=strict)
+    if not new_nick:
+        new_nick = "Blessed by Sned"
+
+    if new_nick == user.display_name:
+        embed = hikari.Embed(
+            title="ℹ️ No action taken",
+            description=f"The nickname of **{user.display_name}** is already deobfuscated or contains nothing to deobfuscate.",
+            color=const.EMBED_BLUE,
+        )
+        await ctx.mod_respond(embed=embed)
+        return
+
+    await user.edit(nick=new_nick, reason=f"{ctx.author} ({ctx.author.id}): Deobfuscated nickname")
+
+    embed = hikari.Embed(
+        title="✅ Deobfuscated!",
+        description=f"{user.mention}'s nickname is now: `{new_nick}`",
+        color=const.EMBED_GREEN,
+    )
+
+    await ctx.mod_respond(embed=embed)
+
+
+@mod.command
 @lightbulb.command("journal", "Access and manage the moderation journal.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def journal(ctx: SnedSlashContext) -> None:

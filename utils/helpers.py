@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import re
+import unicodedata
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -202,6 +203,26 @@ def len_embed(embed: hikari.Embed) -> int:
     text += [f"{field.name}{field.value}" for field in embed.fields]
 
     return len("".join(text))
+
+
+def normalize_string(string: str, strict: bool = False) -> str:
+    """Normalize a unicode string and replace any similar characters from ones in the latin alphabet.
+
+    Parameters
+    ----------
+    string : str
+        The string to normalize.
+    strict : bool
+        Whether to use strict normalization. If True, may not preserve letters from other languages, such as cyrillic.
+
+    Returns
+    -------
+    str
+        The normalized string.
+    """
+    if strict:
+        return unicodedata.normalize("NFKD", string.strip()).encode("ascii", "ignore").decode("ascii")
+    return unicodedata.normalize("NFKC", string.strip())
 
 
 def is_above(me: hikari.Member, member: hikari.Member) -> bool:
