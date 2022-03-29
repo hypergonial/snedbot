@@ -179,7 +179,7 @@ async def handle_starboard(
             await plugin.app.db.execute(
                 """INSERT INTO starboard_entries 
                 (guild_id, channel_id, orig_msg_id, entry_msg_id) 
-                VALUES ($1, $2, $3, $4)""",
+                VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, channel_id, orig_msg_id) DO NOTHING""",
                 event.guild_id,
                 event.channel_id,
                 event.message_id,
