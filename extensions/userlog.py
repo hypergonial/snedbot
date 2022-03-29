@@ -373,7 +373,9 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, s
                 else diff
             )
         elif (
-            isinstance(old, list) and old and hasattr(old[0], "name") or new and hasattr(new[0], "name")
+            isinstance(old, list)
+            and isinstance(new, list)
+            and (old and hasattr(old[0], "name") or new and hasattr(new[0], "name"))
         ):  # Handling flag lists
             old_names = [x.name for x in old]
             new_names = [x.name for x in new]
