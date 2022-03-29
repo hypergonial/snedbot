@@ -589,7 +589,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     VALUES ($1, $2)
                     ON CONFLICT (guild_id) DO
                     UPDATE SET channel_id = $1""",
-                    channel.id,
+                    channel.id if channel else None,
                     self.last_ctx.guild_id,
                 )
             await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
@@ -620,7 +620,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     ephemeral=self.ephemeral,
                 )
                 assert isinstance(channel, hikari.TextableGuildChannel)
-                if channel not in excluded_channels:
+                if channel and channel not in excluded_channels:
                     excluded_channels.append(channel)
             except TypeError:
                 embed = hikari.Embed(
@@ -654,7 +654,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     placeholder="Select a channel...",
                     ephemeral=self.ephemeral,
                 )
-                if channel in excluded_channels:
+                if channel and channel in excluded_channels:
                     assert isinstance(channel, hikari.TextableGuildChannel)
                     excluded_channels.remove(channel)
                 else:
@@ -774,7 +774,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             )
             return await self.error_screen(embed, parent="Logging")
         else:
-            channel_id = channel.id if channel != "disable" else None
+            channel_id = channel.id if channel and channel != "disable" else None
             userlog = self.app.get_plugin("Logging")
             assert userlog is not None
             await userlog.d.actions.set_log_channel(log_event, self.last_ctx.guild_id, channel_id)
@@ -1196,6 +1196,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                         placeholder="Select a value...",
                         ephemeral=self.ephemeral,
                     )
+                    if not value:
+                        return await self.settings_automod_policy(policy)
                     if opt.startswith("add_"):
                         if value.id not in policies[policy][f"excluded_{opt.split('_')[1]}s"]:
                             policies[policy][f"excluded_{opt.split('_')[1]}s"].append(value.id)
