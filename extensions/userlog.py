@@ -453,6 +453,11 @@ async def message_update(plugin: lightbulb.Plugin, event: hikari.GuildMessageUpd
     if not event.old_message or not event.old_message.author or event.old_message.author.is_bot:
         return
 
+    if (event.old_message.flags and not hikari.MessageFlag.CROSSPOSTED & event.old_message.flags) and (
+        event.message.flags and hikari.MessageFlag.CROSSPOSTED & event.message.flags
+    ):
+        return
+
     assert event.old_message and event.message
 
     old_content = create_log_content(event.old_message, max_length=1800)
