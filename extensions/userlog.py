@@ -379,6 +379,9 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, s
         ):  # Handling flag lists
             old_names = [str(x) for x in old]
             new_names = [str(x) for x in new]
+            if not set(old_names) - set(new_names) or not set(new_names) - set(old_names):
+                continue
+
             diff = (
                 f"{diff}\n{white}{attrs[attribute]}: {red}{', '.join(old_names)} {gray}-> {green}{', '.join(new_names)}"
                 if old != new
