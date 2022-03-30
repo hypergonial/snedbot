@@ -91,6 +91,8 @@ async def fandom_cmd(ctx: SnedSlashContext, wiki: str, query: str) -> None:
 )
 @lightbulb.implements(lightbulb.SlashCommand)
 async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> None:
+    wiki = wiki or "1800"
+
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     try:
         results = await search_fandom(f"anno{wiki}", query)
