@@ -218,8 +218,7 @@ async def _iter_queue() -> None:
                     else:
                         await userlog.app.rest.create_message(channel_id, embeds=chunk)
 
-                # Remove embeds from queue
-                userlog.d.queue[channel_id] = []
+                userlog.d.queue.pop(channel_id, None)
 
             await asyncio.sleep(10.0)
     except Exception as error:
