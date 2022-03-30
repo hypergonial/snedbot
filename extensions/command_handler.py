@@ -231,9 +231,9 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         color=const.ERROR_COLOR,
     )
     embed.set_footer(text=f"Guild: {ctx.guild_id}")
-    await log_exc_to_channel(exception_msg, ctx)
 
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    await log_exc_to_channel(exception_msg, ctx)
 
 
 @ch.listener(lightbulb.UserCommandErrorEvent)
