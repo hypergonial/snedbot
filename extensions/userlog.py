@@ -1,6 +1,8 @@
 import asyncio
 import datetime
 import json
+import sys
+import traceback
 import typing as t
 
 import hikari
@@ -218,11 +220,12 @@ async def _iter_queue() -> None:
                     else:
                         await userlog.app.rest.create_message(channel_id, embeds=chunk)
 
-                userlog.d.queue.pop(channel_id, None)
+                userlog.d.queue[channel_id] = []
 
             await asyncio.sleep(10.0)
     except Exception as error:
-        print(error)
+        print("Encountered exception in userlog queue iteration:", error)
+        traceback.print_exception(error.__class__, error, error.__traceback__, file=sys.stderr)
 
 
 async def freeze_logging(guild_id: int) -> None:
