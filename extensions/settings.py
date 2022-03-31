@@ -1350,9 +1350,9 @@ async def ask_settings(
 @lightbulb.add_checks(
     bot_has_permissions(
         hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
-    )
+    ),
+    has_permissions(hikari.Permissions.MANAGE_GUILD),
 )
-@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_GUILD))
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def settings_cmd(ctx: SnedSlashContext) -> None:
