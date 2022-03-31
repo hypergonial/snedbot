@@ -1,4 +1,5 @@
 import functools
+import logging
 import operator
 
 import hikari
@@ -117,20 +118,16 @@ async def _bot_has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -
         raise lightbulb.BotMissingRequiredPermission(
             "Check cannot run due to missing permissions.", perms=hikari.Permissions.VIEW_CHANNEL
         )
-
     if guild is None:
         raise lightbulb.InsufficientCache("Some objects required for this check could not be resolved from the cache.")
     member = guild.get_my_member()
     if member is None:
         raise lightbulb.InsufficientCache("Some objects required for this check could not be resolved from the cache.")
-    if guild.owner_id == ctx.author.id:
-        return True
 
     if isinstance(channel, hikari.GuildThreadChannel):
         channel = ctx.app.cache.get_guild_channel(channel.parent_id)
 
     assert isinstance(channel, hikari.GuildChannel)
-
     missing_perms = ~lightbulb.utils.permissions_in(channel, member) & perms
     if missing_perms is not hikari.Permissions.NONE:
         raise lightbulb.MissingRequiredPermission(
