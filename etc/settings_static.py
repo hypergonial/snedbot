@@ -143,6 +143,7 @@ notices = {
     "link_spam": "posting links too fast",
     "caps": "using excessive caps in your message",
     "bad_words": "using bad words in your message",
+    "perspective": "using offensive language in your message",
 }
 
 policy_fields = {
