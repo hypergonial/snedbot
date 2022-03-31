@@ -130,7 +130,7 @@ async def _bot_has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -
     assert isinstance(channel, hikari.GuildChannel)
     missing_perms = ~lightbulb.utils.permissions_in(channel, member) & perms
     if missing_perms is not hikari.Permissions.NONE:
-        raise lightbulb.MissingRequiredPermission(
+        raise lightbulb.BotMissingRequiredPermission(
             "The bot is missing one or more permissions required in order to run this command", perms=missing_perms
         )
 

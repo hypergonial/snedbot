@@ -76,10 +76,7 @@ async def log_exc_to_channel(
 async def application_error_handler(ctx: SnedContext, error: lightbulb.LightbulbError) -> None:
 
     if isinstance(error, lightbulb.CheckFailure):
-        if error.causes:
-            cause = error.causes[0]
-        else:
-            cause = error.__cause__
+        cause = error.causes[0] if error.causes else error.__cause__
 
         if isinstance(cause, UserBlacklistedError):
             embed = hikari.Embed(
