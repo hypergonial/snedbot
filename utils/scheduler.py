@@ -183,20 +183,20 @@ class Scheduler:
             The timer object that was found, if any.
         """
         await self.bot.wait_until_started()
-        result = await self.bot.db.fetch(
+        record = await self.bot.db.fetchrow(
             """SELECT * FROM timers WHERE expires < $1 ORDER BY expires LIMIT 1""",
             round((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)).timestamp()),
         )
 
-        if len(result) != 0 and result[0]:
+        if record:
             timer = Timer(
-                id=result[0].get("id"),
-                guild_id=hikari.Snowflake(result[0].get("guild_id")),
-                user_id=hikari.Snowflake(result[0].get("user_id")),
-                channel_id=hikari.Snowflake(result[0].get("channel_id")) if result[0].get("channel_id") else None,
-                event=result[0].get("event"),
-                expires=result[0].get("expires"),
-                notes=result[0].get("notes"),
+                id=record.get("id"),
+                guild_id=hikari.Snowflake(record.get("guild_id")),
+                user_id=hikari.Snowflake(record.get("user_id")),
+                channel_id=hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
+                event=record.get("event"),
+                expires=record.get("expires"),
+                notes=record.get("notes"),
             )
             return timer
 
@@ -296,14 +296,13 @@ class Scheduler:
         """
 
         guild_id = hikari.Snowflake(guild)
-        records = await self.bot.db.fetch(
+        record = await self.bot.db.fetchrow(
             """SELECT * FROM timers WHERE id = $1 AND guild_id = $2 LIMIT 1""",
             entry_id,
             guild_id,
         )
 
-        if records:
-            record = records[0]
+        if record:
             timer = Timer(
                 record.get("id"),
                 hikari.Snowflake(record.get("guild_id")),
