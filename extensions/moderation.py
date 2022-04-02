@@ -500,6 +500,15 @@ async def ban(
             await mod.app.rest.unban_user(moderator.guild_id, user.id, reason="Automatic unban by softban.")
 
         elif duration:
+            record = await mod.app.db.fetchrow(
+                """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = $3""",
+                moderator.guild_id,
+                user.id,
+                "tempban",
+            )
+            if record:
+                await mod.app.scheduler.cancel_timer(record.get("id"), moderator.guild_id)
+
             await mod.app.scheduler.create_timer(expires=duration, event="tempban", guild=moderator.guild_id, user=user)
 
         await post_mod_actions(moderator.guild_id, user, ActionType.BAN, reason=raw_reason)
