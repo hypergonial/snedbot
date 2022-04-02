@@ -13,6 +13,11 @@ class SnedPlugin(lightbulb.Plugin):
     def app(self) -> SnedBot:
         return super().app  # type: ignore
 
+    @app.setter
+    def app(self, val: SnedBot) -> None:
+        self._app = val
+        self.create_commands()
+
     @property
     def bot(self) -> SnedBot:
         return super().bot  # type: ignore
