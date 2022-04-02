@@ -19,11 +19,12 @@ from models.errors import BotRoleHierarchyError
 from models.errors import MemberExpectedError
 from models.errors import RoleHierarchyError
 from models.errors import UserBlacklistedError
+from models.plugin import SnedPlugin
 from utils import helpers
 
 logger = logging.getLogger(__name__)
 
-ch = lightbulb.Plugin("Command Handler")
+ch = SnedPlugin("Command Handler")
 
 
 async def log_exc_to_channel(

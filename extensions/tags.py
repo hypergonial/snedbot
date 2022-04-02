@@ -12,11 +12,12 @@ from models import AuthorOnlyNavigator
 from models import SnedSlashContext
 from models import Tag
 from models.bot import SnedBot
+from models.plugin import SnedPlugin
 from utils import helpers
 
 logger = logging.getLogger(__name__)
 
-tags = lightbulb.Plugin("Tag", include_datastore=True)
+tags = SnedPlugin("Tag", include_datastore=True)
 
 
 class TagEditorModal(miru.Modal):

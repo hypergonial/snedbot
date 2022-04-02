@@ -7,12 +7,13 @@ import lightbulb
 
 import etc.constants as const
 from models.context import SnedSlashContext
+from models.plugin import SnedPlugin
 
 if t.TYPE_CHECKING:
     from models import SnedBot
 
 
-help = lightbulb.Plugin("Help")
+help = SnedPlugin("Help")
 
 
 help_embeds = {

@@ -23,12 +23,13 @@ from models.events import MassBanEvent
 from models.events import WarnCreateEvent
 from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
+from models.plugin import SnedPlugin
 from models.timer import Timer
 from utils import helpers
 
 logger = logging.getLogger(__name__)
 
-mod = lightbulb.Plugin("Moderation", include_datastore=True)
+mod = SnedPlugin("Moderation", include_datastore=True)
 mod.d.actions = lightbulb.utils.DataStore()
 
 MAX_TIMEOUT_SECONDS = 2246400  # Duration of segments to break timeouts up to
@@ -52,8 +53,6 @@ class ActionType(enum.Enum):
 
 
 async def get_settings(guild_id: int) -> t.Dict[str, bool]:
-    assert isinstance(mod.app, SnedBot)
-
     records = await mod.app.db_cache.get(table="mod_config", guild_id=guild_id)
     if records:
         mod_settings = {
@@ -121,8 +120,6 @@ async def get_notes(
     user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild]
 ) -> t.Optional[t.List[str]]:
     """Returns a list of strings corresponding to a user's journal."""
-
-    assert isinstance(mod.app, SnedBot)
     user_id = hikari.Snowflake(user)
     guild_id = hikari.Snowflake(guild)
 
@@ -137,9 +134,6 @@ async def add_note(
     user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild], note: str
 ) -> None:
     """Add a new journal entry to this user."""
-
-    assert isinstance(mod.app, SnedBot)
-
     user_id = hikari.Snowflake(user)
     guild_id = hikari.Snowflake(guild)
 
@@ -161,9 +155,6 @@ async def clear_notes(
     user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild]
 ) -> None:
     """Clear all notes a user has."""
-
-    assert isinstance(mod.app, SnedBot)
-
     user_id = hikari.Snowflake(user)
     guild_id = hikari.Snowflake(guild)
 
@@ -192,9 +183,6 @@ async def warn(member: hikari.Member, moderator: hikari.Member, reason: t.Option
     hikari.Embed
         The response to show to the invoker.
     """
-
-    assert isinstance(mod.app, SnedBot)
-
     db_user = await DatabaseUser.fetch(member.id, member.guild_id)
     db_user.warns += 1
     await db_user.update()
@@ -226,9 +214,6 @@ async def timeout_extend(event: models.TimerCompleteEvent) -> None:
     """
     Extend timeouts longer than 28 days
     """
-
-    assert isinstance(event.app, SnedBot)
-
     timer: Timer = event.timer
 
     if timer.event != "timeout_extend":
@@ -357,9 +342,6 @@ async def timeout(
     Times out a member for the specified duration, converts duration from string.
     Returns the mute duration as datetime.
     """
-
-    assert isinstance(mod.app, SnedBot)
-
     raw_reason = helpers.format_reason(reason, max_length=1500)
     reason = helpers.format_reason(reason, moderator, max_length=512)
 
@@ -454,9 +436,6 @@ async def ban(
     RuntimeError
         Both soft & tempban were specified.
     """
-
-    assert isinstance(mod.app, SnedBot)
-
     reason = reason or "No reason provided."
 
     if duration and soft:
@@ -564,9 +543,6 @@ async def unban(user: hikari.User, moderator: hikari.Member, reason: t.Optional[
     lightbulb.BotMissingRequiredPermission
         Application is missing permissions to BAN_MEMBERS.
     """
-
-    assert isinstance(mod.app, SnedBot)
-
     me = mod.app.cache.get_member(moderator.guild_id, mod.app.user_id)
     assert me is not None
 
@@ -628,9 +604,6 @@ async def kick(
         The response embed to display to the user. May include any
         potential input errors.
     """
-
-    assert isinstance(mod.app, SnedBot)
-
     raw_reason = reason or "No reason provided."
     reason = helpers.format_reason(reason, moderator, max_length=512)
 

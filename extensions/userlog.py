@@ -19,10 +19,10 @@ from models.events import RoleButtonUpdateEvent
 from models.events import WarnCreateEvent
 from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
-from models.rolebutton import RoleButton
+from models.plugin import SnedPlugin
 from utils import helpers
 
-userlog = lightbulb.Plugin("Logging", include_datastore=True)
+userlog = SnedPlugin("Logging", include_datastore=True)
 
 # Functions exposed to other extensions & plugins
 userlog.d.actions = lightbulb.utils.DataStore()
@@ -60,8 +60,6 @@ async def get_log_channel_id(log_event: str, guild_id: int) -> t.Optional[int]:
     if log_event not in userlog.d.valid_log_events:
         raise ValueError("Invalid log_event passed.")
 
-    assert isinstance(userlog.app, SnedBot)
-
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
 
     log_channels = json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else None
@@ -76,8 +74,6 @@ async def get_log_channel_ids_view(guild_id: int) -> t.Dict[str, t.Optional[int]
     """
     Return a mapping of log_event:channel_id
     """
-
-    assert isinstance(userlog.app, SnedBot)
 
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
 
@@ -95,8 +91,6 @@ userlog.d.actions["get_log_channel_ids_view"] = get_log_channel_ids_view
 
 async def set_log_channel(log_event: str, guild_id: int, channel_id: t.Optional[int] = None) -> None:
     """Sets logging channel for a given logging event."""
-
-    assert isinstance(userlog.app, SnedBot)
 
     if log_event not in userlog.d.valid_log_events:
         raise ValueError("Invalid log_event passed.")
@@ -118,8 +112,6 @@ userlog.d.actions["set_log_channel"] = set_log_channel
 
 
 async def is_color_enabled(guild_id: int) -> bool:
-
-    assert isinstance(userlog.app, SnedBot)
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
     return records[0]["color"] if records else True
 
@@ -149,9 +141,6 @@ async def log(
     bypass : bool, optional
         If bypassing guild log freeze is desired, by default False
     """
-
-    assert isinstance(userlog.app, SnedBot)
-
     if not userlog.app.is_ready or not userlog.app.db_cache.is_ready:
         return
 
@@ -274,8 +263,6 @@ async def find_auditlog_data(
 
     # Stuff that is observed to just take too goddamn long to appear in AuditLogs
     takes_an_obscene_amount_of_time = [hikari.AuditLogEventType.MESSAGE_BULK_DELETE]
-
-    assert isinstance(userlog.app, SnedBot)
 
     guild = userlog.app.cache.get_guild(event.guild_id)  # type: ignore
     sleep_time = 5.0 if event_type not in takes_an_obscene_amount_of_time else 15.0
@@ -429,7 +416,7 @@ def strip_bot_reason(reason: t.Optional[str]) -> t.Tuple[str, str | None] | t.Tu
 
 
 @userlog.listener(hikari.GuildMessageDeleteEvent, bind=True)
-async def message_delete(plugin: lightbulb.Plugin, event: hikari.GuildMessageDeleteEvent) -> None:
+async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEvent) -> None:
     if not event.old_message or event.old_message.author.is_bot:
         return
 
@@ -466,7 +453,7 @@ async def message_delete(plugin: lightbulb.Plugin, event: hikari.GuildMessageDel
 
 
 @userlog.listener(hikari.GuildMessageUpdateEvent, bind=True)
-async def message_update(plugin: lightbulb.Plugin, event: hikari.GuildMessageUpdateEvent) -> None:
+async def message_update(plugin: SnedPlugin, event: hikari.GuildMessageUpdateEvent) -> None:
     if not event.old_message or not event.old_message.author or event.old_message.author.is_bot:
         return
 
@@ -492,7 +479,7 @@ async def message_update(plugin: lightbulb.Plugin, event: hikari.GuildMessageUpd
 
 
 @userlog.listener(hikari.GuildBulkMessageDeleteEvent, bind=True)
-async def bulk_message_delete(plugin: lightbulb.Plugin, event: hikari.GuildBulkMessageDeleteEvent) -> None:
+async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessageDeleteEvent) -> None:
 
     moderator = "Discord"
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MESSAGE_BULK_DELETE)
@@ -513,7 +500,7 @@ async def bulk_message_delete(plugin: lightbulb.Plugin, event: hikari.GuildBulkM
 
 
 @userlog.listener(hikari.RoleDeleteEvent, bind=True)
-async def role_delete(plugin: lightbulb.Plugin, event: hikari.RoleDeleteEvent) -> None:
+async def role_delete(plugin: SnedPlugin, event: hikari.RoleDeleteEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_DELETE)
     if entry and event.old_role:
@@ -528,7 +515,7 @@ async def role_delete(plugin: lightbulb.Plugin, event: hikari.RoleDeleteEvent) -
 
 
 @userlog.listener(hikari.RoleCreateEvent, bind=True)
-async def role_create(plugin: lightbulb.Plugin, event: hikari.RoleCreateEvent) -> None:
+async def role_create(plugin: SnedPlugin, event: hikari.RoleCreateEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_CREATE)
     if entry and event.role:
@@ -543,7 +530,7 @@ async def role_create(plugin: lightbulb.Plugin, event: hikari.RoleCreateEvent) -
 
 
 @userlog.listener(hikari.RoleUpdateEvent, bind=True)
-async def role_update(plugin: lightbulb.Plugin, event: hikari.RoleUpdateEvent) -> None:
+async def role_update(plugin: SnedPlugin, event: hikari.RoleUpdateEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_UPDATE)
     if entry and event.old_role:
@@ -574,7 +561,7 @@ async def role_update(plugin: lightbulb.Plugin, event: hikari.RoleUpdateEvent) -
 
 
 @userlog.listener(hikari.GuildChannelDeleteEvent, bind=True)
-async def channel_delete(plugin: lightbulb.Plugin, event: hikari.GuildChannelDeleteEvent) -> None:
+async def channel_delete(plugin: SnedPlugin, event: hikari.GuildChannelDeleteEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_DELETE)
     if entry and event.channel:
@@ -589,7 +576,7 @@ async def channel_delete(plugin: lightbulb.Plugin, event: hikari.GuildChannelDel
 
 
 @userlog.listener(hikari.GuildChannelCreateEvent, bind=True)
-async def channel_create(plugin: lightbulb.Plugin, event: hikari.GuildChannelCreateEvent) -> None:
+async def channel_create(plugin: SnedPlugin, event: hikari.GuildChannelCreateEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_CREATE)
     if entry and event.channel:
@@ -604,7 +591,7 @@ async def channel_create(plugin: lightbulb.Plugin, event: hikari.GuildChannelCre
 
 
 @userlog.listener(hikari.GuildChannelUpdateEvent, bind=True)
-async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpdateEvent) -> None:
+async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_UPDATE)
 
@@ -650,7 +637,7 @@ async def channel_update(plugin: lightbulb.Plugin, event: hikari.GuildChannelUpd
 
 
 @userlog.listener(hikari.GuildUpdateEvent, bind=True)
-async def guild_update(plugin: lightbulb.Plugin, event: hikari.GuildUpdateEvent) -> None:
+async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.GUILD_UPDATE)
 
@@ -708,7 +695,7 @@ async def guild_update(plugin: lightbulb.Plugin, event: hikari.GuildUpdateEvent)
 
 
 @userlog.listener(hikari.BanDeleteEvent, bind=True)
-async def member_ban_remove(plugin: lightbulb.Plugin, event: hikari.BanDeleteEvent) -> None:
+async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) -> None:
 
     entry = await find_auditlog_data(
         event, event_type=hikari.AuditLogEventType.MEMBER_BAN_REMOVE, user_id=event.user.id
@@ -720,8 +707,6 @@ async def member_ban_remove(plugin: lightbulb.Plugin, event: hikari.BanDeleteEve
     else:
         moderator = "Error"
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
-
-    assert isinstance(plugin.app, SnedBot)
 
     if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
         reason, moderator = strip_bot_reason(reason)
@@ -739,7 +724,7 @@ async def member_ban_remove(plugin: lightbulb.Plugin, event: hikari.BanDeleteEve
 
 
 @userlog.listener(hikari.BanCreateEvent, bind=True)
-async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent) -> None:
+async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> None:
 
     entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MEMBER_BAN_ADD, user_id=event.user.id)
     if entry:
@@ -749,8 +734,6 @@ async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent)
     else:
         moderator = "Unknown"
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
-
-    assert isinstance(plugin.app, SnedBot)
 
     if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
         reason, moderator = strip_bot_reason(reason)
@@ -768,9 +751,7 @@ async def member_ban_add(plugin: lightbulb.Plugin, event: hikari.BanCreateEvent)
 
 
 @userlog.listener(hikari.MemberDeleteEvent, bind=True)
-async def member_delete(plugin: lightbulb.Plugin, event: hikari.MemberDeleteEvent) -> None:
-
-    assert isinstance(plugin.app, SnedBot)
+async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> None:
 
     if event.user_id == plugin.app.user_id:
         return  # RIP
@@ -806,7 +787,7 @@ async def member_delete(plugin: lightbulb.Plugin, event: hikari.MemberDeleteEven
 
 
 @userlog.listener(hikari.MemberCreateEvent, bind=True)
-async def member_create(plugin: lightbulb.Plugin, event: hikari.MemberCreateEvent) -> None:
+async def member_create(plugin: SnedPlugin, event: hikari.MemberCreateEvent) -> None:
 
     embed = hikari.Embed(
         title=f"🚪 User joined",
@@ -823,15 +804,13 @@ async def member_create(plugin: lightbulb.Plugin, event: hikari.MemberCreateEven
 
 
 @userlog.listener(hikari.MemberUpdateEvent, bind=True)
-async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEvent) -> None:
+async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> None:
 
     if not event.old_member:
         return
 
     old_member = event.old_member
     member = event.member
-
-    assert isinstance(plugin.app, SnedBot)
 
     if old_member.communication_disabled_until() != member.communication_disabled_until():
         """Timeout logging"""
@@ -939,7 +918,7 @@ async def member_update(plugin: lightbulb.Plugin, event: hikari.MemberUpdateEven
 
 
 @userlog.listener(WarnCreateEvent, bind=True)
-async def warn_create(plugin: lightbulb.Plugin, event: WarnCreateEvent) -> None:
+async def warn_create(plugin: SnedPlugin, event: WarnCreateEvent) -> None:
 
     embed = hikari.Embed(
         title="⚠️ Warning issued",
@@ -957,7 +936,7 @@ async def warn_create(plugin: lightbulb.Plugin, event: WarnCreateEvent) -> None:
 
 
 @userlog.listener(WarnRemoveEvent, bind=True)
-async def warn_remove(plugin: lightbulb.Plugin, event: WarnRemoveEvent) -> None:
+async def warn_remove(plugin: SnedPlugin, event: WarnRemoveEvent) -> None:
 
     embed = hikari.Embed(
         title="⚠️ Warning removed",
@@ -975,7 +954,7 @@ async def warn_remove(plugin: lightbulb.Plugin, event: WarnRemoveEvent) -> None:
 
 
 @userlog.listener(WarnsClearEvent, bind=True)
-async def warns_clear(plugin: lightbulb.Plugin, event: WarnsClearEvent) -> None:
+async def warns_clear(plugin: SnedPlugin, event: WarnsClearEvent) -> None:
 
     embed = hikari.Embed(
         title="⚠️ Warnings cleared",
@@ -993,7 +972,7 @@ async def warns_clear(plugin: lightbulb.Plugin, event: WarnsClearEvent) -> None:
 
 
 @userlog.listener(AutoModMessageFlagEvent, bind=True)
-async def flag_message(plugin: lightbulb.Plugin, event: AutoModMessageFlagEvent) -> None:
+async def flag_message(plugin: SnedPlugin, event: AutoModMessageFlagEvent) -> None:
 
     user_id = hikari.Snowflake(event.user)
 

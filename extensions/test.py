@@ -10,11 +10,12 @@ from miru.ext import nav
 from etc import constants as const
 from models import SnedSlashContext
 from models.bot import SnedBot
+from models.plugin import SnedPlugin
 from utils import helpers
 
 logger = logging.getLogger(__name__)
 
-test = lightbulb.Plugin("Test")
+test = SnedPlugin("Test")
 
 
 @test.listener(hikari.StartedEvent)

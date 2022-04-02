@@ -16,11 +16,12 @@ from etc import constants as const
 from models import AuthorOnlyNavigator
 from models import SnedPrefixContext
 from models.bot import SnedBot
+from models.plugin import SnedPlugin
 from models.views import AuthorOnlyView
 
 logger = logging.getLogger(__name__)
 
-dev = lightbulb.Plugin("Development")
+dev = SnedPlugin("Development")
 dev.add_checks(lightbulb.owner_only)
 
 
@@ -91,11 +92,11 @@ async def send_paginated(
             return
 
     buttons = [
-        nav.FirstButton(),
-        nav.PrevButton(),
+        nav.FirstButton(emoji=const.EMOJI_FIRST),
+        nav.PrevButton(emoji=const.EMOJI_PREV),
         nav.IndicatorButton(),
-        nav.NextButton(),
-        nav.LastButton(),
+        nav.NextButton(emoji=const.EMOJI_NEXT),
+        nav.LastButton(emoji=const.EMOJI_LAST),
         TrashButton(),
     ]
     paginator = lightbulb.utils.StringPaginator(prefix=prefix, suffix=suffix, max_chars=2000)

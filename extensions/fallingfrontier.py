@@ -3,8 +3,9 @@ import lightbulb
 
 from config import Config
 from models.bot import SnedBot
+from models.plugin import SnedPlugin
 
-ff = lightbulb.Plugin("Falling Frontier")
+ff = SnedPlugin("Falling Frontier")
 ff.default_enabled_guilds = Config().DEBUG_GUILDS or (684324252786360476, 813803567445049414)
 
 

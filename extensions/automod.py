@@ -15,12 +15,13 @@ from etc.settings_static import default_automod_policies
 from etc.settings_static import notices
 from models.bot import SnedBot
 from models.events import AutoModMessageFlagEvent
+from models.plugin import SnedPlugin
 from utils import helpers
 from utils.ratelimiter import BucketType
 
 logger = logging.getLogger(__name__)
 
-automod = lightbulb.Plugin("Auto-Moderation", include_datastore=True)
+automod = SnedPlugin("Auto-Moderation", include_datastore=True)
 automod.d.actions = lightbulb.utils.DataStore()
 
 
@@ -59,8 +60,6 @@ escalate_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=F
 
 async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> t.Dict[str, t.Any]:
     """Return auto-moderation policies for the specified guild."""
-
-    assert isinstance(automod.app, SnedBot)
 
     guild_id = hikari.Snowflake(guild)
 
@@ -106,8 +105,7 @@ async def punish(
         | hikari.Permissions.KICK_MEMBERS
     )
 
-    assert isinstance(automod.app, SnedBot)
-    assert message.guild_id and isinstance(automod.app, SnedBot)
+    assert message.guild_id is not None
 
     me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
     assert me is not None
@@ -278,7 +276,7 @@ async def punish(
 @automod.listener(hikari.GuildMessageCreateEvent, bind=True)
 @automod.listener(hikari.GuildMessageUpdateEvent, bind=True)
 async def scan_messages(
-    plugin: lightbulb.Plugin, event: t.Union[hikari.GuildMessageCreateEvent, hikari.GuildMessageUpdateEvent]
+    plugin: SnedPlugin, event: t.Union[hikari.GuildMessageCreateEvent, hikari.GuildMessageUpdateEvent]
 ) -> None:
     """Scan messages for all possible offences."""
 
@@ -287,8 +285,6 @@ async def scan_messages(
     if message.author is None:
         # Probably a partial update, ignore it
         return
-
-    assert isinstance(plugin.app, SnedBot)
 
     if not plugin.app.is_started or not plugin.app.db_cache.is_ready:
         return

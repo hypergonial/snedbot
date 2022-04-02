@@ -21,11 +21,12 @@ from models import SnedBot
 from models import SnedSlashContext
 from models.checks import bot_has_permissions
 from models.context import SnedUserContext
+from models.plugin import SnedPlugin
 from utils import helpers
 
 logger = logging.getLogger(__name__)
 
-fun = lightbulb.Plugin("Fun")
+fun = SnedPlugin("Fun")
 
 
 class WinState(IntEnum):

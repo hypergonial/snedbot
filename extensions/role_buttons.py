@@ -10,6 +10,7 @@ from etc import constants as const
 from models import SnedBot
 from models import SnedSlashContext
 from models.checks import has_permissions
+from models.plugin import SnedPlugin
 from models.rolebutton import RoleButton
 from utils import helpers
 from utils.ratelimiter import BucketType
@@ -17,7 +18,7 @@ from utils.ratelimiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
-role_buttons = lightbulb.Plugin("Role-Buttons")
+role_buttons = SnedPlugin("Role-Buttons")
 
 button_styles = {
     "Blurple": hikari.ButtonStyle.PRIMARY,
@@ -29,13 +30,11 @@ role_button_ratelimiter = RateLimiter(2, 1, BucketType.MEMBER, wait=False)
 
 
 @role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
-async def rolebutton_listener(plugin: lightbulb.Plugin, event: miru.ComponentInteractionCreateEvent) -> None:
+async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteractionCreateEvent) -> None:
     """Statelessly listen for rolebutton interactions"""
 
     if not event.interaction.custom_id.startswith("RB:"):
         return
-
-    assert isinstance(plugin.app, SnedBot)
 
     entry_id = event.interaction.custom_id.split(":")[1]
     role_id = int(event.interaction.custom_id.split(":")[2])

@@ -17,11 +17,12 @@ from models.checks import bot_has_permissions
 from models.checks import has_permissions
 from models.components import *
 from models.context import SnedSlashContext
+from models.plugin import SnedPlugin
 from utils import helpers
 
 logger = logging.getLogger(__name__)
 
-settings = lightbulb.Plugin("Settings")
+settings = SnedPlugin("Settings")
 
 
 def get_key(dictionary: dict, value: t.Any) -> t.Any:

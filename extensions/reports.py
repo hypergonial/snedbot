@@ -11,11 +11,12 @@ from models.bot import SnedBot
 from models.context import SnedContext
 from models.context import SnedMessageContext
 from models.context import SnedUserContext
+from models.plugin import SnedPlugin
 from utils import helpers
 
 logger = logging.getLogger(__name__)
 
-reports = lightbulb.Plugin("Reports")
+reports = SnedPlugin("Reports")
 
 
 class ReportModal(miru.Modal):

@@ -12,10 +12,11 @@ from models import SnedBot
 from models import SnedSlashContext
 from models import Timer
 from models import events
+from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator
 from utils import helpers
 
-reminders = lightbulb.Plugin(name="Reminders")
+reminders = SnedPlugin(name="Reminders")
 
 logger = logging.getLogger(__name__)
 
@@ -95,12 +96,12 @@ class SnoozeView(miru.View):
 
 
 @reminders.listener(miru.ComponentInteractionCreateEvent, bind=True)
-async def reminder_component_handler(plugin: lightbulb.Plugin, event: miru.ComponentInteractionCreateEvent) -> None:
+async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentInteractionCreateEvent) -> None:
 
     if not event.context.custom_id.startswith(("RMSS:", "RMAR:")):
         return
 
-    assert isinstance(plugin.app, SnedBot) and event.context.guild_id is not None
+    assert event.context.guild_id is not None
 
     if event.context.custom_id.startswith("RMSS:"):  # Snoozes
         author_id = hikari.Snowflake(event.context.custom_id.split(":")[1])
@@ -359,7 +360,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
 
 
 @reminders.listener(events.TimerCompleteEvent, bind=True)
-async def on_reminder(plugin: lightbulb.Plugin, event: events.TimerCompleteEvent):
+async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
     """
     Listener for expired reminders
     """

@@ -15,12 +15,13 @@ from models.checks import bot_has_permissions
 from models.checks import has_permissions
 from models.context import SnedMessageContext
 from models.context import SnedSlashContext
+from models.plugin import SnedPlugin
 from utils import helpers
 from utils.scheduler import ConversionMode
 
 logger = logging.getLogger(__name__)
 
-misc = lightbulb.Plugin("Miscellaneous Commands")
+misc = SnedPlugin("Miscellaneous Commands")
 psutil.cpu_percent(interval=1)  # Call so subsequent calls for CPU % will not be blocking
 
 RGB_REGEX = re.compile(r"[0-9]{1,3} [0-9]{1,3} [0-9]{1,3}")

@@ -8,6 +8,7 @@ import lightbulb
 from etc import constants as const
 from models.bot import SnedBot
 from models.context import SnedSlashContext
+from models.plugin import SnedPlugin
 from utils import helpers
 
 # Mapping of message_id: starboard_message_id
@@ -15,7 +16,7 @@ starboard_messages = {}
 
 logger = logging.getLogger(__name__)
 
-starboard = lightbulb.Plugin("Starboard")
+starboard = SnedPlugin("Starboard")
 
 image_url_regex = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)([.]jpe?g|png|gif|bmp|webp)[-a-zA-Z0-9@:%._\+~#=?&]*"
@@ -97,14 +98,12 @@ def create_starboard_payload(
 
 
 async def handle_starboard(
-    plugin: lightbulb.Plugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
+    plugin: SnedPlugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
 ) -> None:
     """The main starboard logic, creates and updates starboard entries on every reaction event"""
 
     if not event.is_for_emoji("⭐"):
         return
-
-    assert isinstance(plugin.app, SnedBot)
 
     records = await plugin.app.db_cache.get(table="starboard", guild_id=event.guild_id, limit=1)
 
@@ -203,7 +202,7 @@ async def handle_starboard(
 @starboard.listener(hikari.GuildReactionDeleteEvent, bind=True)
 @starboard.listener(hikari.GuildReactionAddEvent, bind=True)
 async def on_reaction(
-    plugin: lightbulb.Plugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
+    plugin: SnedPlugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
 ) -> None:
     await handle_starboard(plugin, event)
 

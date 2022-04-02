@@ -45,10 +45,11 @@ class SnedNavigator(nav.NavigatorView):
         self,
         *,
         pages: List[Union[str, hikari.Embed]],
+        buttons: Optional[List[nav.NavButton]] = None,
         timeout: Optional[float] = 120,
         autodefer: bool = True,
     ) -> None:
-        buttons = [
+        buttons = buttons or [
             nav.FirstButton(emoji=const.EMOJI_FIRST),
             nav.PrevButton(emoji=const.EMOJI_PREV),
             nav.IndicatorButton(),
@@ -68,12 +69,13 @@ class AuthorOnlyNavigator(SnedNavigator):
         lctx: lightbulb.Context,
         *,
         pages: List[Union[str, hikari.Embed]],
+        buttons: Optional[List[nav.NavButton]] = None,
         timeout: Optional[float] = 120,
         autodefer: bool = True,
     ) -> None:
         self.lctx = lctx
 
-        super().__init__(pages=pages, timeout=timeout, autodefer=autodefer)
+        super().__init__(pages=pages, buttons=buttons, timeout=timeout, autodefer=autodefer)
 
     async def view_check(self, ctx: miru.Context) -> bool:
         if ctx.user.id != self.lctx.author.id:

@@ -6,8 +6,9 @@ from config import Config
 from etc import constants as const
 from models.bot import SnedBot
 from models.context import SnedSlashContext
+from models.plugin import SnedPlugin
 
-fandom = lightbulb.Plugin("Fandom")
+fandom = SnedPlugin("Fandom")
 
 
 async def search_fandom(site: str, query: str) -> str:

@@ -7,9 +7,10 @@ import etc.constants as const
 from config import Config
 from models.bot import SnedBot
 from models.context import SnedContext
+from models.plugin import SnedPlugin
 from utils import helpers
 
-annoverse = lightbulb.Plugin("Annoverse")
+annoverse = SnedPlugin("Annoverse")
 annoverse.default_enabled_guilds = Config().DEBUG_GUILDS or (372128553031958529,)
 
 QUESTIONS_CHANNEL_ID = 955463477760229397

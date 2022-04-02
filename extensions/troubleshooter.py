@@ -8,10 +8,11 @@ from etc import constants as const
 from etc import get_perm_str
 from models import SnedSlashContext
 from models.bot import SnedBot
+from models.plugin import SnedPlugin
 
 logger = logging.getLogger(__name__)
 
-troubleshooter = lightbulb.Plugin("Troubleshooter")
+troubleshooter = SnedPlugin("Troubleshooter")
 
 # Find perms issues
 # Find automod config issues
@@ -25,7 +26,7 @@ REQUIRED_PERMISSIONS = (
     | hikari.Permissions.BAN_MEMBERS
     | hikari.Permissions.MANAGE_CHANNELS
     | hikari.Permissions.MANAGE_THREADS
-    | hikari.Permissions.MANAGE_THREADS
+    | hikari.Permissions.MANAGE_NICKNAMES
     | hikari.Permissions.CHANGE_NICKNAME
     | hikari.Permissions.READ_MESSAGE_HISTORY
     | hikari.Permissions.VIEW_CHANNEL
@@ -48,6 +49,7 @@ PERM_DESCRIPTIONS = {
     hikari.Permissions.MANAGE_ROLES: "Required to give users roles via role-buttons.",
     hikari.Permissions.MANAGE_CHANNELS: "Used by `/slowmode` to set a custom slow mode duration for the channel.",
     hikari.Permissions.MANAGE_THREADS: "Used by `/slowmode` to set a custom slow mode duration for the thread.",
+    hikari.Permissions.MANAGE_NICKNAMES: "Used by `/deobfuscate` to deobfuscate other user's nicknames.",
     hikari.Permissions.KICK_MEMBERS: "Required to use the `/kick` command and let auto-moderation actions kick users.",
     hikari.Permissions.BAN_MEMBERS: "Required to use the `/ban`, `/softban`, `/massban` command and let auto-moderation actions ban users.",
     hikari.Permissions.CHANGE_NICKNAME: "Required for the `/setnick` command.",
