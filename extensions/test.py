@@ -122,7 +122,9 @@ async def modaltest(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def navtest(ctx: SnedSlashContext) -> None:
 
-    navigator = nav.NavigatorView(pages=["1", "2", "3"])
+    buttons = [nav.FirstButton(), nav.PrevButton(), nav.StopButton(), nav.NextButton(), nav.LastButton()]
+
+    navigator = nav.NavigatorView(pages=["1", "2", "3"], buttons=buttons)
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     await navigator.send(ctx.interaction, responded=True)
 
@@ -177,10 +179,10 @@ async def test_cmd(ctx: SnedSlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    # bot.add_plugin(test)
+    bot.add_plugin(test)
     pass
 
 
 def unload(bot: SnedBot) -> None:
-    # bot.remove_plugin(test)
+    bot.remove_plugin(test)
     pass
