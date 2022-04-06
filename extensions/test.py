@@ -85,15 +85,6 @@ async def miru_persistent(ctx: SnedSlashContext) -> None:
     await ctx.respond("Beep Boop!", components=PersistentThing().build())
 
 
-@test.command
-@lightbulb.option("nonce", "The nonce to send.")
-@lightbulb.command("nonce", "foo")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def nonce_thing(ctx: SnedSlashContext) -> None:
-    await ctx.respond(f"Sending nonce: {ctx.options.nonce}", flags=hikari.MessageFlag.EPHEMERAL)
-    await ctx.app.rest.create_message(ctx.channel_id, "Foo", nonce=ctx.options.nonce)
-
-
 @test.listener(hikari.GuildMessageCreateEvent)
 async def nonce_printer(event: hikari.GuildMessageCreateEvent) -> None:
     print(f"Nonce is: {event.message.nonce}")
@@ -179,10 +170,10 @@ async def test_cmd(ctx: SnedSlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    bot.add_plugin(test)
+    # bot.add_plugin(test)
     pass
 
 
 def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(test)
+    # bot.remove_plugin(test)
     pass
