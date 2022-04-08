@@ -1044,7 +1044,7 @@ async def rolebutton_update(event: RoleButtonUpdateEvent) -> None:
 
 def load(bot: SnedBot) -> None:
     bot.add_plugin(userlog)
-    userlog.d._task = bot.loop.create_task(_iter_queue())
+    userlog.d._task = bot.create_task(_iter_queue())
 
 
 def unload(bot: SnedBot) -> None:

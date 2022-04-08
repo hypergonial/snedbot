@@ -154,6 +154,16 @@ class SnedBot(lightbulb.BotApp):
         return self._db
 
     @property
+    def db_cache(self) -> cache.DatabaseCache:
+        """The database cache instance of the bot."""
+        return self._db_cache
+
+    @property
+    def scheduler(self) -> scheduler.Scheduler:
+        """The scheduler instance of the bot."""
+        return self._scheduler
+
+    @property
     def perspective(self) -> kosu.Client:
         """The perspective client of the bot."""
         if self._perspective is None:
@@ -227,25 +237,29 @@ class SnedBot(lightbulb.BotApp):
         self._initial_guilds.append(event.guild_id)
 
     async def on_starting(self, event: hikari.StartingEvent) -> None:
-        # Connect to the database, create asyncpg pool
+        # Connect to the database
         await self.db.connect()
         # Create all the initial tables if they do not exist already
         with open(os.path.join(self.base_dir, "db", "schema.sql")) as file:
             await self.db.execute(file.read())
-
-    async def on_started(self, event: hikari.StartedEvent) -> None:
-
-        user = self.get_me()
-        self._user_id = user.id if user else None
-        self.db_cache = cache.DatabaseCache(self)
-        self.scheduler = scheduler.Scheduler(self)
+        # Create scheduler, DB cache
+        self._db_cache = cache.DatabaseCache(self)
+        self._scheduler = scheduler.Scheduler(self)
 
         if perspective_api_key := os.getenv("PERSPECTIVE_API_KEY"):
             self._perspective = kosu.Client(perspective_api_key, do_not_store=True)
 
+        # Load all extensions
+        self.load_extensions_from(os.path.join(self.base_dir, "extensions"), must_exist=True)
+
+    async def on_started(self, event: hikari.StartedEvent) -> None:
+
         self._db_backup_loop.start()
 
-        logging.info(f"Startup complete, initialized as {user}")
+        user = self.get_me()
+        self._user_id = user.id if user else None
+
+        logging.info(f"Startup complete, initialized as {user}.")
         activity = hikari.Activity(name="@Sned", type=hikari.ActivityType.LISTENING)
         await self.update_presence(activity=activity)
 
@@ -362,8 +376,3 @@ class SnedBot(lightbulb.BotApp):
             return logging.info("Database backup complete, database backed up to specified Discord channel.")
 
         logging.info("Database backup complete.")
-
-    @functools.wraps(lightbulb.BotApp.run)
-    def run(self, *args, **kwargs) -> None:
-        self.load_extensions_from(os.path.join(self.base_dir, "extensions"), must_exist=True)
-        super().run(*args, **kwargs)
