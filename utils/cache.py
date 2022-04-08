@@ -25,7 +25,7 @@ class DatabaseCache:
         self.bot: SnedBot = bot
         self._cache: t.Dict[str, t.List[t.Dict[str, t.Any]]] = {}
         self.is_ready: bool = False
-        self.bot.loop.create_task(self.startup())
+        self.bot.create_task(self.startup())
         DatabaseModel._db_cache = self
 
     def _clean_kwarg(self, kwarg: str) -> str:

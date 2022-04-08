@@ -76,7 +76,6 @@ class SnedBot(lightbulb.BotApp):
     """
 
     def __init__(self, config: Config) -> None:
-        self.loop = asyncio.get_event_loop()
         self._started = asyncio.Event()
         self._is_started = False
 
