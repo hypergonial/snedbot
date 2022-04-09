@@ -30,6 +30,7 @@ class TrashButton(nav.NavButton):
         super().__init__(style=hikari.ButtonStyle.SECONDARY, emoji="🗑️", row=1)
 
     async def callback(self, ctx: miru.ViewContext) -> None:
+        assert self.view.message is not None
         await self.view.message.delete()
         self.view.stop()
 
@@ -341,7 +342,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     except:
         pass
 
-    await ctx.app.db_cache.disable()
+    await ctx.app.db_cache.stop()
 
     # Drop all tables
     async with ctx.app.db.acquire() as con:
@@ -369,8 +370,8 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     else:
         await ctx.respond("📥 Restored database from backup file.")
 
-    await ctx.app.db_cache.startup()
-    await ctx.app.scheduler.restart()
+    await ctx.app.db_cache.start()
+    ctx.app.scheduler.restart()
 
 
 @dev.command

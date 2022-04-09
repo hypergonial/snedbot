@@ -42,19 +42,40 @@ class Scheduler:
         self._current_timer: t.Optional[Timer] = None  # Currently active timer that is being awaited
         self._current_task: t.Optional[asyncio.Task] = None  # Current task that is handling current_timer
         self._timer_loop: IntervalLoop = IntervalLoop(self._wait_for_active_timers, hours=1.0)
-        self._timer_loop.start()
+        self._is_started: bool = False
 
-    async def restart(self) -> None:
+    def start(self) -> None:
         """
-        Restart the scheduler system.
+        Start the scheduler.
         """
+        self._timer_loop.start()
+        self._is_started = True
+        logger.info("Scheduler startup complete.")
+
+    def restart(self) -> None:
+        """
+        Restart the scheduler.
+        """
+        self._is_started = False
         if self._current_task is not None:
             self._current_task.cancel()
         self._current_task = None
         self._current_timer = None
         self._timer_loop.cancel()
         self._timer_loop.start()
-        logger.info("The scheduler was restarted.")
+        self._is_started = True
+        logger.info("Scheduler restart complete.")
+
+    def stop(self) -> None:
+        """
+        Stop the scheduler.
+        """
+        self._is_started = False
+        self._timer_loop.cancel()
+        if self._current_task is not None:
+            self._current_task.cancel()
+        self._current_timer = None
+        logger.info("Scheduler shutdown complete.")
 
     async def convert_time(
         self,
@@ -223,7 +244,7 @@ class Scheduler:
         A task that loops, waits for, and calls pending timers.
         """
         try:
-            while self.bot.is_ready:
+            while self.bot.is_ready and self._is_started:
 
                 timer = await self.get_latest_timer(days=30)
                 self._current_timer = timer
@@ -258,6 +279,8 @@ class Scheduler:
         timer : Timer
             The timer object to update.
         """
+        if not self._is_started:
+            raise hikari.ComponentStateConflictError("The scheduler is not running.")
 
         await self.bot.db.execute(
             """UPDATE timers SET user_id = $1, channel_id = $2, event = $3, expires = $4, notes = $5 WHERE id = $6 AND guild_id = $7""",
@@ -349,6 +372,8 @@ class Scheduler:
         Timer
             The timer object that got created.
         """
+        if not self._is_started:
+            raise hikari.ComponentStateConflictError("The scheduler is not running.")
 
         guild_id = hikari.Snowflake(guild)
         user_id = hikari.Snowflake(user)
@@ -403,6 +428,9 @@ class Scheduler:
         Timer
             The cancelled timer object.
         """
+        if not self._is_started:
+            raise hikari.ComponentStateConflictError("The scheduler is not running.")
+
         guild_id = hikari.Snowflake(guild)
         try:
             timer = await self.get_timer(entry_id, guild_id)

@@ -25,20 +25,18 @@ class DatabaseCache:
         self.bot: SnedBot = bot
         self._cache: t.Dict[str, t.List[t.Dict[str, t.Any]]] = {}
         self.is_ready: bool = False
-        self.bot.create_task(self.startup())
-        DatabaseModel._db_cache = self
 
     def _clean_kwarg(self, kwarg: str) -> str:
         return re.sub(r"\W|^(?=\d)", "_", kwarg)
 
-    async def startup(self) -> None:
+    async def start(self) -> None:
         """
-        Initialize the database cache.
+        Initialize the database cache. This should be called after the database is set up.
         """
         self.is_ready = False
         self._cache = {}
+        DatabaseModel._db_cache = self
 
-        await self.bot.wait_until_started()
         records = await self.bot.db.fetch(
             """
         SELECT tablename FROM pg_catalog.pg_tables 
@@ -51,7 +49,7 @@ class DatabaseCache:
         self.is_ready = True
 
     # Leaving this as async for potential future functionality
-    async def disable(self) -> None:
+    async def stop(self) -> None:
         """
         Disable the cache and wipe all of it's contents.
         """

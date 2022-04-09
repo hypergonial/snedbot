@@ -114,6 +114,7 @@ class SnedBot(lightbulb.BotApp):
         # Initizaling configuration and database
         self._config = config
         self._db = Database(self)
+        self._db_cache = cache.DatabaseCache(self)
         miru.load(self)
 
         # Some global variables
@@ -122,6 +123,7 @@ class SnedBot(lightbulb.BotApp):
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: t.Optional[Snowflake] = None
         self._perspective: t.Optional[kosu.Client] = None
+        self._scheduler = scheduler.Scheduler(self)
         self._initial_guilds: t.List[Snowflake] = []
 
         self.check(is_not_blacklisted)
@@ -241,9 +243,9 @@ class SnedBot(lightbulb.BotApp):
         # Create all the initial tables if they do not exist already
         with open(os.path.join(self.base_dir, "db", "schema.sql")) as file:
             await self.db.execute(file.read())
-        # Create scheduler, DB cache
-        self._db_cache = cache.DatabaseCache(self)
-        self._scheduler = scheduler.Scheduler(self)
+        # Start scheduler, DB cache
+        await self.db_cache.start()
+        self.scheduler.start()
 
         if perspective_api_key := os.getenv("PERSPECTIVE_API_KEY"):
             self._perspective = kosu.Client(perspective_api_key, do_not_store=True)
@@ -286,6 +288,7 @@ class SnedBot(lightbulb.BotApp):
 
     async def on_stopping(self, event: hikari.StoppingEvent) -> None:
         logging.info("Bot is shutting down...")
+        self.scheduler.stop()
 
     async def on_stop(self, event: hikari.StoppedEvent) -> None:
         await self.db.close()
