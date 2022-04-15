@@ -439,10 +439,10 @@ async def rolebutton_add(
     min_value=0,
 )
 @lightbulb.command(
-    "setconfirm", "Set a custom confirmation prompt to display when the button is clicked.", pass_options=True
+    "setprompt", "Set a custom confirmation prompt to display when the button is clicked.", pass_options=True
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_setconfirm(ctx: SnedSlashContext, button_id: int, prompt_type: str) -> None:
+async def rolebutton_setprompt(ctx: SnedSlashContext, button_id: int, prompt_type: str) -> None:
 
     button = await RoleButton.fetch(button_id)
     if not button:
