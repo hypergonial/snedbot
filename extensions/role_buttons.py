@@ -1,3 +1,4 @@
+import enum
 import logging
 import typing as t
 
@@ -29,6 +30,57 @@ button_styles = {
 role_button_ratelimiter = RateLimiter(2, 1, BucketType.MEMBER, wait=False)
 
 
+class RoleButtonConfirmType(enum.Enum):
+    ADD = "add"
+    REMOVE = "remove"
+
+
+class RoleButtonConfirmModal(miru.Modal):
+    def __init__(self, role_button: RoleButton, type: RoleButtonConfirmType) -> None:
+        super().__init__(f"Add rolebutton confirmation for button #{role_button.id}", timeout=600, autodefer=False)
+        self.add_item(
+            miru.TextInput(
+                label="Title",
+                placeholder="Enter prompt title, leave empty to reset...",
+                min_length=1,
+                max_length=100,
+                value=role_button.add_title if type == RoleButtonConfirmType.ADD else role_button.remove_title,
+            )
+        )
+        self.add_item(
+            miru.TextInput(
+                label="Description",
+                placeholder="Enter prompt description, leave empty to reset...",
+                min_length=1,
+                max_length=3000,
+                style=hikari.TextInputStyle.PARAGRAPH,
+                value=role_button.add_description
+                if type == RoleButtonConfirmType.ADD
+                else role_button.remove_description,
+            )
+        )
+        self.role_button = role_button
+        self.type = type
+
+    async def callback(self, context: miru.ModalContext) -> None:
+        values = list(context.values.values())
+
+        if self.type == RoleButtonConfirmType.ADD:
+            self.role_button.add_title = values[0].strip()
+            self.role_button.add_description = values[1].strip()
+        elif self.type == RoleButtonConfirmType.REMOVE:
+            self.role_button.remove_title = values[0].strip()
+            self.role_button.remove_description = values[1].strip()
+
+        await self.role_button.update(context.author)
+        embed = hikari.Embed(
+            title=f"✅ Rolebutton confirmation prompt updated!",
+            description=f"Confirmation prompt updated for button `#{self.role_button.id}`.",
+            color=0x77B255,
+        )
+        await context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+
 @role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
 async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteractionCreateEvent) -> None:
     """Statelessly listen for rolebutton interactions"""
@@ -36,7 +88,7 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
     if not event.interaction.custom_id.startswith("RB:"):
         return
 
-    entry_id = event.interaction.custom_id.split(":")[1]
+    entry_id = int(event.interaction.custom_id.split(":")[1])
     role_id = int(event.interaction.custom_id.split(":")[2])
 
     if not event.context.guild_id:
@@ -47,7 +99,7 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
     if not role:
         embed = hikari.Embed(
             title="❌ Orphaned",
-            description="The role this button was pointing to was deleted! Please notify an administrator!",
+            description="The role this button was pointing to was deleted! Contact an administrator!",
             color=0xFF0000,
         )
         await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -79,12 +131,22 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
 
     try:
         assert event.context.member is not None
+        role_button = await RoleButton.fetch(entry_id)
+
+        if not role_button:  # This should theoretically never happen, but I do not trust myself
+            embed = hikari.Embed(
+                title="❌ Missing Data",
+                description="The rolebutton you clicked on is missing data, or was improperly deleted! Contact an administrator!",
+                color=0xFF0000,
+            )
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
 
         if role.id in event.context.member.role_ids:
             await event.context.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
             embed = hikari.Embed(
-                title="✅ Role removed",
-                description=f"Removed role: {role.mention}",
+                title=f"✅ {role_button.remove_title or 'Role removed'}",
+                description=f"{role_button.remove_description or f'Removed role: {role.mention}'}",
                 color=0x77B255,
             )
             await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -92,11 +154,13 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         else:
             await event.context.member.add_role(role, reason=f"Granted by role-button (ID: {entry_id})")
             embed = hikari.Embed(
-                title="✅ Role added",
-                description=f"Added role: {role.mention}",
+                title=f"✅ {role_button.add_title or 'Role added'}",
+                description=f"{role_button.add_description or f'Added role: {role.mention}'}",
                 color=0x77B255,
             )
-            embed.set_footer(text="If you would like it removed, click the button again!")
+            if not role_button.add_description:
+                embed.set_footer("To remove the role, click the button again!")
+
             await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     except (hikari.ForbiddenError, hikari.HTTPError):
@@ -359,6 +423,39 @@ async def rolebutton_add(
     )
     embed.set_footer(f"Button ID: {button.id}")
     await ctx.respond(embed=embed)
+
+
+@rolebutton.child
+@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
+@lightbulb.option(
+    "prompt_type",
+    "'add' is displayed to the user when the role is added, 'remove' is when it is removed.",
+    choices=["add", "remove"],
+)
+@lightbulb.option(
+    "button_id",
+    "The ID of the rolebutton to set a prompt for. You can get this via /rolebutton list",
+    type=int,
+    min_value=0,
+)
+@lightbulb.command(
+    "setconfirm", "Set a custom confirmation prompt to display when the button is clicked.", pass_options=True
+)
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def rolebutton_setconfirm(ctx: SnedSlashContext, button_id: int, prompt_type: str) -> None:
+
+    button = await RoleButton.fetch(button_id)
+    if not button:
+        embed = hikari.Embed(
+            title="❌ Not found",
+            description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    modal = RoleButtonConfirmModal(button, RoleButtonConfirmType(prompt_type))
+    await modal.send(ctx.interaction)
 
 
 def load(bot: SnedBot) -> None:

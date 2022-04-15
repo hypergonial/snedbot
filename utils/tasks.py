@@ -57,14 +57,13 @@ class IntervalLoop:
             raise RuntimeError("Task is already running!")
 
         self._task = asyncio.create_task(self._loopy_loop(*args, **kwargs))
-        self._task
 
     def cancel(self) -> None:
         """
         Cancel the looping of the task.
         """
         if not self._task:
-            raise RuntimeError("Task is not running!")
+            return
 
         self._task.cancel()
         self._task = None

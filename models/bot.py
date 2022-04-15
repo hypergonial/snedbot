@@ -109,6 +109,7 @@ class SnedBot(lightbulb.BotApp):
             owner_ids=(163979124820541440,),
             prefix="dev",
             help_class=None,
+            banner=None,
         )
 
         # Initizaling configuration and database
@@ -238,11 +239,9 @@ class SnedBot(lightbulb.BotApp):
         self._initial_guilds.append(event.guild_id)
 
     async def on_starting(self, event: hikari.StartingEvent) -> None:
-        # Connect to the database
+        # Connect to the database, update schema, apply pending migrations
         await self.db.connect()
-        # Create all the initial tables if they do not exist already
-        with open(os.path.join(self.base_dir, "db", "schema.sql")) as file:
-            await self.db.execute(file.read())
+        await self.db.update_schema()
         # Start scheduler, DB cache
         await self.db_cache.start()
         self.scheduler.start()

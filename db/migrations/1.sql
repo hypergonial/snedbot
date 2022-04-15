@@ -44,8 +44,3 @@ ADD creator_id bigint;
 -- Add tag stats
 ALTER TABLE tags
 ADD uses integer NOT NULL DEFAULT 0;
-
-UPDATE schema_info SET schema_version = 1;
-
-
-

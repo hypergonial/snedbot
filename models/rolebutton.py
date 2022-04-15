@@ -23,6 +23,10 @@ class RoleButton(DatabaseModel):
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
         label: t.Optional[str] = None,
+        add_title: t.Optional[str] = None,
+        add_description: t.Optional[str] = None,
+        remove_title: t.Optional[str] = None,
+        remove_description: t.Optional[str] = None,
     ) -> None:
         # Static
         self._id = id
@@ -35,6 +39,10 @@ class RoleButton(DatabaseModel):
         self.label = label
         self.style = style
         self.role_id = role_id
+        self.add_title = add_title
+        self.add_description = add_description
+        self.remove_title = remove_title
+        self.remove_description = remove_description
 
     @property
     def id(self) -> int:
@@ -84,6 +92,10 @@ class RoleButton(DatabaseModel):
             label=record.get("buttonlabel"),
             style=hikari.ButtonStyle[record.get("buttonstyle")],
             role_id=record.get("role_id"),
+            add_title=record.get("add_title"),
+            add_description=record.get("add_desc"),
+            remove_title=record.get("remove_title"),
+            remove_description=record.get("remove_desc"),
         )
 
     @classmethod
@@ -115,6 +127,10 @@ class RoleButton(DatabaseModel):
                 label=record.get("buttonlabel"),
                 style=hikari.ButtonStyle[record.get("buttonstyle")],
                 role_id=record.get("role_id"),
+                add_title=record.get("add_title"),
+                add_description=record.get("add_desc"),
+                remove_title=record.get("remove_title"),
+                remove_description=record.get("remove_desc"),
             )
             for record in records
         ]
@@ -238,12 +254,16 @@ class RoleButton(DatabaseModel):
 
         await self._db.execute(
             """
-            UPDATE button_roles SET emoji = $1, buttonlabel = $2, buttonstyle = $3, role_id = $4 WHERE entry_id = $5 AND guild_id = $6
+            UPDATE button_roles SET emoji = $1, buttonlabel = $2, buttonstyle = $3, role_id = $4, add_title = $5, add_desc = $6, remove_title = $7, remove_desc = $8 WHERE entry_id = $9 AND guild_id = $10
             """,
             str(self.emoji),
             self.label,
             self.style.name,
             self.role_id,
+            self.add_title,
+            self.add_description,
+            self.remove_title,
+            self.remove_description,
             self.id,
             self.guild_id,
         )

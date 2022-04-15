@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import logging
 import os
 import typing as t
 from contextlib import asynccontextmanager
@@ -13,6 +14,8 @@ from models.errors import DatabaseStateConflictError
 if t.TYPE_CHECKING:
     from models.bot import SnedBot
     from utils.cache import DatabaseCache
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -249,6 +252,45 @@ class Database:
                 await con.execute("""INSERT INTO global_config (guild_id) VALUES ($1)""", hikari.Snowflake(guild))
 
         await DatabaseModel._db_cache.wipe(hikari.Snowflake(guild))
+
+    async def update_schema(self) -> None:
+        """Update the database schema and apply any pending migrations.
+        This also creates the initial schema structure if one does not exist."""
+
+        if not self._pool:
+            raise DatabaseStateConflictError("The database is not connected.")
+
+        async with self.acquire() as con:
+            with open(os.path.join(self._app.base_dir, "db", "schema.sql")) as file:
+                await con.execute(file.read())
+
+            schema_version = await con.fetchval("""SELECT schema_version FROM schema_info""", column=0)
+            assert isinstance(schema_version, int)
+
+            for filename in sorted(os.listdir(os.path.join(self._app.base_dir, "db", "migrations"))):
+                if not filename.endswith(".sql"):
+                    continue
+
+                try:
+                    migration_version = int(filename[:-4])
+                except ValueError:
+                    logger.warning(
+                        f"Invalid migration file found: '{filename}' Migration filenames must be integers and have a '.sql' extension."
+                    )
+                    continue
+
+                path = os.path.join(self._app.base_dir, "db", "migrations", filename)
+
+                if migration_version <= schema_version or not os.path.isfile(path):
+                    continue
+
+                with open(os.path.join(self._app.base_dir, "db", "migrations", filename)) as file:
+                    await con.execute(file.read())
+
+                await con.execute("""UPDATE schema_info SET schema_version = $1""", migration_version)
+                logger.info(f"Applied database migration: '{filename}'")
+
+        logger.info("Database schema is up to date!")
 
 
 class DatabaseModel(abc.ABC):

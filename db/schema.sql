@@ -2,8 +2,24 @@
 
 CREATE TABLE IF NOT EXISTS schema_info
 (
-    schema_version int NOT NULL DEFAULT 2
+    schema_version integer NOT NULL,
+    PRIMARY KEY (schema_version)
 );
+
+
+-- Insert schema version into schema_info table if not already present
+DO
+$do$
+DECLARE _schema_version integer;
+BEGIN
+    SELECT 3 INTO _schema_version; -- The current schema version, change this when creating new migrations
+
+	IF NOT EXISTS (SELECT schema_version FROM schema_info) THEN
+		INSERT INTO schema_info (schema_version) 
+		VALUES (_schema_version); 
+	END IF;
+END
+$do$;
 
 CREATE TABLE IF NOT EXISTS global_config
 (
@@ -87,6 +103,10 @@ CREATE TABLE IF NOT EXISTS button_roles
     buttonlabel text,
     buttonstyle text,
     role_id bigint NOT NULL,
+    add_title text,
+    add_desc text,
+    remove_title text,
+    remove_desc text,
     PRIMARY KEY (guild_id, entry_id),
     FOREIGN KEY (guild_id)
         REFERENCES global_config (guild_id)
