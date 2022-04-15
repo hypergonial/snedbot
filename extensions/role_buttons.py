@@ -13,6 +13,7 @@ from models import SnedSlashContext
 from models.checks import has_permissions
 from models.plugin import SnedPlugin
 from models.rolebutton import RoleButton
+from models.rolebutton import RoleButtonMode
 from utils import helpers
 from utils.ratelimiter import BucketType
 from utils.ratelimiter import RateLimiter
@@ -21,21 +22,31 @@ logger = logging.getLogger(__name__)
 
 role_buttons = SnedPlugin("Role-Buttons")
 
-button_styles = {
+BUTTON_STYLES = {
     "Blurple": hikari.ButtonStyle.PRIMARY,
     "Grey": hikari.ButtonStyle.SECONDARY,
     "Green": hikari.ButtonStyle.SUCCESS,
     "Red": hikari.ButtonStyle.DANGER,
 }
+BUTTON_MODES = {
+    "Toggle": RoleButtonMode.TOGGLE,
+    "Add": RoleButtonMode.ADD_ONLY,
+    "Remove": RoleButtonMode.REMOVE_ONLY,
+}
+
 role_button_ratelimiter = RateLimiter(2, 1, BucketType.MEMBER, wait=False)
 
 
 class RoleButtonConfirmType(enum.Enum):
+    """Types of confirmation prompts for rolebuttons."""
+
     ADD = "add"
     REMOVE = "remove"
 
 
 class RoleButtonConfirmModal(miru.Modal):
+    """A modal to handle editing of confirmation prompts for rolebuttons."""
+
     def __init__(self, role_button: RoleButton, type: RoleButtonConfirmType) -> None:
         super().__init__(f"Add rolebutton confirmation for button #{role_button.id}", timeout=600, autodefer=False)
         self.add_item(
@@ -75,10 +86,10 @@ class RoleButtonConfirmModal(miru.Modal):
         await self.role_button.update(context.author)
         embed = hikari.Embed(
             title=f"✅ Rolebutton confirmation prompt updated!",
-            description=f"Confirmation prompt updated for button `#{self.role_button.id}`.",
+            description=f"Confirmation prompt updated for button **#{self.role_button.id}**.",
             color=0x77B255,
         )
-        await context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await context.respond(embed=embed)
 
 
 @role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
@@ -143,30 +154,45 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
             return
 
         if role.id in event.context.member.role_ids:
-            await event.context.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
-            embed = hikari.Embed(
-                title=f"✅ {role_button.remove_title or 'Role removed'}",
-                description=f"{role_button.remove_description or f'Removed role: {role.mention}'}",
-                color=0x77B255,
-            )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+            if role_button.mode in [RoleButtonMode.TOGGLE, RoleButtonMode.REMOVE_ONLY]:
+                await event.context.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
+                embed = hikari.Embed(
+                    title=f"✅ {role_button.remove_title or 'Role removed'}",
+                    description=f"{role_button.remove_description or f'Removed role: {role.mention}'}",
+                    color=0x77B255,
+                )
+            else:
+                embed = hikari.Embed(
+                    title="❌ Role already added",
+                    description=f"You already have the role {role.mention}!",
+                    color=0xFF0000,
+                ).set_footer("This button is set to only add roles, not remove them.")
 
         else:
-            await event.context.member.add_role(role, reason=f"Granted by role-button (ID: {entry_id})")
-            embed = hikari.Embed(
-                title=f"✅ {role_button.add_title or 'Role added'}",
-                description=f"{role_button.add_description or f'Added role: {role.mention}'}",
-                color=0x77B255,
-            )
-            if not role_button.add_description:
-                embed.set_footer("To remove the role, click the button again!")
 
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            if role_button.mode in [RoleButtonMode.TOGGLE, RoleButtonMode.ADD_ONLY]:
+                await event.context.member.add_role(role, reason=f"Granted by role-button (ID: {entry_id})")
+                embed = hikari.Embed(
+                    title=f"✅ {role_button.add_title or 'Role added'}",
+                    description=f"{role_button.add_description or f'Added role: {role.mention}'}",
+                    color=0x77B255,
+                )
+                if not role_button.add_description and role_button.mode == RoleButtonMode.TOGGLE:
+                    embed.set_footer("To remove the role, click the button again!")
+            else:
+                embed = hikari.Embed(
+                    title="❌ Role already removed",
+                    description=f"You do not have the role {role.mention}!",
+                    color=0xFF0000,
+                ).set_footer("This button is set to only remove roles, not add them.")
+
+        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     except (hikari.ForbiddenError, hikari.HTTPError):
         embed = hikari.Embed(
             title="❌ Insufficient permissions",
-            description="Failed adding role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
+            description="Failed changing role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
             color=0xFF0000,
         )
         await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -268,7 +294,13 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 @rolebutton.child
 @lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
-    "buttonstyle", "Change the style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False
+    "mode",
+    "The mode of operation for this rolebutton.",
+    choices=["Toggle - Add & remove roles", "Add - Only add roles", "Remove - Only remove roles"],
+    required=False,
+)
+@lightbulb.option(
+    "style", "Change the style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False
 )
 @lightbulb.option(
     "label", "Change the label that should appear on the button. Type 'removelabel' to remove it.", required=False
@@ -302,8 +334,11 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     if label := params.get("label"):
         params["label"] = label if label.casefold() != "removelabel" else None
 
-    if buttonstyle := params.pop("buttonstyle", None):
-        params["style"] = button_styles[buttonstyle]
+    if style := params.pop("style", None):
+        params["style"] = BUTTON_STYLES[style]
+
+    if mode := params.pop("mode", None):
+        params["mode"] = BUTTON_MODES[mode.split(" -")[0]]
 
     if emoji := params.get("emoji"):
         params["emoji"] = hikari.Emoji.parse(emoji)
@@ -343,6 +378,12 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
 
 @rolebutton.child
 @lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
+@lightbulb.option(
+    "mode",
+    "The mode of operation for this rolebutton.",
+    choices=["Toggle - Add & remove roles", "Add - Only add roles", "Remove - Only remove roles"],
+    required=False,
+)
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
 @lightbulb.option(
     "buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False
@@ -364,13 +405,15 @@ async def rolebutton_add(
     message_link: str,
     role: hikari.Role,
     emoji: str,
-    buttonstyle: t.Optional[str] = None,
+    style: t.Optional[str] = None,
     label: t.Optional[str] = None,
+    mode: t.Optional[str] = None,
 ) -> None:
 
     assert ctx.guild_id is not None
 
-    buttonstyle = buttonstyle or "Grey"
+    style = style or "Grey"
+    mode = mode or "Toggle - Add & remove roles"
 
     message = await helpers.parse_message_link(ctx, message_link)
     if not message:
@@ -395,10 +438,12 @@ async def rolebutton_add(
         return
 
     parsed_emoji = hikari.Emoji.parse(emoji)
-    style = button_styles[buttonstyle.capitalize()]
+    buttonstyle = BUTTON_STYLES[style.capitalize()]
 
     try:
-        button = await RoleButton.create(ctx.guild_id, message, role, parsed_emoji, style, label, ctx.member)
+        button = await RoleButton.create(
+            ctx.guild_id, message, role, parsed_emoji, buttonstyle, BUTTON_MODES[mode.split(" -")[0]], label, ctx.member
+        )
     except ValueError:
         embed = hikari.Embed(
             title="❌ Too many buttons",

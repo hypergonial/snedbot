@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import typing as t
 
 import hikari
@@ -9,6 +10,17 @@ from models.db import DatabaseModel
 from models.events import RoleButtonCreateEvent
 from models.events import RoleButtonDeleteEvent
 from models.events import RoleButtonUpdateEvent
+
+
+class RoleButtonMode(enum.IntEnum):
+    """The mode of operation for a role button."""
+
+    # Add and remove roles
+    TOGGLE = 0
+    # Only add roles
+    ADD_ONLY = 1
+    # Only remove roles
+    REMOVE_ONLY = 2
 
 
 class RoleButton(DatabaseModel):
@@ -23,6 +35,7 @@ class RoleButton(DatabaseModel):
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
         label: t.Optional[str] = None,
+        mode: RoleButtonMode = RoleButtonMode.TOGGLE,
         add_title: t.Optional[str] = None,
         add_description: t.Optional[str] = None,
         remove_title: t.Optional[str] = None,
@@ -35,6 +48,7 @@ class RoleButton(DatabaseModel):
         self._message_id = message_id
         self._custom_id = f"RB:{id}:{role_id}"
         # May be changed
+        self.mode = mode
         self.emoji = emoji
         self.label = label
         self.style = style
@@ -89,8 +103,9 @@ class RoleButton(DatabaseModel):
             channel_id=hikari.Snowflake(record.get("channel_id")),
             message_id=hikari.Snowflake(record.get("msg_id")),
             emoji=hikari.Emoji.parse(record.get("emoji")),
-            label=record.get("buttonlabel"),
-            style=hikari.ButtonStyle[record.get("buttonstyle")],
+            label=record.get("label"),
+            style=hikari.ButtonStyle[record.get("style")],
+            mode=RoleButtonMode(record.get("mode")),
             role_id=record.get("role_id"),
             add_title=record.get("add_title"),
             add_description=record.get("add_desc"),
@@ -124,8 +139,9 @@ class RoleButton(DatabaseModel):
                 channel_id=hikari.Snowflake(record.get("channel_id")),
                 message_id=hikari.Snowflake(record.get("msg_id")),
                 emoji=hikari.Emoji.parse(record.get("emoji")),
-                label=record.get("buttonlabel"),
-                style=hikari.ButtonStyle[record.get("buttonstyle")],
+                label=record.get("label"),
+                style=hikari.ButtonStyle[record.get("style")],
+                mode=RoleButtonMode(record.get("mode")),
                 role_id=record.get("role_id"),
                 add_title=record.get("add_title"),
                 add_description=record.get("add_desc"),
@@ -143,6 +159,7 @@ class RoleButton(DatabaseModel):
         role: hikari.SnowflakeishOr[hikari.PartialRole],
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
+        mode: RoleButtonMode,
         label: t.Optional[str] = None,
         moderator: t.Optional[hikari.PartialUser] = None,
     ) -> RoleButton:
@@ -162,6 +179,8 @@ class RoleButton(DatabaseModel):
             The label of the button.
         style : hikari.ButtonStyle
             The style of the button.
+        mode : RoleButtonMode
+            The mode of operation of the button.
         moderator : Optional[hikari.PartialUser]
             The user to log the rolebutton creation under.
 
@@ -193,8 +212,8 @@ class RoleButton(DatabaseModel):
 
         await cls._db.execute(
             """
-            INSERT INTO button_roles (entry_id, guild_id, channel_id, msg_id, emoji, buttonlabel, buttonstyle, role_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO button_roles (entry_id, guild_id, channel_id, msg_id, emoji, label, style, mode, role_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             """,
             id,
             hikari.Snowflake(guild),
@@ -203,6 +222,7 @@ class RoleButton(DatabaseModel):
             str(emoji),
             label,
             style.name,
+            mode.value,
             hikari.Snowflake(role),
         )
 
@@ -214,6 +234,7 @@ class RoleButton(DatabaseModel):
             emoji=emoji,
             label=label,
             style=style,
+            mode=mode,
             role_id=hikari.Snowflake(role),
         )
 
@@ -254,11 +275,12 @@ class RoleButton(DatabaseModel):
 
         await self._db.execute(
             """
-            UPDATE button_roles SET emoji = $1, buttonlabel = $2, buttonstyle = $3, role_id = $4, add_title = $5, add_desc = $6, remove_title = $7, remove_desc = $8 WHERE entry_id = $9 AND guild_id = $10
+            UPDATE button_roles SET emoji = $1, label = $2, style = $3, mode = $4, role_id = $5, add_title = $6, add_desc = $7, remove_title = $8, remove_desc = $9 WHERE entry_id = $10 AND guild_id = $11
             """,
             str(self.emoji),
             self.label,
             self.style.name,
+            self.mode.value,
             self.role_id,
             self.add_title,
             self.add_description,
