@@ -296,7 +296,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 @lightbulb.option(
     "mode",
     "The mode of operation for this rolebutton.",
-    choices=["Toggle - Add & remove roles", "Add - Only add roles", "Remove - Only remove roles"],
+    choices=["Toggle - Add & remove roles (default)", "Add - Only add roles", "Remove - Only remove roles"],
     required=False,
 )
 @lightbulb.option(
@@ -381,7 +381,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
 @lightbulb.option(
     "mode",
     "The mode of operation for this rolebutton.",
-    choices=["Toggle - Add & remove roles", "Add - Only add roles", "Remove - Only remove roles"],
+    choices=["Toggle - Add & remove roles (default)", "Add - Only add roles", "Remove - Only remove roles"],
     required=False,
 )
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
