@@ -385,9 +385,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     required=False,
 )
 @lightbulb.option("label", "The label that should appear on the button.", required=False)
-@lightbulb.option(
-    "buttonstyle", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False
-)
+@lightbulb.option("style", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False)
 @lightbulb.option("emoji", "The emoji that should appear in the button.", type=str)
 @lightbulb.option("role", "The role that should be handed out by the button.", type=hikari.Role)
 @lightbulb.option(
