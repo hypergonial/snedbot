@@ -1012,7 +1012,7 @@ async def rolebutton_create(event: RoleButtonCreateEvent) -> None:
 
     log_embed = hikari.Embed(
         title="❇️ Rolebutton Added",
-        description=f"**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
         color=const.EMBED_GREEN,
     )
     await log("roles", log_embed, event.guild_id)
@@ -1024,7 +1024,7 @@ async def rolebutton_delete(event: RoleButtonDeleteEvent) -> None:
 
     log_embed = hikari.Embed(
         title="🗑️ Rolebutton Deleted",
-        description=f"**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
         color=const.ERROR_COLOR,
     )
     await log("roles", log_embed, event.guild_id)
@@ -1036,7 +1036,7 @@ async def rolebutton_update(event: RoleButtonUpdateEvent) -> None:
 
     log_embed = hikari.Embed(
         title="🖊️ Rolebutton Updated",
-        description=f"**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
         color=const.EMBED_BLUE,
     )
     await log("roles", log_embed, event.guild_id)
