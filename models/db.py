@@ -265,7 +265,8 @@ class Database:
                 await con.execute(file.read())
 
             schema_version = await con.fetchval("""SELECT schema_version FROM schema_info""", column=0)
-            assert isinstance(schema_version, int)
+            if not isinstance(schema_version, int):
+                raise ValueError(f"Schema version not found or invalid. Expected integer, found '{schema_version}'.")
 
             for filename in sorted(os.listdir(os.path.join(self._app.base_dir, "db", "migrations"))):
                 if not filename.endswith(".sql"):
