@@ -206,7 +206,7 @@ class RoleButton(DatabaseModel):
             style=style,
         )
 
-        view = miru.View.from_message(message, timeout=None)
+        view = miru.View.from_message(message)
         view.add_item(button)
         message = await message.edit(components=view.build())
 
@@ -257,7 +257,7 @@ class RoleButton(DatabaseModel):
 
         message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
 
-        view = miru.View.from_message(message, timeout=None)
+        view = miru.View.from_message(message)
         buttons = [item for item in view.children if item.custom_id == self.custom_id and isinstance(item, miru.Button)]
 
         if not buttons:
@@ -310,7 +310,7 @@ class RoleButton(DatabaseModel):
         except hikari.NotFoundError:
             pass
         else:  # Remove button if message still exists
-            view = miru.View.from_message(message, timeout=None)
+            view = miru.View.from_message(message)
 
             for item in view.children:
                 if item.custom_id == f"RB:{self.id}:{self.role_id}":
