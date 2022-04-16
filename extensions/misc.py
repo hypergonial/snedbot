@@ -340,7 +340,7 @@ async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.Inte
             perms=hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
         )
 
-    await send_to.send(text)
+    await send_to.send(text[:2000])
 
     embed = hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN)
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
@@ -434,7 +434,7 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
 @lightbulb.implements(lightbulb.MessageCommand)
 async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
     if target.content:
-        await ctx.respond(f"```{target.content}```", flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(f"```{target.content[:1990]}```", flags=hikari.MessageFlag.EPHEMERAL)
     else:
         embed = hikari.Embed(
             title="❌ Missing Content",
