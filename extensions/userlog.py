@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import logging
 import sys
 import traceback
 import typing as t
@@ -21,6 +22,8 @@ from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
 from models.plugin import SnedPlugin
 from utils import helpers
+
+logger = logging.getLogger(__name__)
 
 userlog = SnedPlugin("Logging", include_datastore=True)
 
@@ -168,15 +171,15 @@ async def log(
         # Do not attempt message send if we have no perms
         return
 
-    if userlog.d.queue.get(log_channel.id) is None:
-        userlog.d.queue[log_channel.id] = []
-
     if file:  # Embeds with attachments will be sent without grouping
         try:
             await log_channel.send(embed=embed, attachment=file)
             return
-        except (hikari.ForbiddenError, hikari.HTTPError):
+        except (hikari.ForbiddenError, hikari.HTTPError, asyncio.TimeoutError):
             return
+
+    if userlog.d.queue.get(log_channel.id) is None:
+        userlog.d.queue[log_channel.id] = []
 
     userlog.d.queue[log_channel.id].append(embed)
 
@@ -204,14 +207,15 @@ async def _iter_queue() -> None:
                         embed_chunks.append([embed])
 
                 for chunk in embed_chunks:
-                    if len(chunk) == 1:
-                        await userlog.app.rest.create_message(channel_id, embed=chunk[0])
-                    else:
+                    try:
                         await userlog.app.rest.create_message(channel_id, embeds=chunk)
+                    except Exception as exc:
+                        logger.warning(f"Failed to send log embed chunk to channel {channel_id}: {exc}")
 
                 userlog.d.queue[channel_id] = []
 
             await asyncio.sleep(10.0)
+
     except Exception as error:
         print("Encountered exception in userlog queue iteration:", error)
         traceback.print_exception(error.__class__, error, error.__traceback__, file=sys.stderr)
@@ -297,7 +301,7 @@ async def find_auditlog_data(
                 else:
                     return entry
 
-    except hikari.ForbiddenError:
+    except (hikari.ForbiddenError, hikari.HTTPError, asyncio.TimeoutError):
         return
 
 
