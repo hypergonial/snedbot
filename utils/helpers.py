@@ -351,6 +351,7 @@ def format_reason(
         reason = "No reason provided."
 
     if moderator:
+        # This format must remain the same, as the userlog extension depends on it for author parsing.
         reason = f"{moderator} ({moderator.id}): {reason}"
 
     if max_length and len(reason) > max_length:

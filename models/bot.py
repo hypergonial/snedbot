@@ -16,6 +16,7 @@ from config import Config
 from etc import constants as const
 from models.db import Database
 from models.errors import UserBlacklistedError
+from models.mod_actions import ModActions
 from utils import cache
 from utils import helpers
 from utils import scheduler
@@ -116,6 +117,7 @@ class SnedBot(lightbulb.BotApp):
         self._config = config
         self._db = Database(self)
         self._db_cache = cache.DatabaseCache(self)
+        self._mod = ModActions(self)
         miru.load(self)
 
         # Some global variables
@@ -178,6 +180,11 @@ class SnedBot(lightbulb.BotApp):
     def config(self) -> Config:
         """The passed configuration object."""
         return self._config
+
+    @property
+    def mod(self) -> ModActions:
+        """The moderation actions instance of the bot. Handles moderation of users and contains useful methods for such purposes."""
+        return self._mod
 
     @property
     def is_started(self) -> bool:
