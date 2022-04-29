@@ -11,7 +11,7 @@ ff.default_enabled_guilds = Config().DEBUG_GUILDS or (684324252786360476, 813803
 
 @ff.listener(hikari.GuildMessageCreateEvent)
 async def hydrate_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
-    if not event.guild_id or event.guild_id not in (684324252786360476, 813803567445049414):
+    if event.guild_id not in (684324252786360476, 813803567445049414):
         return
 
     if event.content and event.content == "Everyone this is your daily reminder to stay hydrated!":
