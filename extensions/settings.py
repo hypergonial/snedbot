@@ -389,7 +389,7 @@ Click one of the buttons below to get started!""",
 
         mod = self.app.get_plugin("Moderation")
         assert mod is not None
-        mod_settings = await mod.d.actions.get_settings(self.last_ctx.guild_id)
+        mod_settings = await self.app.mod.get_settings(self.last_ctx.guild_id)
 
         embed = hikari.Embed(
             title="Moderation Settings",
@@ -1355,9 +1355,8 @@ async def ask_settings(
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def settings_cmd(ctx: SnedSlashContext) -> None:
-    mod = ctx.app.get_plugin("Moderation")
-    assert mod is not None
-    ephemeral = (await mod.d.actions.get_settings(ctx.guild_id))["is_ephemeral"]
+    assert ctx.guild_id is not None
+    ephemeral = (await ctx.app.mod.get_settings(ctx.guild_id))["is_ephemeral"]
     view = SettingsView(ctx, timeout=300, ephemeral=ephemeral)
     await view.start_settings()
 

@@ -155,10 +155,9 @@ class SnedContext(lightbulb.Context):
     async def mod_respond(self, *args, **kwargs) -> lightbulb.ResponseProxy:
         """Respond to the command while taking into consideration the current moderation command settings.
         This should not be used outside the moderation plugin, and may fail if it is not loaded."""
-        mod = self.app.get_plugin("Moderation")
 
-        if mod:
-            is_ephemeral = (await mod.d.actions.get_settings(self.guild_id))["is_ephemeral"]
+        if self.guild_id:
+            is_ephemeral = (await self.app.mod.get_settings(self.guild_id))["is_ephemeral"]
             flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
         else:
             flags = kwargs.get("flags") or hikari.MessageFlag.NONE

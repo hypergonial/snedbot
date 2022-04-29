@@ -722,9 +722,7 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
         color=const.EMBED_GREEN,
     )
     await log("ban", embed, event.guild_id)
-    mod = userlog.app.get_plugin("Moderation")
-    if mod:
-        await mod.d.actions.add_note(event.user, event.guild_id, f"🔨 **Unbanned by {moderator}:** {reason}")
+    await plugin.app.mod.add_note(event.user, event.guild_id, f"🔨 **Unbanned by {moderator}:** {reason}")
 
 
 @userlog.listener(hikari.BanCreateEvent, bind=True)
@@ -749,9 +747,7 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
         color=const.ERROR_COLOR,
     )
     await log("ban", embed, event.guild_id)
-    mod = userlog.app.get_plugin("Moderation")
-    if mod:
-        await mod.d.actions.add_note(event.user, event.guild_id, f"🔨 **Banned by {moderator}:** {reason}")
+    await plugin.app.mod.add_note(event.user, event.guild_id, f"🔨 **Banned by {moderator}:** {reason}")
 
 
 @userlog.listener(hikari.MemberDeleteEvent, bind=True)
@@ -777,9 +773,7 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
             color=const.ERROR_COLOR,
         )
         await log("kick", embed, event.guild_id)
-        mod = userlog.app.get_plugin("Moderation")
-        if mod:
-            await mod.d.actions.add_note(event.user, event.guild_id, f"🚪👈 **Kicked by {moderator}:** {reason}")
+        await plugin.app.mod.add_note(event.user, event.guild_id, f"🚪👈 **Kicked by {moderator}:** {reason}")
         return
 
     embed = hikari.Embed(
@@ -837,18 +831,13 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
             reason, moderator = strip_bot_reason(reason)
             moderator = moderator or plugin.app.get_me()
 
-        mod = userlog.app.get_plugin("Moderation")
-
         if comms_disabled_until is None:
             embed = hikari.Embed(
                 title=f"🔉 User timeout removed",
                 description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
                 color=const.EMBED_GREEN,
             )
-            if mod:
-                await mod.d.actions.add_note(
-                    event.user, event.guild_id, f"🔉 **Timeout removed by {moderator}:** {reason}"
-                )
+            await plugin.app.mod.add_note(event.user, event.guild_id, f"🔉 **Timeout removed by {moderator}:** {reason}")
 
         else:
             assert comms_disabled_until is not None
@@ -861,12 +850,11 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 **Reason:** ```{reason}```""",
                 color=const.ERROR_COLOR,
             )
-            if mod:
-                await mod.d.actions.add_note(
-                    event.user,
-                    event.guild_id,
-                    f"🔇 **Timed out by {moderator} until {helpers.format_dt(comms_disabled_until)}:** {reason}",
-                )
+            await plugin.app.mod.add_note(
+                event.user,
+                event.guild_id,
+                f"🔇 **Timed out by {moderator} until {helpers.format_dt(comms_disabled_until)}:** {reason}",
+            )
 
         await log("timeout", embed, event.guild_id)
 
@@ -932,9 +920,7 @@ async def warn_create(plugin: SnedPlugin, event: WarnCreateEvent) -> None:
 
     await log("warn", embed, event.guild_id)
 
-    mod = plugin.app.get_plugin("Moderation")
-    assert mod is not None
-    await mod.d.actions.add_note(
+    await plugin.app.mod.add_note(
         event.member, event.member.guild_id, f"⚠️ **Warned by {event.moderator}:** {event.reason}"
     )
 
@@ -950,9 +936,7 @@ async def warn_remove(plugin: SnedPlugin, event: WarnRemoveEvent) -> None:
 
     await log("warn", embed, event.guild_id)
 
-    mod = plugin.app.get_plugin("Moderation")
-    assert mod is not None
-    await mod.d.actions.add_note(
+    await plugin.app.mod.add_note(
         event.member, event.member.guild_id, f"⚠️ **1 Warning removed by {event.moderator}:** {event.reason}"
     )
 
@@ -968,9 +952,7 @@ async def warns_clear(plugin: SnedPlugin, event: WarnsClearEvent) -> None:
 
     await log("warn", embed, event.guild_id)
 
-    mod = plugin.app.get_plugin("Moderation")
-    assert mod is not None
-    await mod.d.actions.add_note(
+    await plugin.app.mod.add_note(
         event.member, event.member.guild_id, f"⚠️ **Warnings cleared for {event.moderator}:** {event.reason}"
     )
 

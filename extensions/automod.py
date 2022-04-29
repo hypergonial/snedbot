@@ -163,13 +163,8 @@ async def punish(
     if should_delete:
         await helpers.maybe_delete(message)
 
-    mod = automod.app.get_plugin("Moderation")
-
-    if not mod:
-        return
-
     if state == AutoModState.FLAG.value:
-        return await mod.app.dispatch(
+        return await automod.app.dispatch(
             AutoModMessageFlagEvent(
                 automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
             )
@@ -182,14 +177,14 @@ async def punish(
             color=const.WARN_COLOR,
         )
         await message.respond(content=offender.mention, embed=embed, user_mentions=True)
-        return await mod.app.dispatch(
+        return await automod.app.dispatch(
             AutoModMessageFlagEvent(
                 automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
             )
         )
 
     if state == AutoModState.WARN.value:
-        embed = await mod.d.actions.warn(offender, me, f"Warned by auto-moderator for {reason}.")
+        embed = await automod.app.mod.warn(offender, me, f"Warned by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
@@ -203,7 +198,7 @@ async def punish(
                 color=const.WARN_COLOR,
             )
             await message.respond(content=offender.mention, embed=embed, user_mentions=True)
-            return await mod.app.dispatch(
+            return await automod.app.dispatch(
                 AutoModMessageFlagEvent(
                     automod.app,
                     message,
@@ -214,7 +209,7 @@ async def punish(
             )
 
         elif escalate_prewarn_ratelimiter.is_rate_limited(message):
-            embed = await mod.d.actions.warn(
+            embed = await automod.app.mod.warn(
                 offender,
                 me,
                 f"Warned by auto-moderator for previous offenses ({action.name}).",
@@ -236,7 +231,7 @@ async def punish(
 
     elif state == AutoModState.TIMEOUT.value:
 
-        embed = await mod.d.actions.timeout(
+        embed = await automod.app.mod.timeout(
             offender,
             me,
             helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
@@ -246,19 +241,19 @@ async def punish(
         return
 
     elif state == AutoModState.KICK.value:
-        embed = await mod.d.actions.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
+        embed = await automod.app.mod.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
     elif state == AutoModState.SOFTBAN.value:
-        embed = await mod.d.actions.ban(
+        embed = await automod.app.mod.ban(
             offender, me, soft=True, reason=f"Soft-banned by auto-moderator for {reason}.", days_to_delete=1
         )
         await message.respond(embed=embed)
         return
 
     elif state == AutoModState.TEMPBAN.value:
-        embed = await mod.d.actions.ban(
+        embed = await automod.app.mod.ban(
             offender,
             me,
             duration=helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
@@ -268,7 +263,7 @@ async def punish(
         return
 
     elif state == AutoModState.PERMABAN.value:
-        embed = await mod.d.actions.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
+        embed = await automod.app.mod.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
