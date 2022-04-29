@@ -175,36 +175,6 @@ def includes_permissions(permissions: hikari.Permissions, should_include: hikari
     return True
 
 
-def len_embed(embed: hikari.Embed) -> int:
-    """Return the total length of an embed object.
-
-    Parameters
-    ----------
-    embed : hikari.Embed
-        The embed to get the length of.
-
-    Returns
-    -------
-    int
-        The length of the embed.
-    """
-
-    if not isinstance(embed, hikari.Embed):
-        return 0
-
-    text = []
-    text.append(embed.title or "")
-    text.append(embed.description or "")
-    if embed.footer:
-        text.append(embed.footer.text or "")
-    if embed.author:
-        text.append(embed.author.name or "")
-
-    text += [f"{field.name}{field.value}" for field in embed.fields]
-
-    return len("".join(text))
-
-
 def normalize_string(string: str, strict: bool = False) -> str:
     """Normalize a unicode string and replace any similar characters from ones in the latin alphabet.
 

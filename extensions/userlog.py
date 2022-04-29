@@ -195,11 +195,11 @@ async def _iter_queue() -> None:
                 if not embeds:
                     continue
 
-                embed_chunks = [[]]
+                embed_chunks: t.List[t.List[hikari.Embed]] = [[]]
                 for embed in embeds:
                     # If combined length of all embeds is below 6000 and there are less than 10 embeds in chunk, add to chunk
                     if (
-                        sum([helpers.len_embed(embed) for embed in embed_chunks[-1]]) + helpers.len_embed(embed)
+                        sum([embed.total_length() for embed in embed_chunks[-1]]) + embed.total_length()
                     ) <= 6000 and len(embed_chunks[-1]) < 10:
                         embed_chunks[-1].append(embed)
                     # Otherwise make new chunk
