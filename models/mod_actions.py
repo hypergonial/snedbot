@@ -9,6 +9,7 @@ import lightbulb
 
 from etc import constants as const
 from models.db_user import DatabaseUser
+from models.db_user import DatabaseUserFlag
 from models.errors import DMFailedError
 from models.errors import RoleHierarchyError
 from models.events import TimerCompleteEvent
@@ -172,11 +173,10 @@ class ModActions:
 
         else:
             db_user = await DatabaseUser.fetch(timer.user_id, timer.guild_id)
-            if not db_user.flags:
-                db_user.flags = {}
 
-            if "timeout_on_join" not in db_user.flags.keys():
-                db_user.flags["timeout_on_join"] = expiry
+            if DatabaseUserFlag.TIMEOUT_ON_JOIN ^ db_user.flags:
+                db_user.flags = db_user.flags | DatabaseUserFlag.TIMEOUT_ON_JOIN
+                db_user.data["timeout_expiry"] = expiry
                 await db_user.update()
 
     async def reapply_timeout_extensions(self, event: hikari.MemberCreateEvent):
@@ -191,10 +191,12 @@ class ModActions:
 
         db_user = await DatabaseUser.fetch(event.member.id, event.guild_id)
 
-        if not db_user.flags or "timeout_on_join" not in db_user.flags.keys():
+        if db_user.flags ^ DatabaseUserFlag.TIMEOUT_ON_JOIN:
             return
 
-        expiry = db_user.flags["timeout_on_join"]
+        expiry = db_user.data.pop("timeout_expiry", 0)
+        db_user.flags = db_user.flags ^ DatabaseUserFlag.TIMEOUT_ON_JOIN
+        await db_user.update()
 
         if expiry - helpers.utcnow().timestamp() < 0:
             # If this is in the past already

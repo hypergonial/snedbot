@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import json
 import typing as t
 
@@ -9,6 +10,15 @@ import hikari
 from models.db import DatabaseModel
 
 
+class DatabaseUserFlag(enum.Flag):
+    """Flags stored for a user in the database."""
+
+    NONE = 0
+    """An empty set of database user flags."""
+    TIMEOUT_ON_JOIN = 1 << 0
+    """The user should be timed out when next spotted joining the guild."""
+
+
 @attr.define()
 class DatabaseUser(DatabaseModel):
     """
@@ -16,26 +26,38 @@ class DatabaseUser(DatabaseModel):
     """
 
     id: hikari.Snowflake
+    """The ID of this user."""
+
     guild_id: hikari.Snowflake
-    flags: t.Optional[dict]
+    """The guild this user is bound to."""
+
+    flags: DatabaseUserFlag
+    """A set of flags stored for this user."""
+
     notes: t.Optional[t.List[str]]
+    """A list of journal entries stored for this user."""
+
     warns: int = 0
+    """The count of warnings stored for this user."""
+
+    data: t.Dict[str, t.Any] = {}
+    """Miscellaneous data stored for this user. Must be JSON serializable."""
 
     async def update(self) -> None:
         """Update or insert this user into the database."""
 
-        flags = json.dumps(self.flags) if self.flags else None
         await self._db.execute(
             """
-            INSERT INTO users (user_id, guild_id, flags, warns, notes) 
+            INSERT INTO users (user_id, guild_id, flags, warns, notes, data) 
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (user_id, guild_id) DO
-            UPDATE SET flags = $3, warns = $4, notes = $5""",
+            UPDATE SET flags = $3, warns = $4, notes = $5, data = $6""",
             self.id,
             self.guild_id,
-            flags,
+            self.flags.value,
             self.warns,
             self.notes,
+            json.dumps(self.data),
         )
 
     @classmethod
@@ -64,14 +86,17 @@ class DatabaseUser(DatabaseModel):
         )
 
         if not record:
-            return cls(hikari.Snowflake(user), hikari.Snowflake(guild), flags={}, notes=None, warns=0)
+            return cls(
+                hikari.Snowflake(user), hikari.Snowflake(guild), flags=DatabaseUserFlag.NONE, notes=None, warns=0
+            )
 
         return cls(
             id=hikari.Snowflake(record.get("user_id")),
             guild_id=hikari.Snowflake(record.get("guild_id")),
-            flags=json.loads(record.get("flags")) if record.get("flags") else {},
+            flags=DatabaseUserFlag(record.get("flags")),
             warns=record.get("warns"),
             notes=record.get("notes"),
+            data=json.loads(record.get("data")) if record.get("data") else {},
         )
 
     @classmethod
@@ -98,9 +123,10 @@ class DatabaseUser(DatabaseModel):
             cls(
                 id=hikari.Snowflake(record.get("user_id")),
                 guild_id=hikari.Snowflake(record.get("guild_id")),
-                flags=json.loads(record.get("flags")) if record.get("flags") else {},
+                flags=DatabaseUserFlag(record.get("flags")),
                 warns=record.get("warns"),
                 notes=record.get("notes"),
+                data=json.loads(record.get("data")) if record.get("data") else {},
             )
             for record in records
         ]
