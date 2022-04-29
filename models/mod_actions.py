@@ -67,8 +67,10 @@ class ModActions:
         records = await self.app.db_cache.get(table="mod_config", guild_id=hikari.Snowflake(guild))
         if records:
             mod_settings = {
-                "dm_users_on_punish": records[0].get("dm_users_on_punish") or True,
-                "is_ephemeral": records[0].get("is_ephemeral") or False,
+                "dm_users_on_punish": records[0].get("dm_users_on_punish")
+                if records[0].get("dm_users_on_punish") is not None
+                else True,
+                "is_ephemeral": records[0].get("is_ephemeral") if records[0].get("is_ephemeral") is not None else False,
             }
         else:
             mod_settings = DEFAULT_MOD_SETTINGS

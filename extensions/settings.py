@@ -387,8 +387,6 @@ Click one of the buttons below to get started!""",
         """Show and handle Moderation menu."""
         assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
-        mod = self.app.get_plugin("Moderation")
-        assert mod is not None
         mod_settings = await self.app.mod.get_settings(self.last_ctx.guild_id)
 
         embed = hikari.Embed(
