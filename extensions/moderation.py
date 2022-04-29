@@ -1,5 +1,4 @@
 import datetime
-import enum
 import logging
 import re
 import typing as t
