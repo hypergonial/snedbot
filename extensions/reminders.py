@@ -13,6 +13,7 @@ from models import SnedSlashContext
 from models import Timer
 from models import events
 from models.plugin import SnedPlugin
+from models.timer import TimerEvent
 from models.views import AuthorOnlyNavigator
 from utils import helpers
 
@@ -59,7 +60,7 @@ class SnoozeSelect(miru.Select):
 
         timer = await ctx.app.scheduler.create_timer(
             expiry,
-            "reminder",
+            TimerEvent.REMINDER,
             ctx.guild_id,
             ctx.user,
             ctx.channel_id,
@@ -136,7 +137,7 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
         timer_id = int(event.context.custom_id.split(":")[1])
         try:
             timer: Timer = await plugin.app.scheduler.get_timer(timer_id, event.context.guild_id)
-            if timer.channel_id != event.context.channel_id or timer.event != "reminder":
+            if timer.channel_id != event.context.channel_id or timer.event != TimerEvent.REMINDER:
                 raise ValueError
 
         except ValueError:
@@ -270,7 +271,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
 
     timer = await ctx.app.scheduler.create_timer(
         expires=time,
-        event="reminder",
+        event=TimerEvent.REMINDER,
         guild=ctx.guild_id,
         user=ctx.author,
         channel=ctx.channel_id,
@@ -364,7 +365,7 @@ async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
     """
     Listener for expired reminders
     """
-    if event.timer.event != "reminder":
+    if event.timer.event != TimerEvent.REMINDER:
         return
 
     guild = event.get_guild()

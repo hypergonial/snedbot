@@ -14,6 +14,7 @@ import Levenshtein as lev
 
 from models.events import TimerCompleteEvent
 from models.timer import Timer
+from models.timer import TimerEvent
 from utils.tasks import IntervalLoop
 
 logger = logging.getLogger(__name__)
@@ -215,7 +216,7 @@ class Scheduler:
                 guild_id=hikari.Snowflake(record.get("guild_id")),
                 user_id=hikari.Snowflake(record.get("user_id")),
                 channel_id=hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
-                event=record.get("event"),
+                event=TimerEvent(record.get("event")),
                 expires=record.get("expires"),
                 notes=record.get("notes"),
             )
@@ -237,7 +238,7 @@ class Scheduler:
         event = TimerCompleteEvent(self.bot, timer, timer.guild_id)
 
         self.bot.dispatch(event)
-        logger.info(f"Dispatched TimerCompleteEvent for {timer.event} (ID: {timer.id})")
+        logger.info(f"Dispatched TimerCompleteEvent for {timer.event.value} (ID: {timer.id})")
 
     async def _dispatch_timers(self):
         """
@@ -256,11 +257,13 @@ class Scheduler:
 
                 if timer.expires >= now:
                     sleep_time = timer.expires - now
-                    logger.info(f"Awaiting next timer: '{timer.event}' (ID: {timer.id}), which is in {sleep_time}s")
+                    logger.info(
+                        f"Awaiting next timer: '{timer.event.value}' (ID: {timer.id}), which is in {sleep_time}s"
+                    )
                     await asyncio.sleep(sleep_time)
 
                 # TODO: Maybe some sort of queue system so we do not spam out timers like crazy after restart?
-                logger.info(f"Dispatching timer: {timer.event} (ID: {timer.id})")
+                logger.info(f"Dispatching timer: {timer.event.value} (ID: {timer.id})")
                 await self._call_timer(timer)
 
         except asyncio.CancelledError:
@@ -286,7 +289,7 @@ class Scheduler:
             """UPDATE timers SET user_id = $1, channel_id = $2, event = $3, expires = $4, notes = $5 WHERE id = $6 AND guild_id = $7""",
             timer.user_id,
             timer.channel_id,
-            timer.event,
+            timer.event.value,
             timer.expires,
             timer.notes,
             timer.id,
@@ -331,7 +334,7 @@ class Scheduler:
                 hikari.Snowflake(record.get("guild_id")),
                 hikari.Snowflake(record.get("user_id")),
                 hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
-                record.get("event"),
+                TimerEvent(record.get("event")),
                 record.get("expires"),
                 record.get("notes"),
             )
@@ -343,7 +346,7 @@ class Scheduler:
     async def create_timer(
         self,
         expires: datetime.datetime,
-        event: str,
+        event: TimerEvent,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         user: hikari.SnowflakeishOr[hikari.PartialUser],
         channel: t.Optional[hikari.SnowflakeishOr[hikari.TextableChannel]] = None,
@@ -356,7 +359,7 @@ class Scheduler:
         ----------
         expires : datetime.datetime
             The expiry date of the timer. Must be in the future.
-        event : str
+        event : TimerEvent
             The event string to identify this timer by.
         guild : hikari.SnowflakeishOr[hikari.PartialGuild]
             The guild this timer belongs to.
@@ -385,7 +388,7 @@ class Scheduler:
             guild_id,
             channel_id,
             user_id,
-            event,
+            event.value,
             timestamp,
             notes,
         )
@@ -395,7 +398,7 @@ class Scheduler:
             hikari.Snowflake(record.get("guild_id")),
             hikari.Snowflake(record.get("user_id")),
             hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
-            record.get("event"),
+            TimerEvent(record.get("event")),
             record.get("expires"),
             record.get("notes"),
         )

@@ -16,6 +16,7 @@ from models.events import TimerCompleteEvent
 from models.events import WarnCreateEvent
 from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
+from models.timer import TimerEvent
 from utils import helpers
 
 if t.TYPE_CHECKING:
@@ -132,7 +133,7 @@ class ModActions:
         """
         timer = event.timer
 
-        if timer.event != "timeout_extend":
+        if timer.event != TimerEvent.TIMEOUT_EXTEND:
             return
 
         if not event.get_guild():
@@ -153,7 +154,7 @@ class ModActions:
 
                 await event.app.scheduler.create_timer(
                     helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
-                    "timeout_extend",
+                    TimerEvent.TIMEOUT_EXTEND,
                     timer.guild_id,
                     member,
                     notes=timer.notes,
@@ -205,7 +206,7 @@ class ModActions:
         if expiry - helpers.utcnow().timestamp() > MAX_TIMEOUT_SECONDS:
             await self.app.scheduler.create_timer(
                 helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
-                "timeout_extend",
+                TimerEvent.TIMEOUT_EXTEND,
                 event.member.guild_id,
                 event.member,
                 notes=str(expiry),
@@ -485,7 +486,7 @@ class ModActions:
         if duration > helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS):
             await self.app.scheduler.create_timer(
                 helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
-                "timeout_extend",
+                TimerEvent.TIMEOUT_EXTEND,
                 member.guild_id,
                 member,
                 notes=str(round(duration.timestamp())),
@@ -612,7 +613,7 @@ class ModActions:
 
             elif duration:
                 await self.app.scheduler.create_timer(
-                    expires=duration, event="tempban", guild=moderator.guild_id, user=user
+                    expires=duration, event=TimerEvent.TEMPBAN, guild=moderator.guild_id, user=user
                 )
 
             await self.post_mod_actions(moderator.guild_id, user, ActionType.BAN, reason=raw_reason)
