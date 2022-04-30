@@ -83,7 +83,7 @@ def create_starboard_payload(
 
     if attachments:
         embed.add_field(
-            "Attachments", "\n".join([f"[{attachment.filename}]({attachment.url})" for attachment in attachments])
+            "Attachments", "\n".join([f"[{attachment.filename[:100]}]({attachment.url})" for attachment in attachments])
         )
 
     if message.referenced_message:
