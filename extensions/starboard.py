@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 starboard = SnedPlugin("Starboard")
 
-image_url_regex = re.compile(
+IMAGE_URL_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)([.]jpe?g|png|gif|bmp|webp)[-a-zA-Z0-9@:%._\+~#=?&]*"
 )
 
@@ -33,7 +33,7 @@ STAR_MAPPING = {
 def get_image_url(content: str) -> t.Optional[str]:
     """Return a list of image URLs found in the message content."""
 
-    matches: t.Optional[re.Match[str]] = re.search(image_url_regex, content)
+    matches: t.Optional[re.Match[str]] = re.search(IMAGE_URL_REGEX, content)
 
     if not matches:
         return None
@@ -50,7 +50,7 @@ def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
     attach_urls = [attachment.url for attachment in message.attachments]
     string = " ".join(attach_urls)
 
-    matches: t.Optional[re.Match[str]] = re.search(image_url_regex, string)
+    matches: t.Optional[re.Match[str]] = re.search(IMAGE_URL_REGEX, string)
 
     if not matches:
         return None
