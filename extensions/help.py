@@ -17,13 +17,26 @@ help = SnedPlugin("Help")
 
 
 help_embeds = {
+    # Default no topic help
     None: hikari.Embed(
         title="ℹ️ __Help__",
         description="""**Welcome to Sned Help!**
             
 To get started with using the bot, simply press `/` to reveal all commands! If you would like to get help about a specific topic, use `/help topic_name`.
 
-If you're an administrator, you may begin configuring the bot via the `/settings` command.
+If you need assistance, found a bug, or just want to hang out, please join our [support server](https://discord.gg/KNKr8FPmJa)!
+
+Thank you for using Sned!""",
+        color=const.EMBED_BLUE,
+    ),
+    # Default no topic help for people with manage guild perms
+    "admin_home": hikari.Embed(
+        title="ℹ️ __Help__",
+        description="""**Welcome to Sned Help!**
+            
+To get started with using the bot, simply press `/` to reveal all commands! If you would like to get help about a specific topic, use `/help topic_name`.
+
+You may begin configuring the bot via the `/settings` command, which shows all relevant settings & lets you modify them.
 
 If you need assistance, found a bug, or just want to hang out, please join our [support server](https://discord.gg/KNKr8FPmJa)!
 
@@ -78,6 +91,14 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
 @lightbulb.command("help", "Get help regarding various subjects of the bot's functionality.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def help_cmd(ctx: SnedSlashContext, topic: t.Optional[str] = None) -> None:
+    if ctx.member:
+        guild = ctx.get_guild()
+        topic = (
+            topic or "admin_home"
+            if (lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_GUILD)
+            or (guild and ctx.member.id == guild.owner_id)
+            else topic
+        )
     await ctx.respond(embed=help_embeds[topic])
 
 
