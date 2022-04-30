@@ -49,7 +49,7 @@ class DatabaseUser(DatabaseModel):
         await self._db.execute(
             """
             INSERT INTO users (user_id, guild_id, flags, warns, notes, data) 
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (user_id, guild_id) DO
             UPDATE SET flags = $3, warns = $4, notes = $5, data = $6""",
             self.id,
