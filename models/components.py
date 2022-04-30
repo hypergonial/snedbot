@@ -8,14 +8,20 @@ class BooleanButton(miru.Button):
     """A boolean toggle button."""
 
     def __init__(
-        self, *, state: bool, label: t.Optional[str] = None, disabled: bool = False, row: t.Optional[int] = None
+        self,
+        *,
+        state: bool,
+        label: t.Optional[str] = None,
+        disabled: bool = False,
+        row: t.Optional[int] = None,
+        custom_id: t.Optional[str] = None,
     ) -> None:
         style = hikari.ButtonStyle.SUCCESS if state else hikari.ButtonStyle.DANGER
         emoji = "✔️" if state else "✖️"
 
         self.state = state
 
-        super().__init__(style=style, label=label, emoji=emoji, disabled=disabled, row=row)
+        super().__init__(style=style, label=label, emoji=emoji, disabled=disabled, row=row, custom_id=custom_id)
 
     async def callback(self, context: miru.ViewContext) -> None:
         self.state = not self.state

@@ -4,6 +4,7 @@ import datetime
 import enum
 import typing as t
 
+import attr
 import hikari
 import lightbulb
 
@@ -34,10 +35,27 @@ class ActionType(enum.Enum):
     WARN = "Warn"
 
 
-DEFAULT_MOD_SETTINGS = {
-    "dm_users_on_punish": True,
-    "is_ephemeral": False,
-}
+class ModerationFlags(enum.Flag):
+    """A set of flags governing behaviour of moderation actions."""
+
+    NONE = 0
+    """An empty set of moderation setting flags."""
+
+    DM_USERS_ON_PUNISH = 1 << 0
+
+    """DM users when punishing them via a moderation action."""
+
+    IS_EPHEMERAL = 1 << 1
+    """Responses to moderation actions should be done ephemerally."""
+
+
+@attr.define()
+class ModerationSettings:
+    """Settings for moderation actions."""
+
+    flags: ModerationFlags = ModerationFlags.DM_USERS_ON_PUNISH
+    """Flags governing behaviour of moderation actions."""
+
 
 MAX_TIMEOUT_SECONDS = 2246400  # Duration of segments to break timeouts up to
 
@@ -53,7 +71,7 @@ class ModActions:
         self.app.subscribe(hikari.MemberUpdateEvent, self.remove_timeout_extensions)
         self.app.subscribe(TimerCompleteEvent, self.tempban_expire)
 
-    async def get_settings(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.Dict[str, bool]:
+    async def get_settings(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> ModerationSettings:
         """Get moderation settings for a guild.
 
         Parameters
@@ -68,16 +86,9 @@ class ModActions:
         """
         records = await self.app.db_cache.get(table="mod_config", guild_id=hikari.Snowflake(guild))
         if records:
-            mod_settings = {
-                "dm_users_on_punish": records[0].get("dm_users_on_punish")
-                if records[0].get("dm_users_on_punish") is not None
-                else True,
-                "is_ephemeral": records[0].get("is_ephemeral") if records[0].get("is_ephemeral") is not None else False,
-            }
-        else:
-            mod_settings = DEFAULT_MOD_SETTINGS
+            return ModerationSettings(flags=ModerationFlags(records[0].get("flags")))
 
-        return mod_settings
+        return ModerationSettings()
 
     async def pre_mod_actions(
         self,
@@ -101,7 +112,7 @@ class ModActions:
             ActionType.TEMPBAN: "temp-banned from",
         }
 
-        if settings["dm_users_on_punish"] == True and isinstance(target, hikari.Member):
+        if settings.flags & ModerationFlags.DM_USERS_ON_PUNISH and isinstance(target, hikari.Member):
             gateway_guild = self.app.cache.get_guild(guild_id)
             assert isinstance(gateway_guild, hikari.GatewayGuild)
             guild_name = gateway_guild.name if gateway_guild else "Unknown server"

@@ -17,6 +17,7 @@ from models.context import SnedSlashContext
 from models.context import SnedUserContext
 from models.db_user import DatabaseUser
 from models.events import MassBanEvent
+from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
 from utils import helpers
 
@@ -235,7 +236,7 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
 
         navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)
 
-        ephemeral = (await ctx.app.mod.get_settings(ctx.guild_id))["is_ephemeral"]
+        ephemeral = bool((await ctx.app.mod.get_settings(ctx.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
         await navigator.send(ctx.interaction, ephemeral=ephemeral)
 
     else:
@@ -756,7 +757,7 @@ async def massban(ctx: SnedSlashContext) -> None:
         color=const.ERROR_COLOR,
     )
 
-    is_ephemeral = (await ctx.app.mod.get_settings(guild.id))["is_ephemeral"]
+    is_ephemeral = bool((await ctx.app.mod.get_settings(guild.id)).flags & ModerationFlags.IS_EPHEMERAL)
     flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
     confirmed = await ctx.confirm(
         embed=embed,

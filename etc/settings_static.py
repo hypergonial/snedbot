@@ -1,11 +1,13 @@
 import hikari
 import miru
 
+from models.mod_actions import ModerationFlags
+
 # Static values for the settings extension
 
-mod_settings_strings = {
-    "dm_users_on_punish": "DM users after punishment",
-    "is_ephemeral": "Send mod commands ephemerally",
+mod_flags_strings = {
+    ModerationFlags.DM_USERS_ON_PUNISH: "DM users after punishment",
+    ModerationFlags.IS_EPHEMERAL: "Send mod commands ephemerally",
 }
 
 default_automod_policies = {

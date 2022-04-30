@@ -17,6 +17,7 @@ from models.checks import bot_has_permissions
 from models.checks import has_permissions
 from models.components import *
 from models.context import SnedSlashContext
+from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
 from utils import helpers
 
@@ -400,9 +401,14 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             color=const.EMBED_BLUE,
         )
         buttons = []
-        for key, value in mod_settings.items():
-            buttons.append(BooleanButton(state=value, label=mod_settings_strings[key]))
-            embed.add_field(name=mod_settings_strings[key], value=str(value), inline=True)
+        for flag in ModerationFlags:
+            if flag is ModerationFlags.NONE:
+                continue
+
+            value = bool(mod_settings.flags & flag)
+
+            buttons.append(BooleanButton(state=value, label=mod_flags_strings[flag], custom_id=str(flag.value)))
+            embed.add_field(name=mod_flags_strings[flag], value=str(value), inline=True)
 
         self.add_buttons(buttons, parent="Main")
         await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
@@ -411,16 +417,17 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         if not self.value:
             return
 
-        option = get_key(mod_settings_strings, self.value[0])
+        assert self.last_item and self.last_item.custom_id
+        flag = ModerationFlags(int(self.last_item.custom_id))
 
         await self.app.db.execute(
             f"""
-            INSERT INTO mod_config (guild_id, {option})
+            INSERT INTO mod_config (guild_id, flags)
             VALUES ($1, $2)
             ON CONFLICT (guild_id) DO
-            UPDATE SET {option} = $2""",
+            UPDATE SET flags = $2""",
             self.last_ctx.guild_id,
-            not mod_settings[option],
+            (mod_settings.flags & ~flag).value if flag & mod_settings.flags else (mod_settings.flags | flag).value,
         )
         await self.app.db_cache.refresh(table="mod_config", guild_id=self.last_ctx.guild_id)
 
@@ -1354,7 +1361,7 @@ async def ask_settings(
 @lightbulb.implements(lightbulb.SlashCommand)
 async def settings_cmd(ctx: SnedSlashContext) -> None:
     assert ctx.guild_id is not None
-    ephemeral = (await ctx.app.mod.get_settings(ctx.guild_id))["is_ephemeral"]
+    ephemeral = bool((await ctx.app.mod.get_settings(ctx.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
     view = SettingsView(ctx, timeout=300, ephemeral=ephemeral)
     await view.start_settings()
 

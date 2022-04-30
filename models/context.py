@@ -6,6 +6,8 @@ import hikari
 import lightbulb
 import miru
 
+from models.mod_actions import ModerationFlags
+
 from .views import AuthorOnlyView
 
 __all__ = ["SnedContext", "SnedSlashContext", "SnedMessageContext", "SnedUserContext", "SnedPrefixContext"]
@@ -157,7 +159,7 @@ class SnedContext(lightbulb.Context):
         This should not be used outside the moderation plugin, and may fail if it is not loaded."""
 
         if self.guild_id:
-            is_ephemeral = (await self.app.mod.get_settings(self.guild_id))["is_ephemeral"]
+            is_ephemeral = bool((await self.app.mod.get_settings(self.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
             flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
         else:
             flags = kwargs.get("flags") or hikari.MessageFlag.NONE
