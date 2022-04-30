@@ -48,7 +48,7 @@ Thank you for using Sned!""",
 `...`
 
 **ℹ️ Note:**
-Relative time-conversion may require the bot to be aware of your timezone. You can set your timezone via the `/timezone` command, if you wish.
+Absolute time-conversion may require the bot to be aware of your timezone. You can set your timezone via the `/timezone` command, if you wish.
 """,
         color=const.EMBED_BLUE,
     ),
