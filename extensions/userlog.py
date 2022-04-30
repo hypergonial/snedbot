@@ -305,7 +305,7 @@ async def find_auditlog_data(
         return
 
 
-async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str:
+async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> t.Optional[str]:
     """
     A helper function for displaying role updates.
     Returns a string containing the differences between two roles.
@@ -330,13 +330,13 @@ async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str:
 
         perms_diff = f"{perms_diff}\n   {white}{get_perm_str(perm)}: {old_state} {gray}-> {new_state}"
 
-    return perms_diff.strip() + reset
+    return perms_diff.strip() + reset if perms_diff.strip() else None
 
 
 T = t.TypeVar("T")
 
 
-async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, str]) -> str:
+async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, str]) -> t.Optional[str]:
     """
     A helper function for displaying differences between certain attributes
     Returns a formatted string containing the differences.
@@ -352,14 +352,14 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, s
     reset = "[0m" if is_colored else ""
 
     for attribute in attrs.keys():
-        old = getattr(old_object, attribute)
-        new = getattr(object, attribute)
+        old = getattr(old_object, attribute, hikari.UNDEFINED)
+        new = getattr(object, attribute, hikari.UNDEFINED)
 
         if hasattr(old, "name") and hasattr(new, "name"):  # Handling flags enums
             diff = (
                 f"{diff}\n{white}{attrs[attribute]}: {red}{old.name} {gray}-> {green}{new.name}" if old != new else diff
             )
-        elif isinstance(old, datetime.timedelta):  # Handling timedeltas
+        elif isinstance(old, datetime.timedelta) and isinstance(new, datetime.timedelta):  # Handling timedeltas
             diff = (
                 f"{diff}\n{white}{attrs[attribute]}: {red}{old.total_seconds()} {gray}-> {green}{new.total_seconds()}"
                 if old != new
@@ -382,7 +382,8 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, s
             )
         else:
             diff = f"{diff}\n{white}{attrs[attribute]}: {red}{old} {gray}-> {green}{new}" if old != new else diff
-    return diff.strip() + reset
+
+    return diff.strip() + reset if diff.strip() else None
 
 
 def create_log_content(message: hikari.PartialMessage, max_length: t.Optional[int] = None) -> str:
@@ -402,7 +403,7 @@ def create_log_content(message: hikari.PartialMessage, max_length: t.Optional[in
     return contents
 
 
-def strip_bot_reason(reason: t.Optional[str]) -> t.Tuple[str, str | None] | t.Tuple[None, None]:
+def strip_bot_reason(reason: t.Optional[str]) -> t.Tuple[t.Optional[str], t.Optional[str]]:
     """
     Strip action author for it to be parsed into the actual embed instead of the bot
     """
@@ -614,6 +615,7 @@ async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEve
         if isinstance(event.channel, hikari.TextableGuildChannel):
             attrs["topic"] = "Topic"
             attrs["is_nsfw"] = "Is NSFW"
+
         if isinstance(event.channel, hikari.GuildTextChannel):
             attrs["rate_limit_per_user"] = "Slowmode duration"
 
