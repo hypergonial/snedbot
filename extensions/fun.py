@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import random
 import typing as t
 from enum import IntEnum
@@ -12,6 +13,7 @@ import hikari
 import Levenshtein as lev
 import lightbulb
 import miru
+from miru.ext import nav
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
@@ -22,11 +24,19 @@ from models import SnedSlashContext
 from models.checks import bot_has_permissions
 from models.context import SnedUserContext
 from models.plugin import SnedPlugin
+from models.views import AuthorOnlyNavigator
 from utils import helpers
+from utils.dictionaryapi import DictionaryAPI
+from utils.dictionaryapi import DictionaryEntry
 
 logger = logging.getLogger(__name__)
 
 fun = SnedPlugin("Fun")
+
+if api_key := os.getenv("DICTIONARYAPI_API_KEY"):
+    dictapi = DictionaryAPI(api_key)
+else:
+    raise RuntimeError("DICTIONARYAPI_API_KEY is not set, cannot load extension.")
 
 
 class WinState(IntEnum):
@@ -238,6 +248,46 @@ class TicTacToeView(miru.View):
             return WinState.TIE
 
 
+class DictionarySelect(nav.NavSelect):
+    def __init__(self, entries: t.List[DictionaryEntry]) -> None:
+        options = [
+            miru.SelectOption(
+                label=f"{entry.word[:40]}{f' - ({entry.functional_label})' if entry.functional_label else ''}",
+                description=f"{entry.definitions[0][:100] if entry.definitions else 'No definition found'}",
+                value=str(i),
+            )
+            for i, entry in enumerate(entries)
+        ]
+        options[0].is_default = True
+        super().__init__(options=options)
+
+    async def before_page_change(self) -> None:
+        for opt in self.options:
+            opt.is_default = False
+
+        self.options[self.view.current_page].is_default = True
+
+    async def callback(self, context: miru.ViewContext) -> None:
+        await self.view.send_page(context, int(self.values[0]))
+
+
+class DictionaryNavigator(AuthorOnlyNavigator):
+    def __init__(self, lctx: lightbulb.Context, *, entries: t.List[DictionaryEntry]) -> None:
+        self.entries = entries
+        pages = [
+            hikari.Embed(
+                title=f"📖 {entry.word}{f' - ({entry.functional_label})' if entry.functional_label else ''}",
+                description="**Definitions:**\n"
+                + "\n".join([f"**•** {definition}" for definition in entry.definitions])
+                + (f"\n\n**Etymology:**\n*{entry.etymology[:1500]}*" if entry.etymology else ""),
+                color=0xA5D732,
+            ).set_footer("Provided by Merriam-Webster")
+            for entry in self.entries
+        ]
+        super().__init__(lctx, pages=pages)  # type: ignore
+        self.add_item(DictionarySelect(self.entries))
+
+
 @fun.command
 @lightbulb.option("size", "The size of the board. Default is 3.", required=False, choices=["3", "4", "5"])
 @lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
@@ -390,6 +440,41 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
 
     finally:
         msg_listener.cancel()
+
+
+@fun.command
+@lightbulb.option("word", "The word to look up.", required=True, autocomplete=True)
+@lightbulb.command("dictionary", "Look up a word in the dictionary!", pass_options=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def dictionary_lookup(ctx: SnedSlashContext, word: str) -> None:
+    entries = await dictapi.get_entries(word)
+
+    channel = ctx.get_channel()
+    is_nsfw = channel.is_nsfw if isinstance(channel, hikari.GuildChannel) else False
+    entries = [entry for entry in entries if is_nsfw or not is_nsfw and not entry.offensive]
+
+    if not entries:
+        embed = hikari.Embed(
+            title="❌ Not found",
+            description=f"No entries found for **{word}**.",
+            color=const.ERROR_COLOR,
+        )
+        if not is_nsfw:
+            embed.set_footer("Please note that certain offensive words are only accessible in NSFW channels.")
+
+        await ctx.respond(embed=embed)
+        return
+
+    navigator = DictionaryNavigator(ctx, entries=entries)
+    await navigator.send(ctx.interaction)
+
+
+@dictionary_lookup.autocomplete("word")
+async def word_autocomplete(
+    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
+) -> t.List[str]:
+    assert isinstance(option.value, str)
+    return await dictapi.get_autocomplete(option.value)
 
 
 @fun.command
