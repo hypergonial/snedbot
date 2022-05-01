@@ -142,7 +142,7 @@ class DictionaryAPI:
                 )
             payload = await resp.json()
 
-            if isinstance(payload, dict):
+            if payload and isinstance(payload[0], dict):
                 results: t.List[DictionaryEntry] = [DictionaryEntry.from_dict(data) for data in (payload)][:25]
                 self._entry_cache[word] = results
                 return results
