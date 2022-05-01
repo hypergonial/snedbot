@@ -119,7 +119,6 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Badges:** {"   ".join(get_badges(member)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** {f"Until: {format_dt(comms_disabled_until)}" if comms_disabled_until is not None else "`-`"}
-**• Flags:** `{",".join(list(db_user.flags.keys())) if db_user.flags and len(db_user.flags) > 0 else "-"}`
 **• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}` 
 **• Roles:** {roles}""",
             color=get_color(member),
@@ -141,7 +140,6 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Badges:** {"   ".join(get_badges(user)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** `-`
-**• Flags:** `{",".join(list(db_user.flags.keys())) if db_user.flags and len(db_user.flags) > 0 else "-"}`
 **• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}`
 **• Roles:** `-`
 *Note: This user is not a member of this server*""",
