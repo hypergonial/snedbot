@@ -140,8 +140,11 @@ class DictionaryAPI:
                 raise DictionaryException(
                     f"Failed to communicate with the dictionary API: {resp.status}: {resp.reason}"
                 )
+            payload = await resp.json()
 
-            results: t.List[DictionaryEntry] = [DictionaryEntry.from_dict(data) for data in (await resp.json())][:25]
-            self._entry_cache[word] = results
+            if isinstance(payload, dict):
+                results: t.List[DictionaryEntry] = [DictionaryEntry.from_dict(data) for data in (payload)][:25]
+                self._entry_cache[word] = results
+                return results
 
-        return results
+            return []
