@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import enum
+import logging
 import typing as t
 
 import attr
@@ -22,6 +23,8 @@ from utils import helpers
 
 if t.TYPE_CHECKING:
     from models.bot import SnedBot
+
+logger = logging.getLogger(__name__)
 
 
 class ActionType(enum.Enum):
@@ -271,8 +274,8 @@ class ModActions:
 
         try:
             await guild.unban(event.timer.user_id, reason="User unbanned: Tempban expired.")
-        except:
-            return
+        except Exception as e:
+            logger.info(f"Failed unbanning {event.timer.user_id} from {event.timer.guild_id}: {e.__class__}: {e}")
 
     async def get_notes(
         self, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild]
