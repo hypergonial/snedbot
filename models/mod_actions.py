@@ -245,10 +245,10 @@ class ModActions:
 
         if event.member.communication_disabled_until() is None:
             records = await self.app.db.fetch(
-                """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = $3""",
+                """SELECT id FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = $3""",
                 event.guild_id,
                 event.member.id,
-                "timeout_extend",
+                TimerEvent.TIMEOUT_EXTEND.value,
             )
 
             if not records:
@@ -259,6 +259,9 @@ class ModActions:
 
     async def tempban_expire(self, event: TimerCompleteEvent) -> None:
         """Handle tempban timer expiry and unban user."""
+
+        if event.timer.event != TimerEvent.TEMPBAN:
+            return
 
         # Ensure the guild still exists
         guild = event.get_guild()
