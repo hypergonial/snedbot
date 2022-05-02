@@ -61,7 +61,22 @@ def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
 def create_starboard_payload(
     guild: hikari.SnowflakeishOr[hikari.PartialGuild], message: hikari.Message, stars: int
 ) -> t.Dict[str, t.Any]:
-    """Create message payload for a starboard entry."""
+    """Create message payload for a starboard entry.
+
+    Parameters
+    ----------
+    guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        The guild the starboard entry is located.
+    message : hikari.Message
+        The message to create the payload from.
+    stars : int
+        The amount of stars the message has.
+
+    Returns
+    -------
+    t.Dict[str, t.Any]
+        The payload as keyword arguments.
+    """
 
     guild_id = hikari.Snowflake(guild)
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
@@ -97,10 +112,67 @@ def create_starboard_payload(
     return {"content": content, "embed": embed}
 
 
-async def handle_starboard(
+async def star_message(
+    message: hikari.Message, starboard_channel: hikari.SnowflakeishOr[hikari.TextableGuildChannel], stars: int
+) -> None:
+    """Create or edit an existing star entry on the starboard.
+
+    Parameters
+    ----------
+    message : hikari.Message
+        The message to be starred.
+    starboard_channel : hikari.SnowflakeishOr[hikari.TextableGuildChannel]
+        The channel where the message should be starred.
+    stars : int
+        The amount of stars the message is supposed to have when posted.
+    """
+
+    assert message.guild_id
+    star_channel_id = hikari.Snowflake(starboard_channel)
+
+    starboard_msg_id = starboard_messages.get(message.id)
+    payload = create_starboard_payload(message.guild_id, message, stars)
+
+    if not starboard_msg_id:
+        record = await starboard.app.db.fetchrow(
+            f"""SELECT entry_msg_id FROM starboard_entries WHERE orig_msg_id = $1""", message.id
+        )
+
+        if not record:
+            # Create new entry
+            starboard_msg_id = (await starboard.app.rest.create_message(star_channel_id, **payload)).id
+            starboard_messages[message.id] = starboard_msg_id
+
+            await starboard.app.db.execute(
+                """INSERT INTO starboard_entries 
+                (guild_id, channel_id, orig_msg_id, entry_msg_id) 
+                VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, channel_id, orig_msg_id) DO NOTHING""",
+                message.guild_id,
+                message.channel_id,
+                message.id,
+                starboard_msg_id,
+            )
+            return
+
+        else:
+            starboard_msg_id = record["entry_msg_id"]
+            starboard_messages[message.id] = starboard_msg_id
+
+    try:
+        await starboard.app.rest.edit_message(star_channel_id, starboard_msg_id, **payload)
+    except hikari.NotFoundError:
+        # Delete entry, re-run logic to create a new starboard entry
+        await starboard.app.db.execute(f"""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
+        starboard_messages.pop(message.id, None)
+        await star_message(message, star_channel_id, stars)
+
+
+@starboard.listener(hikari.GuildReactionDeleteEvent, bind=True)
+@starboard.listener(hikari.GuildReactionAddEvent, bind=True)
+async def on_reaction(
     plugin: SnedPlugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
 ) -> None:
-    """The main starboard logic, creates and updates starboard entries on every reaction event"""
+    """Listen for reactions & star messages where appropriate."""
 
     if not event.is_for_emoji("⭐"):
         return
@@ -140,6 +212,7 @@ async def handle_starboard(
         async with plugin.app.db.acquire() as con:
             await con.execute("""UPDATE starboard SET channel_id = null WHERE guild_id = $1""", event.guild_id)
             await con.execute("""DELETE FROM starboard_entries WHERE guild_id = $1""", event.guild_id)
+        await plugin.app.db_cache.refresh(table="starboard", guild_id=event.guild_id)
         return
 
     if event.channel_id in settings["excluded_channels"]:
@@ -157,54 +230,13 @@ async def handle_starboard(
 
     message = await plugin.app.rest.fetch_message(event.channel_id, event.message_id)
     reactions = [reaction for reaction in message.reactions if str(reaction.emoji) == "⭐"]
-    if not reactions:
-        return
 
-    stars = reactions[0].count
+    stars = reactions[0].count if reactions else 0
 
     if stars < settings["star_limit"]:
         return
-    starboard_msg_id = starboard_messages.get(event.message_id)
-    payload = create_starboard_payload(event.guild_id, message, stars)
 
-    if not starboard_msg_id:
-        record = await plugin.app.db.fetchrow(f"""SELECT * FROM starboard_entries WHERE orig_msg_id = $1""", message.id)
-
-        if not record:
-            # Create new entry
-            starboard_msg_id = (await plugin.app.rest.create_message(settings["channel_id"], **payload)).id
-            starboard_messages[event.message_id] = starboard_msg_id
-
-            await plugin.app.db.execute(
-                """INSERT INTO starboard_entries 
-                (guild_id, channel_id, orig_msg_id, entry_msg_id) 
-                VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, channel_id, orig_msg_id) DO NOTHING""",
-                event.guild_id,
-                event.channel_id,
-                event.message_id,
-                starboard_msg_id,
-            )
-            return
-
-        else:
-            starboard_msg_id = record["entry_msg_id"]
-            starboard_messages[event.message_id] = starboard_msg_id
-
-    try:
-        await plugin.app.rest.edit_message(settings["channel_id"], starboard_msg_id, **payload)
-    except hikari.NotFoundError:
-        # Delete entry, re-run logic to create a new starboard entry
-        await plugin.app.db.execute(f"""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
-        starboard_messages.pop(event.message_id, None)
-        await handle_starboard(plugin, event)
-
-
-@starboard.listener(hikari.GuildReactionDeleteEvent, bind=True)
-@starboard.listener(hikari.GuildReactionAddEvent, bind=True)
-async def on_reaction(
-    plugin: SnedPlugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
-) -> None:
-    await handle_starboard(plugin, event)
+    await star_message(message, settings["channel_id"], stars)
 
 
 @starboard.command
