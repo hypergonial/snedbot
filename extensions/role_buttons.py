@@ -317,7 +317,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
-    assert ctx.guild_id is not None
+    assert ctx.guild_id is not None and ctx.member is not None
     params = {opt: value for opt, value in kwargs.items() if value is not None}
 
     button = await RoleButton.fetch(params.pop("button_id"))
@@ -352,6 +352,27 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
             )
             await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
+
+        top_role = ctx.member.get_top_role()
+        guild = ctx.get_guild()
+        if not guild or not top_role:
+            embed = hikari.Embed(
+                title="❌ Caching error",
+                description="Failed to resolve `top_role` and `guild` from cache. Please join our `/support` server for assistance.",
+                color=const.ERROR_COLOR,
+            )
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
+        if role.position >= top_role.position and not guild.owner_id == ctx.member.id:
+            embed = hikari.Embed(
+                title="❌ Role Hierarchy Error",
+                description="You cannot create rolebuttons for roles that are higher or equal to your highest role's position.",
+                color=const.ERROR_COLOR,
+            )
+            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
         params["role_id"] = role.id
 
     for param, value in params.items():
@@ -408,7 +429,7 @@ async def rolebutton_add(
     mode: t.Optional[str] = None,
 ) -> None:
 
-    assert ctx.guild_id is not None
+    assert ctx.guild_id is not None and ctx.member is not None
 
     style = style or "Grey"
     mode = mode or "Toggle - Add & remove roles"
@@ -430,6 +451,26 @@ async def rolebutton_add(
         embed = hikari.Embed(
             title="❌ Role is managed",
             description="This role is managed by another integration and cannot be assigned manually to a user.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    top_role = ctx.member.get_top_role()
+    guild = ctx.get_guild()
+    if not guild or not top_role:
+        embed = hikari.Embed(
+            title="❌ Caching error",
+            description="Failed to resolve `top_role` and `guild` from cache. Please join our `/support` server for assistance.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        return
+
+    if role.position >= top_role.position and not guild.owner_id == ctx.member.id:
+        embed = hikari.Embed(
+            title="❌ Role Hierarchy Error",
+            description="You cannot create rolebuttons for roles that are higher or equal to your highest role's position.",
             color=const.ERROR_COLOR,
         )
         await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
