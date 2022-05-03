@@ -174,7 +174,7 @@ async def on_reaction(
 ) -> None:
     """Listen for reactions & star messages where appropriate."""
 
-    if not event.is_for_emoji("⭐"):
+    if not event.is_for_emoji("⭐") or not plugin.app.is_started:
         return
 
     records = await plugin.app.db_cache.get(table="starboard", guild_id=event.guild_id, limit=1)
@@ -218,9 +218,8 @@ async def on_reaction(
     if event.channel_id in settings["excluded_channels"]:
         return
 
-    channel = plugin.app.cache.get_guild_channel(event.channel_id)
-
-    if channel:  # Check perms if channel is cached
+    # Check perms if channel is cached
+    if channel := plugin.app.cache.get_guild_channel(event.channel_id):
         perms = lightbulb.utils.permissions_in(channel, me)
         if not helpers.includes_permissions(
             perms,
