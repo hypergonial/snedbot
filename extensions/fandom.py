@@ -88,7 +88,7 @@ async def fandom_cmd(ctx: SnedSlashContext, wiki: str, query: str) -> None:
     "annowiki",
     "Search an Anno Wiki for articles!",
     pass_options=True,
-    guilds=Config().DEBUG_GUILDS or (581296099826860033, 627876365223591976, 372128553031958529),
+    guilds=Config().DEBUG_GUILDS or (581296099826860033, 372128553031958529),
 )
 @lightbulb.implements(lightbulb.SlashCommand)
 async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> None:
