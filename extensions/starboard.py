@@ -126,6 +126,8 @@ async def star_message(
         The message to be starred.
     starboard_channel : hikari.SnowflakeishOr[hikari.TextableGuildChannel]
         The channel where the message should be starred.
+    guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        The guild the message and channel are located.
     stars : int
         The amount of stars the message is supposed to have when posted.
     """
