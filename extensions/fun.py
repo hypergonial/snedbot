@@ -22,21 +22,48 @@ from etc import constants as const
 from models import SnedBot
 from models import SnedSlashContext
 from models.checks import bot_has_permissions
+from models.context import SnedContext
 from models.context import SnedUserContext
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator
 from utils import helpers
-from utils.dictionaryapi import DictionaryAPI
+from utils.dictionaryapi import DictionaryClient
 from utils.dictionaryapi import DictionaryEntry
+from utils.dictionaryapi import DictionaryException
+from utils.dictionaryapi import UrbanEntry
 
 logger = logging.getLogger(__name__)
 
 fun = SnedPlugin("Fun")
 
 if api_key := os.getenv("DICTIONARYAPI_API_KEY"):
-    dictapi = DictionaryAPI(api_key)
+    dictionary_client = DictionaryClient(api_key)
 else:
-    raise RuntimeError("DICTIONARYAPI_API_KEY is not set, cannot load extension.")
+    dictionary_client = None
+
+
+@lightbulb.Check  # type: ignore
+def has_dictionary_client(_: SnedContext) -> bool:
+    if dictionary_client:
+        return True
+    raise DictionaryException("Dictionary API key not set.")
+
+
+@fun.set_error_handler()
+async def handle_errors(event: lightbulb.CommandErrorEvent) -> bool:
+    if isinstance(event.exception, lightbulb.CheckFailure) and isinstance(
+        event.exception.__cause__, DictionaryException
+    ):
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="❌ No Dictionary API key provided",
+                description="This command is currently unavailable.\n\n**Information:**\nPlease set the `DICTIONARYAPI_API_KEY` environment variable to use the Dictionary API.",
+                color=const.ERROR_COLOR,
+            )
+        )
+        return True
+
+    return False
 
 
 class WinState(IntEnum):
@@ -248,6 +275,24 @@ class TicTacToeView(miru.View):
             return WinState.TIE
 
 
+class UrbanNavigator(AuthorOnlyNavigator):
+    def __init__(self, lctx: lightbulb.Context, *, entries: t.List[UrbanEntry]) -> None:
+        self.entries = entries
+        pages = [
+            hikari.Embed(
+                title=entry.word,
+                url=entry.jump_url,
+                description=f"{entry.definition[:2000]}\n\n*{entry.example[:2000]}*",
+                color=0xE86221,
+                timestamp=entry.written_on,
+            )
+            .set_footer(f"by {entry.author}")
+            .add_field("Votes", f"👍 {entry.thumbs_up} | 👎 {entry.thumbs_down}")
+            for entry in self.entries
+        ]
+        super().__init__(lctx, pages=pages)  # type: ignore
+
+
 class DictionarySelect(nav.NavSelect):
     def __init__(self, entries: t.List[DictionaryEntry]) -> None:
         options = [
@@ -276,9 +321,9 @@ class DictionaryNavigator(AuthorOnlyNavigator):
         self.entries = entries
         pages = [
             hikari.Embed(
-                title=f"📖 {entry.word}{f' - ({entry.functional_label})' if entry.functional_label else ''}",
+                title=f"📖 {entry.word[:40]}{f' - ({entry.functional_label})' if entry.functional_label else ''}",
                 description="**Definitions:**\n"
-                + "\n".join([f"**•** {definition}" for definition in entry.definitions])
+                + "\n".join([f"**•** {definition[:512]}" for definition in entry.definitions])
                 + (f"\n\n**Etymology:**\n*{entry.etymology[:1500]}*" if entry.etymology else ""),
                 color=0xA5D732,
             ).set_footer("Provided by Merriam-Webster")
@@ -443,11 +488,13 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
 
 
 @fun.command
+@lightbulb.add_checks(has_dictionary_client)
 @lightbulb.option("word", "The word to look up.", required=True, autocomplete=True)
 @lightbulb.command("dictionary", "Look up a word in the dictionary!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def dictionary_lookup(ctx: SnedSlashContext, word: str) -> None:
-    entries = await dictapi.get_entries(word)
+    assert dictionary_client is not None
+    entries = await dictionary_client.get_mw_entries(word)
 
     channel = ctx.get_channel()
     is_nsfw = channel.is_nsfw if isinstance(channel, hikari.GuildChannel) else False
@@ -469,12 +516,26 @@ async def dictionary_lookup(ctx: SnedSlashContext, word: str) -> None:
     await navigator.send(ctx.interaction)
 
 
-@dictionary_lookup.autocomplete("word")
-async def word_autocomplete(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
-    assert isinstance(option.value, str)
-    return await dictapi.get_autocomplete(option.value)
+@fun.command
+@lightbulb.add_checks(has_dictionary_client)
+@lightbulb.option("word", "The word to look up.", required=True)
+@lightbulb.command("urban", "Look up a word in the Urban dictionary!", pass_options=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def urban_lookup(ctx: SnedSlashContext, word: str) -> None:
+    assert dictionary_client is not None
+    entries = await dictionary_client.get_urban_entries(word)
+
+    if not entries:
+        embed = hikari.Embed(
+            title="❌ Not found",
+            description=f"No entries found for **{word}**.",
+            color=const.ERROR_COLOR,
+        )
+        await ctx.respond(embed=embed)
+        return
+
+    navigator = UrbanNavigator(ctx, entries=entries)
+    await navigator.send(ctx.interaction)
 
 
 @fun.command
