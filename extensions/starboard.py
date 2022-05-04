@@ -113,7 +113,10 @@ def create_starboard_payload(
 
 
 async def star_message(
-    message: hikari.Message, starboard_channel: hikari.SnowflakeishOr[hikari.TextableGuildChannel], stars: int
+    message: hikari.Message,
+    guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+    starboard_channel: hikari.SnowflakeishOr[hikari.TextableGuildChannel],
+    stars: int,
 ) -> None:
     """Create or edit an existing star entry on the starboard.
 
@@ -127,11 +130,10 @@ async def star_message(
         The amount of stars the message is supposed to have when posted.
     """
 
-    assert message.guild_id
     star_channel_id = hikari.Snowflake(starboard_channel)
 
     starboard_msg_id = starboard_messages.get(message.id)
-    payload = create_starboard_payload(message.guild_id, message, stars)
+    payload = create_starboard_payload(guild, message, stars)
 
     if not starboard_msg_id:
         record = await starboard.app.db.fetchrow(
@@ -147,7 +149,7 @@ async def star_message(
                 """INSERT INTO starboard_entries 
                 (guild_id, channel_id, orig_msg_id, entry_msg_id) 
                 VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, channel_id, orig_msg_id) DO NOTHING""",
-                message.guild_id,
+                hikari.Snowflake(guild),
                 message.channel_id,
                 message.id,
                 starboard_msg_id,
@@ -164,7 +166,7 @@ async def star_message(
         # Delete entry, re-run logic to create a new starboard entry
         await starboard.app.db.execute(f"""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
         starboard_messages.pop(message.id, None)
-        await star_message(message, star_channel_id, stars)
+        await star_message(message, guild, starboard_channel, stars)
 
 
 @starboard.listener(hikari.GuildReactionDeleteEvent, bind=True)
@@ -235,7 +237,7 @@ async def on_reaction(
     if stars < settings["star_limit"]:
         return
 
-    await star_message(message, settings["channel_id"], stars)
+    await star_message(message, event.guild_id, settings["channel_id"], stars)
 
 
 @starboard.command
