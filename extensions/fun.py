@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import os
 import random
@@ -96,8 +97,7 @@ class TicTacToeButton(miru.Button):
                     title="Tic Tac Toe!",
                     description=f"It is **{view.playero.display_name}**'s turn!",
                     color=0x009DFF,
-                )
-                embed.set_thumbnail(view.playero.display_avatar_url)
+                ).set_thumbnail(view.playero.display_avatar_url)
 
             else:
                 self.style = hikari.ButtonStyle.SUCCESS
@@ -109,8 +109,7 @@ class TicTacToeButton(miru.Button):
                     title="Tic Tac Toe!",
                     description=f"It is **{view.playerx.display_name}**'s turn!",
                     color=0x009DFF,
-                )
-                embed.set_thumbnail(view.playerx.display_avatar_url)
+                ).set_thumbnail(view.playerx.display_avatar_url)
 
             winner = view.check_winner()
 
@@ -121,20 +120,19 @@ class TicTacToeButton(miru.Button):
                         title="Tic Tac Toe!",
                         description=f"**{view.playerx.display_name}** won!",
                         color=0x77B255,
-                    )
-                    embed.set_thumbnail(view.playerx.display_avatar_url)
+                    ).set_thumbnail(view.playerx.display_avatar_url)
 
                 elif winner == WinState.PLAYER_O:
                     embed = hikari.Embed(
                         title="Tic Tac Toe!",
                         description=f"**{view.playero.display_name}** won!",
                         color=0x77B255,
-                    )
-                    embed.set_thumbnail(view.playero.display_avatar_url)
+                    ).set_thumbnail(view.playero.display_avatar_url)
 
                 else:
-                    embed = hikari.Embed(title="Tic Tac Toe!", description=f"It's a tie!", color=0x77B255)
-                    embed.set_thumbnail(None)
+                    embed = hikari.Embed(
+                        title="Tic Tac Toe!", description=f"It's a tie!", color=0x77B255
+                    ).set_thumbnail(None)
 
                 for button in view.children:
                     assert isinstance(button, miru.Button)
@@ -169,19 +167,24 @@ class TicTacToeView(miru.View):
             assert isinstance(item, miru.Button)
             item.disabled = True
 
-        embed = hikari.Embed(
-            title="Tic Tac Toe!",
-            description="This game timed out! Try starting a new one!",
-            color=0xFF0000,
-        )
         assert self.message is not None
-        await self.message.edit(embed=embed, components=self.build())
+
+        await self.message.edit(
+            embed=hikari.Embed(
+                title="Tic Tac Toe!",
+                description="This game timed out! Try starting a new one!",
+                color=0xFF0000,
+            ),
+            components=self.build(),
+        )
 
     def check_blocked(self) -> bool:
         """
         Check if the board is blocked
         """
         blocked_list = [False, False, False, False]
+
+        # TODO: Replace this old garbage
 
         # Check rows
         blocked = []
@@ -344,33 +347,37 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
     assert ctx.member is not None
 
     if user.id == ctx.author.id:
-        embed = hikari.Embed(
-            title="❌ Invoking self",
-            description=f"I'm sorry, but how would that even work?",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invoking self",
+                description=f"I'm sorry, but how would that even work?",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if not user.is_bot:
-        embed = hikari.Embed(
-            title="Tic Tac Toe!",
-            description=f"**{user.display_name}** was challenged for a round of tic tac toe by **{ctx.member.display_name}**!\nFirst to a row of **{size_int} wins!**\nIt is **{ctx.member.display_name}**'s turn!",
-            color=const.EMBED_BLUE,
-        )
-        embed.set_thumbnail(ctx.member.display_avatar_url)
-
         view = TicTacToeView(size_int, ctx.member, user)
-        proxy = await ctx.respond(embed=embed, components=view.build())
+        proxy = await ctx.respond(
+            embed=hikari.Embed(
+                title="Tic Tac Toe!",
+                description=f"**{user.display_name}** was challenged for a round of tic tac toe by **{ctx.member.display_name}**!\nFirst to a row of **{size_int} wins!**\nIt is **{ctx.member.display_name}**'s turn!",
+                color=const.EMBED_BLUE,
+            ).set_thumbnail(ctx.member.display_avatar_url),
+            components=view.build(),
+        )
         view.start(await proxy.message())
 
     else:
-        embed = hikari.Embed(
-            title="❌ Invalid user",
-            description=f"Sorry, but you cannot play with a bot.. yet...",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid user",
+                description=f"Sorry, but you cannot play with a bot.. yet...",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
 
@@ -393,16 +400,17 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
     text = " ".join([random.choice(words) for i in range(0, length)])
     file.close()
 
-    embed = hikari.Embed(
-        title="🏁 Typeracing begins in 10 seconds!",
-        description="Prepare your keyboard of choice!",
-        color=const.EMBED_BLUE,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title=f"🏁 Typeracing begins {helpers.format_dt(helpers.utcnow() + datetime.timedelta(seconds=10))}",
+            description="Prepare your keyboard of choice!",
+            color=const.EMBED_BLUE,
+        )
     )
-    await ctx.respond(embed=embed)
 
     await asyncio.sleep(10.0)
 
-    async def create_image() -> None:
+    def create_image() -> BytesIO:
         display_text = fill(text, 60)
 
         img = Image.new("RGBA", (1, 1), color=0)  # 1x1 transparent image
@@ -421,14 +429,16 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
         draw.text((margin / 2, margin / 2), display_text, font=text_font, fill="white")
         buffer = BytesIO()
         img.save(buffer, format="PNG")
+        return buffer
 
-        embed = hikari.Embed(
+    buffer: BytesIO = await asyncio.get_running_loop().run_in_executor(None, create_image())  # type: ignore
+    await ctx.respond(
+        embed=hikari.Embed(
             description="🏁 Type in the text from above as fast as you can!",
             color=const.EMBED_BLUE,
-        )
-        await ctx.respond(embed=embed, attachment=hikari.Bytes(buffer.getvalue(), "sned_typerace.png"))
-
-    asyncio.create_task(create_image())
+        ),
+        attachment=hikari.Bytes(buffer.getvalue(), "sned_typerace.png"),
+    )
 
     end_trigger = asyncio.Event()
     start = helpers.utcnow()
@@ -457,31 +467,35 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
     try:
         await asyncio.wait_for(end_trigger.wait(), timeout=60)
     except asyncio.TimeoutError:
-        embed = hikari.Embed(
-            title="🏁 Typeracing results",
-            description="Nobody was able to complete the typerace within **60** seconds. Typerace cancelled.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🏁 Typeracing results",
+                description="Nobody was able to complete the typerace within **60** seconds. Typerace cancelled.",
+                color=const.ERROR_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
 
     else:
-        embed = hikari.Embed(
-            title="🏁 First Place",
-            description=f"**{list(winners.keys())[0]}** finished first, everyone else has **15 seconds** to submit their reply!",
-            color=const.EMBED_GREEN,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🏁 First Place",
+                description=f"**{list(winners.keys())[0]}** finished first, everyone else has **15 seconds** to submit their reply!",
+                color=const.EMBED_GREEN,
+            )
         )
-        await ctx.respond(embed=embed)
         await asyncio.sleep(15.0)
+
         desc = "**Participants:**\n"
         for winner in winners:
             desc = f"{desc}**#{list(winners.keys()).index(winner)+1}** **{winner}** `{round(winners[winner], 1)}` seconds - `{round((len(text) / 5) / (winners[winner] / 60))}`WPM\n"
 
-        embed = hikari.Embed(
-            title="🏁 Typeracing results",
-            description=desc,
-            color=const.EMBED_GREEN,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🏁 Typeracing results",
+                description=desc,
+                color=const.EMBED_GREEN,
+            )
         )
-        await ctx.respond(embed=embed)
 
     finally:
         msg_listener.cancel()
@@ -526,12 +540,13 @@ async def urban_lookup(ctx: SnedSlashContext, word: str) -> None:
     entries = await dictionary_client.get_urban_entries(word)
 
     if not entries:
-        embed = hikari.Embed(
-            title="❌ Not found",
-            description=f"No entries found for **{word}**.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Not found",
+                description=f"No entries found for **{word}**.",
+                color=const.ERROR_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
         return
 
     navigator = UrbanNavigator(ctx, entries=entries)
@@ -556,24 +571,24 @@ async def avatar(
     member = user or ctx.member
     assert member is not None
 
-    if show_global == True:
-        avatar_url = member.avatar_url
-    else:
-        avatar_url = member.display_avatar_url
-
-    embed = hikari.Embed(title=f"{member.display_name}'s avatar:", color=helpers.get_color(member))
-    embed.set_image(avatar_url)
-    await ctx.respond(embed=embed)
+    await ctx.respond(
+        embed=hikari.Embed(title=f"{member.display_name}'s avatar:", color=helpers.get_color(member)).set_image(
+            member.avatar_url if show_global else member.display_avatar_url
+        )
+    )
 
 
 @fun.command
 @lightbulb.command("Show Avatar", "Displays the target's avatar for your viewing pleasure.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
-async def avatar_context(ctx: SnedUserContext, target: hikari.Member) -> None:
-    helpers.is_member(target)
-    embed = hikari.Embed(title=f"{target.display_name}'s avatar:", color=helpers.get_color(target))
-    embed.set_image(target.display_avatar_url)
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+async def avatar_context(ctx: SnedUserContext, target: t.Union[hikari.User, hikari.Member]) -> None:
+    await ctx.respond(
+        embed=hikari.Embed(
+            title=f"{target.display_name if isinstance(target, hikari.Member) else target.username}'s avatar:",
+            color=helpers.get_color(target) if isinstance(target, hikari.Member) else const.EMBED_BLUE,
+        ).set_image(target.display_avatar_url),
+        flags=hikari.MessageFlag.EPHEMERAL,
+    )
 
 
 @fun.command
@@ -582,12 +597,13 @@ async def avatar_context(ctx: SnedUserContext, target: hikari.Member) -> None:
 async def funfact(ctx: SnedSlashContext) -> None:
     fun_path = Path(ctx.app.base_dir, "etc", "text", "funfacts.txt")
     fun_facts = open(fun_path, "r").readlines()
-    embed = hikari.Embed(
-        title="🤔 Did you know?",
-        description=f"{random.choice(fun_facts)}",
-        color=const.EMBED_BLUE,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="🤔 Did you know?",
+            description=f"{random.choice(fun_facts)}",
+            color=const.EMBED_BLUE,
+        )
     )
-    await ctx.respond(embed=embed)
 
 
 @fun.command
@@ -596,12 +612,13 @@ async def funfact(ctx: SnedSlashContext) -> None:
 async def penguinfact(ctx: SnedSlashContext) -> None:
     penguin_path = Path(ctx.app.base_dir, "etc", "text", "penguinfacts.txt")
     penguin_facts = open(penguin_path, "r").readlines()
-    embed = hikari.Embed(
-        title="🐧 Penguin Fact",
-        description=f"{random.choice(penguin_facts)}",
-        color=const.EMBED_BLUE,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="🐧 Penguin Fact",
+            description=f"{random.choice(penguin_facts)}",
+            color=const.EMBED_BLUE,
+        )
     )
-    await ctx.respond(embed=embed)
 
 
 @fun.command
@@ -624,12 +641,13 @@ async def dice(ctx: SnedSlashContext, sides: t.Optional[int] = None, amount: t.O
 
     calc = " ".join([f"`[{i+1}: {random.randint(1, sides)}]`" for i in range(0, amount)])
 
-    embed = hikari.Embed(
-        title=f"🎲 Rolled the {'die' if amount == 1 else 'dice'}!",
-        description=f"**Results (`{amount}d{sides}`):** {calc}",
-        color=const.EMBED_BLUE,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title=f"🎲 Rolled the {'die' if amount == 1 else 'dice'}!",
+            description=f"**Results (`{amount}d{sides}`):** {calc}",
+            color=const.EMBED_BLUE,
+        )
     )
-    await ctx.respond(embed=embed)
 
 
 @fun.command
@@ -641,8 +659,7 @@ async def randomcat(ctx: SnedSlashContext) -> None:
             if response.status == 200:
                 catjson = await response.json()
 
-                embed = hikari.Embed(title="🐱 Random kitten", color=const.EMBED_BLUE)
-                embed.set_image(catjson[0]["url"])
+                embed = hikari.Embed(title="🐱 Random kitten", color=const.EMBED_BLUE).set_image(catjson[0]["url"])
             else:
                 embed = hikari.Embed(
                     title="🐱 Random kitten",
@@ -662,8 +679,7 @@ async def randomdog(ctx: SnedSlashContext) -> None:
             if response.status == 200:
                 dogjson = await response.json()
 
-                embed = hikari.Embed(title="🐶 Random doggo", color=const.EMBED_BLUE)
-                embed.set_image(dogjson[0]["url"])
+                embed = hikari.Embed(title="🐶 Random doggo", color=const.EMBED_BLUE).set_image(dogjson[0]["url"])
             else:
                 embed = hikari.Embed(
                     title="🐶 Random doggo",
@@ -682,8 +698,7 @@ async def randomfox(ctx: SnedSlashContext) -> None:
             if response.status == 200:
                 foxjson = await response.json()
 
-                embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00)
-                embed.set_image(foxjson["image"])
+                embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00).set_image(foxjson["image"])
             else:
                 embed = hikari.Embed(
                     title="🦊 Random fox",
@@ -703,8 +718,9 @@ async def randomotter(ctx: SnedSlashContext) -> None:
             if response.status == 200:
                 otter_image = await response.content.read()
 
-                embed = hikari.Embed(title="🦦 Random otter", color=0xA78E81)
-                embed.set_image(hikari.Bytes(otter_image, "otter.jpeg"))
+                embed = hikari.Embed(title="🦦 Random otter", color=0xA78E81).set_image(
+                    hikari.Bytes(otter_image, "otter.jpeg")
+                )
             else:
                 embed = hikari.Embed(
                     title="🦦 Random otter",
@@ -722,12 +738,13 @@ async def randomotter(ctx: SnedSlashContext) -> None:
 async def eightball(ctx: SnedSlashContext, question: str) -> None:
     ball_path = Path(ctx.app.base_dir, "etc", "text", "8ball.txt")
     answers = open(ball_path, "r").readlines()
-    embed = hikari.Embed(
-        title=f"🎱 {question}",
-        description=f"{random.choice(answers)}",
-        color=const.EMBED_BLUE,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title=f"🎱 {question}",
+            description=f"{random.choice(answers)}",
+            color=const.EMBED_BLUE,
+        )
     )
-    await ctx.respond(embed=embed)
 
 
 @fun.command
@@ -738,7 +755,7 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
     link = "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5"
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(link.format(query=query.replace(" ", "+"))) as response:
+        async with session.get(link.format(query=query)) as response:
             results = await response.json()
             results_text = results[1]
             results_link = results[3]

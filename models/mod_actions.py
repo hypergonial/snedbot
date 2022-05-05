@@ -119,13 +119,14 @@ class ModActions:
             gateway_guild = self.app.cache.get_guild(guild_id)
             assert isinstance(gateway_guild, hikari.GatewayGuild)
             guild_name = gateway_guild.name if gateway_guild else "Unknown server"
-            embed = hikari.Embed(
-                title=f"❗ You have been {types_conj[action_type]} **{guild_name}**",
-                description=f"You have been {types_conj[action_type]} **{guild_name}**.\n**Reason:** ```{reason}```",
-                color=const.ERROR_COLOR,
-            )
             try:
-                await target.send(embed=embed)
+                await target.send(
+                    embed=hikari.Embed(
+                        title=f"❗ You have been {types_conj[action_type]} **{guild_name}**",
+                        description=f"You have been {types_conj[action_type]} **{guild_name}**.\n**Reason:** ```{reason}```",
+                        color=const.ERROR_COLOR,
+                    )
+                )
             except (hikari.ForbiddenError, hikari.HTTPError):
                 raise DMFailedError("Failed delivering direct message to user.")
 
@@ -678,12 +679,11 @@ class ModActions:
 
         try:
             await self.app.rest.unban_user(moderator.guild_id, user.id, reason=reason)
-            embed = hikari.Embed(
+            return hikari.Embed(
                 title="🔨 User unbanned",
                 description=f"**{user}** has been unbanned.\n**Reason:** ```{raw_reason}```",
                 color=const.EMBED_GREEN,
             )
-            return embed
         except (hikari.HTTPError, hikari.ForbiddenError, hikari.NotFoundError) as e:
             if isinstance(e, hikari.NotFoundError):
                 return hikari.Embed(

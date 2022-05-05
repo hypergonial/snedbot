@@ -61,21 +61,25 @@ async def report_error(ctx: SnedContext) -> None:
     guild = ctx.get_guild()
     assert guild is not None
 
-    embed = hikari.Embed(
-        title="❌ Oops!",
-        description=f"It looks like the moderators of **{guild.name}** did not enable this functionality.",
-        color=const.ERROR_COLOR,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="❌ Oops!",
+            description=f"It looks like the moderators of **{guild.name}** did not enable this functionality.",
+            color=const.ERROR_COLOR,
+        ),
+        flags=hikari.MessageFlag.EPHEMERAL,
     )
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 async def report_perms_error(ctx: SnedContext) -> None:
-    embed = hikari.Embed(
-        title="❌ Oops!",
-        description=f"It looks like I do not have permissions to create a message in the reports channel. Please notify a moderator!",
-        color=const.ERROR_COLOR,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="❌ Oops!",
+            description=f"It looks like I do not have permissions to create a message in the reports channel. Please notify an administrator!",
+            color=const.ERROR_COLOR,
+        ),
+        flags=hikari.MessageFlag.EPHEMERAL,
     )
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hikari.Message] = None) -> None:
@@ -83,12 +87,14 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
     assert ctx.member is not None and ctx.guild_id is not None
 
     if member.id == ctx.member.id or member.is_bot:
-        embed = hikari.Embed(
-            title="❌ Huh?",
-            description=f"I'm not sure how that would work...",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Huh?",
+                description=f"I'm not sure how that would work...",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     records = await ctx.app.db_cache.get(table="reports", guild_id=ctx.guild_id)
@@ -142,12 +148,6 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
         color=const.WARN_COLOR,
     )
 
-    feedback_embed = hikari.Embed(
-        title="✅ Report Submitted",
-        description="A moderator will review your report shortly!",
-        color=const.EMBED_GREEN,
-    )
-
     components = hikari.UNDEFINED
 
     if message:
@@ -158,7 +158,14 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
     await channel.send(
         " ".join(role_mentions) or hikari.UNDEFINED, embed=embed, components=components, role_mentions=True
     )
-    await modal.get_response_context().respond(embed=feedback_embed, flags=hikari.MessageFlag.EPHEMERAL)
+    await modal.get_response_context().respond(
+        embed=hikari.Embed(
+            title="✅ Report Submitted",
+            description="A moderator will review your report shortly!",
+            color=const.EMBED_GREEN,
+        ),
+        flags=hikari.MessageFlag.EPHEMERAL,
+    )
 
 
 @reports.command
@@ -187,12 +194,14 @@ async def report_msg_cmd(ctx: SnedMessageContext, target: hikari.Message) -> Non
     assert ctx.guild_id is not None
     member = ctx.app.cache.get_member(ctx.guild_id, target.author)
     if not member:
-        embed = hikari.Embed(
-            title="❌ Oops!",
-            description="It looks like the author of this message already left the server!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Oops!",
+                description="It looks like the author of this message already left the server!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     await report(ctx, member, ctx.options.target)

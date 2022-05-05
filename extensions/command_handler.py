@@ -80,140 +80,170 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
         cause = error.causes[0] if error.causes else error.__cause__
 
         if isinstance(cause, UserBlacklistedError):
-            embed = hikari.Embed(
-                title="❌ Application access terminated",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Application access terminated",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         if isinstance(cause, lightbulb.MissingRequiredPermission):
-            embed = hikari.Embed(
-                title="❌ Missing Permissions",
-                description=f"You require `{get_perm_str(cause.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Missing Permissions",
+                    description=f"You require `{get_perm_str(cause.missing_perms).replace('|', ', ')}` permissions to execute this command.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         if isinstance(cause, lightbulb.BotMissingRequiredPermission):
-            embed = hikari.Embed(
-                title="❌ Bot Missing Permissions",
-                description=f"The bot requires `{get_perm_str(cause.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Bot Missing Permissions",
+                    description=f"The bot requires `{get_perm_str(cause.missing_perms).replace('|', ', ')}` permissions to execute this command.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
     # These may be raised outside of a check too
     if isinstance(error, lightbulb.MissingRequiredPermission):
-        embed = hikari.Embed(
-            title="❌ Missing Permissions",
-            description=f"You require `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Missing Permissions",
+                description=f"You require `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if isinstance(error, lightbulb.BotMissingRequiredPermission):
-        embed = hikari.Embed(
-            title="❌ Bot Missing Permissions",
-            description=f"The bot requires `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Bot Missing Permissions",
+                description=f"The bot requires `{get_perm_str(error.missing_perms).replace('|', ', ')}` permissions to execute this command.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if isinstance(error, lightbulb.CommandIsOnCooldown):
-        embed = hikari.Embed(
-            title="🕘 Cooldown Pending",
-            description=f"Please retry in: `{datetime.timedelta(seconds=round(error.retry_after))}`",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🕘 Cooldown Pending",
+                description=f"Please retry in: `{datetime.timedelta(seconds=round(error.retry_after))}`",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if isinstance(error, lightbulb.MaxConcurrencyLimitReached):
-        embed = hikari.Embed(
-            title="❌ Max Concurrency Reached",
-            description=f"You have reached the maximum amount of running instances for this command. Please try again later.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Max Concurrency Reached",
+                description=f"You have reached the maximum amount of running instances for this command. Please try again later.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if isinstance(error, BotRoleHierarchyError):
-        embed = hikari.Embed(
-            title="❌ Role Hierarchy Error",
-            description=f"The targeted user's highest role is higher than the bot's highest role.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role Hierarchy Error",
+                description=f"The targeted user's highest role is higher than the bot's highest role.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if isinstance(error, RoleHierarchyError):
-        embed = hikari.Embed(
-            title="❌ Role Hierarchy Error",
-            description=f"The targeted user's highest role is higher than the your highest role.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role Hierarchy Error",
+                description=f"The targeted user's highest role is higher than the your highest role.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if isinstance(error, lightbulb.CommandInvocationError):
 
         if isinstance(error.original, asyncio.TimeoutError):
-            embed = hikari.Embed(
-                title="❌ Action timed out",
-                description=f"This command timed out.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Action timed out",
+                    description=f"This command timed out.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         elif isinstance(error.original, hikari.InternalServerError):
-            embed = hikari.Embed(
-                title="❌ Discord Server Error",
-                description="This action has failed due to an issue with Discord's servers. Please try again in a few moments.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Discord Server Error",
+                    description="This action has failed due to an issue with Discord's servers. Please try again in a few moments.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         elif isinstance(error.original, hikari.ForbiddenError):
-            embed = hikari.Embed(
-                title="❌ Forbidden",
-                description=f"This action has failed due to a lack of permissions.\n**Error:** ```{error.original}```",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Forbidden",
+                    description=f"This action has failed due to a lack of permissions.\n**Error:** ```{error.original}```",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         elif isinstance(error.original, RoleHierarchyError):
-            embed = hikari.Embed(
-                title="❌ Role Hiearchy Error",
-                description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Role Hiearchy Error",
+                    description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         elif isinstance(error.original, BotRoleHierarchyError):
-            embed = hikari.Embed(
-                title="❌ Role Hiearchy Error",
-                description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Role Hiearchy Error",
+                    description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         if isinstance(error.original, MemberExpectedError):
-            embed = hikari.Embed(
-                title="❌ Member Expected",
-                description=f"Expected a user who is a member of this server.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Member Expected",
+                    description=f"Expected a user who is a member of this server.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
     assert ctx.command is not None
@@ -223,14 +253,15 @@ async def application_error_handler(ctx: SnedContext, error: lightbulb.Lightbulb
     logging.error(exception_msg)
     error = error.original if hasattr(error, "original") else error  # type: ignore
 
-    embed = hikari.Embed(
-        title="❌ Unhandled exception",
-        description=f"An error happened that should not have happened. Please [contact us](https://discord.gg/KNKr8FPmJa) with a screenshot of this message!\n**Error:** ```{error.__class__.__name__}: {str(error).replace(ctx.app._token, '')}```",
-        color=const.ERROR_COLOR,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="❌ Unhandled exception",
+            description=f"An error happened that should not have happened. Please [contact us](https://discord.gg/KNKr8FPmJa) with a screenshot of this message!\n**Error:** ```{error.__class__.__name__}: {str(error).replace(ctx.app._token, '')}```",
+            color=const.ERROR_COLOR,
+        ).set_footer(text=f"Guild: {ctx.guild_id}"),
+        flags=hikari.MessageFlag.EPHEMERAL,
     )
-    embed.set_footer(text=f"Guild: {ctx.guild_id}")
 
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
     await log_exc_to_channel(exception_msg, ctx)
 
 
@@ -262,12 +293,13 @@ async def prefix_error_handler(event: lightbulb.PrefixCommandErrorEvent) -> None
 
     error = event.exception.original if hasattr(event.exception, "original") else event.exception  # type: ignore
 
-    embed = hikari.Embed(
-        title="❌ Exception encountered",
-        description=f"```{error}```",
-        color=const.ERROR_COLOR,
+    await event.context.respond(
+        embed=hikari.Embed(
+            title="❌ Exception encountered",
+            description=f"```{error}```",
+            color=const.ERROR_COLOR,
+        )
     )
-    await event.context.respond(embed=embed)
     raise event.exception
 
 

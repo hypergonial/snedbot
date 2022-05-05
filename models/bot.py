@@ -308,27 +308,27 @@ class SnedBot(lightbulb.BotApp):
             mentions = [f"<@{self.user_id}>", f"<@!{self.user_id}>"]
 
             if event.content in mentions:
-                embed = hikari.Embed(
-                    title="Beep Boop!",
-                    description="Use `/` to access my commands and see what I can do!",
-                    color=0xFEC01D,
-                )
                 user = self.get_me()
-                embed.set_thumbnail(user.avatar_url if user else None)
-                await event.message.respond(embed=embed)
+                await event.message.respond(
+                    embed=hikari.Embed(
+                        title="Beep Boop!",
+                        description="Use `/` to access my commands and see what I can do!",
+                        color=0xFEC01D,
+                    ).set_thumbnail(user.avatar_url if user else None)
+                )
                 return
 
             elif not event.content in await get_prefix(self, event.message) and event.content.startswith(
                 await get_prefix(self, event.message)
             ):
-                embed = hikari.Embed(
-                    title="Uh Oh!",
-                    description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!\nIf you have any questions, or feel lost, feel free to join the [support server](https://discord.gg/KNKr8FPmJa)!",
-                    color=const.ERROR_COLOR,
-                )
                 user = self.get_me()
-                embed.set_thumbnail(user.avatar_url if user else None)
-                await event.message.respond(embed=embed)
+                await event.message.respond(
+                    embed=hikari.Embed(
+                        title="Uh Oh!",
+                        description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!\nIf you have any questions, or feel lost, feel free to join the [support server](https://discord.gg/KNKr8FPmJa)!",
+                        color=const.ERROR_COLOR,
+                    ).set_thumbnail(user.avatar_url if user else None)
+                )
                 return
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
@@ -350,13 +350,13 @@ class SnedBot(lightbulb.BotApp):
             return
 
         try:
-            embed = hikari.Embed(
-                title="Beep Boop!",
-                description="""I have been summoned to this server. Type `/` to see what I can do!\n\nIf you have `Manage Server` permissions, you may configure the bot via `/settings`!""",
-                color=0xFEC01D,
+            await channel.send(
+                embed=hikari.Embed(
+                    title="Beep Boop!",
+                    description="""I have been summoned to this server. Type `/` to see what I can do!\n\nIf you have `Manage Server` permissions, you may configure the bot via `/settings`!""",
+                    color=0xFEC01D,
+                ).set_thumbnail(me.avatar_url)
             )
-            embed.set_thumbnail(me.avatar_url)
-            await channel.send(embed=embed)
         except hikari.ForbiddenError:
             pass
         logging.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")

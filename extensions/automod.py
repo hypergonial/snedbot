@@ -171,12 +171,15 @@ async def punish(
         )
 
     if state == AutoModState.NOTICE.value:
-        embed = hikari.Embed(
-            title="💬 Auto-Moderation Notice",
-            description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
-            color=const.WARN_COLOR,
+        await message.respond(
+            content=offender.mention,
+            embed=hikari.Embed(
+                title="💬 Auto-Moderation Notice",
+                description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
+                color=const.WARN_COLOR,
+            ),
+            user_mentions=True,
         )
-        await message.respond(content=offender.mention, embed=embed, user_mentions=True)
         return await automod.app.dispatch(
             AutoModMessageFlagEvent(
                 automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
@@ -192,12 +195,15 @@ async def punish(
         await escalate_prewarn_ratelimiter.acquire(message)
 
         if not escalate_prewarn_ratelimiter.is_rate_limited(message):
-            embed = hikari.Embed(
-                title="💬 Auto-Moderation Notice",
-                description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
-                color=const.WARN_COLOR,
+            await message.respond(
+                content=offender.mention,
+                embed=hikari.Embed(
+                    title="💬 Auto-Moderation Notice",
+                    description=f"**{offender.display_name}**, please refrain from {notices[action.value]}!",
+                    color=const.WARN_COLOR,
+                ),
+                user_mentions=True,
             )
-            await message.respond(content=offender.mention, embed=embed, user_mentions=True)
             return await automod.app.dispatch(
                 AutoModMessageFlagEvent(
                     automod.app,
@@ -277,7 +283,7 @@ async def scan_messages(
 
     message = event.message
 
-    if message.author is None:
+    if not message.author:
         # Probably a partial update, ignore it
         return
 

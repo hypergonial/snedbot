@@ -30,12 +30,14 @@ class AuthorOnlyView(miru.View):
 
     async def view_check(self, ctx: miru.Context) -> bool:
         if ctx.user.id != self.lctx.author.id:
-            embed = hikari.Embed(
-                title="❌ Oops!",
-                description="A magical barrier is stopping you from interacting with this component menu!",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Oops!",
+                    description="A magical barrier is stopping you from interacting with this component menu!",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
         return ctx.user.id == self.lctx.author.id
 
@@ -79,11 +81,13 @@ class AuthorOnlyNavigator(SnedNavigator):
 
     async def view_check(self, ctx: miru.Context) -> bool:
         if ctx.user.id != self.lctx.author.id:
-            embed = hikari.Embed(
-                title="❌ Oops!",
-                description="A magical barrier is stopping you from interacting with this navigation menu!",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Oops!",
+                    description="A magical barrier is stopping you from interacting with this navigation menu!",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
         return ctx.user.id == self.lctx.author.id

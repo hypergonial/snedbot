@@ -76,12 +76,14 @@ async def purge(ctx: SnedSlashContext) -> None:
         try:
             regex = re.compile(ctx.options.regex)
         except re.error as error:
-            embed = hikari.Embed(
-                title="❌ Invalid regex passed",
-                description=f"Failed parsing regex: ```{str(error)}```",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Invalid regex passed",
+                    description=f"Failed parsing regex: ```{str(error)}```",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
             assert ctx.invoked is not None and ctx.invoked.cooldown_manager is not None
             return await ctx.invoked.cooldown_manager.reset_cooldown(ctx)
@@ -180,23 +182,24 @@ async def deobfuscate_nick(ctx: SnedSlashContext, user: hikari.Member, strict: b
         new_nick = "Blessed by Sned"
 
     if new_nick == user.display_name:
-        embed = hikari.Embed(
-            title="ℹ️ No action taken",
-            description=f"The nickname of **{user.display_name}** is already deobfuscated or contains nothing to deobfuscate.",
-            color=const.EMBED_BLUE,
+        await ctx.mod_respond(
+            embed=hikari.Embed(
+                title="ℹ️ No action taken",
+                description=f"The nickname of **{user.display_name}** is already deobfuscated or contains nothing to deobfuscate.",
+                color=const.EMBED_BLUE,
+            )
         )
-        await ctx.mod_respond(embed=embed)
         return
 
     await user.edit(nick=new_nick, reason=f"{ctx.author} ({ctx.author.id}): Deobfuscated nickname")
 
-    embed = hikari.Embed(
-        title="✅ Deobfuscated!",
-        description=f"{user.mention}'s nickname is now: `{new_nick}`",
-        color=const.EMBED_GREEN,
+    await ctx.mod_respond(
+        embed=hikari.Embed(
+            title="✅ Deobfuscated!",
+            description=f"{user.mention}'s nickname is now: `{new_nick}`",
+            color=const.EMBED_GREEN,
+        )
     )
-
-    await ctx.mod_respond(embed=embed)
 
 
 @mod.command
@@ -225,27 +228,28 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
         for note in notes_fmt:
             paginator.add_line(note)
 
-        embeds = []
-        for page in paginator.build_pages():
-            embed = hikari.Embed(
+        embeds = [
+            hikari.Embed(
                 title="📒 " + "Journal entries for this user:",
                 description=page,
                 color=const.EMBED_BLUE,
             )
-            embeds.append(embed)
+            for page in paginator.build_pages()
+        ]
 
-        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)
+        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)  # type: ignore
 
         ephemeral = bool((await ctx.app.mod.get_settings(ctx.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
         await navigator.send(ctx.interaction, ephemeral=ephemeral)
 
     else:
-        embed = hikari.Embed(
-            title="📒 Journal entries for this user:",
-            description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {ctx.options.user}` ",
-            color=const.EMBED_BLUE,
+        await ctx.mod_respond(
+            embed=hikari.Embed(
+                title="📒 Journal entries for this user:",
+                description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {ctx.options.user}` ",
+                color=const.EMBED_BLUE,
+            )
         )
-        await ctx.mod_respond(embed=embed)
 
 
 @journal.child
@@ -259,12 +263,13 @@ async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> No
     assert ctx.guild_id is not None
 
     await ctx.app.mod.add_note(user, ctx.guild_id, f"💬 **Note by {ctx.author}:** {note}")
-    embed = hikari.Embed(
-        title="✅ Journal entry added!",
-        description=f"Added a new journal entry to user **{user}**. You can view this user's journal via the command `/journal get {ctx.options.user}`.",
-        color=const.EMBED_GREEN,
+    await ctx.mod_respond(
+        embed=hikari.Embed(
+            title="✅ Journal entry added!",
+            description=f"Added a new journal entry to user **{user}**. You can view this user's journal via the command `/journal get {ctx.options.user}`.",
+            color=const.EMBED_GREEN,
+        )
     )
-    await ctx.mod_respond(embed=embed)
 
 
 @mod.command
@@ -359,12 +364,14 @@ async def timeout_cmd(
     assert ctx.member is not None
 
     if user.communication_disabled_until() is not None:
-        embed = hikari.Embed(
-            title="❌ User already timed out",
-            description="User is already timed out. Use `/timeouts remove` to remove it.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ User already timed out",
+                description="User is already timed out. Use `/timeouts remove` to remove it.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     try:
@@ -372,23 +379,20 @@ async def timeout_cmd(
             duration, user=ctx.user, future_time=True
         )
     except ValueError:
-        embed = hikari.Embed(
-            title="❌ Invalid data entered",
-            description="Your entered timeformat is invalid.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid data entered",
+                description="Your entered timeformat is invalid.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    await ctx.app.mod.timeout(user, ctx.member, communication_disabled_until, reason)
+    embed = await ctx.app.mod.timeout(user, ctx.member, communication_disabled_until, reason)
 
-    embed = hikari.Embed(
-        title="🔇 " + "User timed out",
-        description=f"**{user}** has been timed out until {helpers.format_dt(communication_disabled_until)}.\n**Reason:** ```{reason}```",
-        color=const.EMBED_GREEN,
-    )
     await ctx.mod_respond(embed=embed)
 
 
@@ -417,23 +421,26 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason
     assert ctx.member is not None
 
     if user.communication_disabled_until() is None:
-        embed = hikari.Embed(
-            title="❌ User not timed out",
-            description="This user is not timed out.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ User not timed out",
+                description="This user is not timed out.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     await ctx.app.mod.remove_timeout(user, ctx.member, reason)
 
-    embed = hikari.Embed(
-        title="🔉 " + "Timeout removed",
-        description=f"**{user}**'s timeout was removed.\n**Reason:** ```{reason}```",
-        color=const.EMBED_GREEN,
+    await ctx.mod_respond(
+        embed=hikari.Embed(
+            title="🔉 " + "Timeout removed",
+            description=f"**{user}**'s timeout was removed.\n**Reason:** ```{reason}```",
+            color=const.EMBED_GREEN,
+        )
     )
-    await ctx.mod_respond(embed=embed)
 
 
 @mod.command
@@ -475,12 +482,14 @@ async def ban_cmd(
         try:
             banned_until = await ctx.app.scheduler.convert_time(duration, user=ctx.user, future_time=True)
         except ValueError:
-            embed = hikari.Embed(
-                title="❌ Invalid data entered",
-                description="Your entered timeformat is invalid.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Invalid data entered",
+                    description="Your entered timeformat is invalid.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
     else:
         banned_until = None
@@ -589,12 +598,13 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 @lightbulb.implements(lightbulb.SlashCommand)
 async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
     await ctx.app.rest.edit_channel(ctx.channel_id, rate_limit_per_user=interval)
-    embed = hikari.Embed(
-        title="✅ Slowmode updated",
-        description=f"{const.EMOJI_SLOWMODE} Slowmode is now set to 1 message per `{interval}` seconds.",
-        color=const.EMBED_GREEN,
+    await ctx.mod_respond(
+        embed=hikari.Embed(
+            title="✅ Slowmode updated",
+            description=f"{const.EMOJI_SLOWMODE} Slowmode is now set to 1 message per `{interval}` seconds.",
+            color=const.EMBED_GREEN,
+        )
     )
-    await ctx.mod_respond(embed=embed)
 
 
 @mod.command
@@ -658,12 +668,14 @@ async def massban(ctx: SnedSlashContext) -> None:
         try:
             regex = re.compile(ctx.options.regex)
         except re.error as error:
-            embed = hikari.Embed(
-                title="❌ Invalid regex passed",
-                description=f"Failed parsing regex: ```{str(error)}```",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Invalid regex passed",
+                    description=f"Failed parsing regex: ```{str(error)}```",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             assert ctx.invoked is not None and ctx.invoked.cooldown_manager is not None
             await ctx.invoked.cooldown_manager.reset_cooldown(ctx)
             return
@@ -718,12 +730,14 @@ async def massban(ctx: SnedSlashContext) -> None:
     to_ban = [member for member in members if all(predicate(member) for predicate in predicates)]
 
     if len(to_ban) == 0:
-        embed = hikari.Embed(
-            title="❌ No members match criteria",
-            description=f"No members found that match all criteria.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ No members match criteria",
+                description=f"No members found that match all criteria.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     content = [f"Sned Massban Session: {guild.name}   |  Matched members against criteria: {len(to_ban)}\n{now}\n"]
@@ -789,12 +803,13 @@ async def massban(ctx: SnedSlashContext) -> None:
     assert ctx.guild_id is not None and ctx.member is not None
     await ctx.app.dispatch(MassBanEvent(ctx.app, ctx.guild_id, ctx.member, len(to_ban), count, file, reason))
 
-    embed = hikari.Embed(
-        title="✅ Smartban finished",
-        description=f"Banned **{count}/{len(to_ban)}** users.",
-        color=const.EMBED_GREEN,
+    await ctx.mod_respond(
+        embed=hikari.Embed(
+            title="✅ Massban finished",
+            description=f"Banned **{count}/{len(to_ban)}** users.",
+            color=const.EMBED_GREEN,
+        )
     )
-    await ctx.mod_respond(embed=embed)
 
     if userlog:
         await userlog.d.actions.unfreeze_logging(ctx.guild_id)

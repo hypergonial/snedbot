@@ -213,14 +213,15 @@ async def eval_py(ctx: SnedPrefixContext, code: str) -> None:
                 await send_paginated(ctx, ctx.channel_id, return_value, prefix="```py\n", suffix="```")
 
         except Exception as e:
-            embed = hikari.Embed(
-                title="❌ Exception encountered",
-                description=f"```{e.__class__.__name__}: {e}```",
-                color=const.ERROR_COLOR,
-            )
             try:
                 await ctx.event.message.add_reaction("❗")
-                await ctx.respond(embed=embed)
+                await ctx.respond(
+                    embed=hikari.Embed(
+                        title="❌ Exception encountered",
+                        description=f"```{e.__class__.__name__}: {e}```",
+                        color=const.ERROR_COLOR,
+                    )
+                )
             except hikari.ForbiddenError:
                 pass
 
@@ -274,12 +275,13 @@ async def resync_app_cmds(ctx: SnedPrefixContext) -> None:
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def run_sql(ctx: SnedPrefixContext) -> None:
     if not ctx.attachments or not ctx.attachments[0].filename.endswith(".sql"):
-        embed = hikari.Embed(
-            title="❌ No valid attachment",
-            description=f"Expected a singular `.sql` file as attachment with `UTF-8` encoding!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ No valid attachment",
+                description=f"Expected a singular `.sql` file as attachment with `UTF-8` encoding!",
+                color=const.ERROR_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
         return
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
@@ -321,12 +323,13 @@ async def backup_db_cmd(ctx: SnedPrefixContext) -> None:
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def restore_db(ctx: SnedPrefixContext) -> None:
     if not ctx.attachments or not ctx.attachments[0].filename.endswith(".pgdmp"):
-        embed = hikari.Embed(
-            title="❌ No valid attachment",
-            description=f"Required dump-file attachment not found. Expected a `.pgdmp` file.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ No valid attachment",
+                description=f"Required dump-file attachment not found. Expected a `.pgdmp` file.",
+                color=const.ERROR_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
         return
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)

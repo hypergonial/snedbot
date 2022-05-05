@@ -20,7 +20,7 @@ from utils.ratelimiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
-role_buttons = SnedPlugin("Role-Buttons")
+role_buttons = SnedPlugin("Rolebuttons")
 
 BUTTON_STYLES = {
     "Blurple": hikari.ButtonStyle.PRIMARY,
@@ -84,12 +84,14 @@ class RoleButtonConfirmModal(miru.Modal):
             self.role_button.remove_description = values[1].strip()
 
         await self.role_button.update(context.author)
-        embed = hikari.Embed(
-            title=f"✅ Rolebutton confirmation prompt updated!",
-            description=f"Confirmation prompt updated for button **#{self.role_button.id}**.",
-            color=0x77B255,
+
+        await context.respond(
+            embed=hikari.Embed(
+                title=f"✅ Rolebutton confirmation prompt updated!",
+                description=f"Confirmation prompt updated for button **#{self.role_button.id}**.",
+                color=0x77B255,
+            )
         )
-        await context.respond(embed=embed)
 
 
 @role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
@@ -108,34 +110,40 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
     role = plugin.app.cache.get_role(role_id)
 
     if not role:
-        embed = hikari.Embed(
-            title="❌ Orphaned",
-            description="The role this button was pointing to was deleted! Contact an administrator!",
-            color=0xFF0000,
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="❌ Orphaned",
+                description="The role this button was pointing to was deleted! Contact an administrator!",
+                color=0xFF0000,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     me = plugin.app.cache.get_member(event.context.guild_id, plugin.app.user_id)
     assert me is not None
 
     if not helpers.includes_permissions(lightbulb.utils.permissions_for(me), hikari.Permissions.MANAGE_ROLES):
-        embed = hikari.Embed(
-            title="❌ Missing Permissions",
-            description="Bot does not have `Manage Roles` permissions! Contact an administrator!",
-            color=0xFF0000,
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="❌ Missing Permissions",
+                description="Bot does not have `Manage Roles` permissions! Contact an administrator!",
+                color=0xFF0000,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     await role_button_ratelimiter.acquire(event.context)
     if role_button_ratelimiter.is_rate_limited(event.context):
-        embed = hikari.Embed(
-            title="❌ Slow Down!",
-            description="You are clicking too fast!",
-            color=0xFF0000,
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="❌ Slow Down!",
+                description="You are clicking too fast!",
+                color=0xFF0000,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     await event.context.defer(hikari.ResponseType.DEFERRED_MESSAGE_CREATE, flags=hikari.MessageFlag.EPHEMERAL)
@@ -145,12 +153,14 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         role_button = await RoleButton.fetch(entry_id)
 
         if not role_button:  # This should theoretically never happen, but I do not trust myself
-            embed = hikari.Embed(
-                title="❌ Missing Data",
-                description="The rolebutton you clicked on is missing data, or was improperly deleted! Contact an administrator!",
-                color=0xFF0000,
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="❌ Missing Data",
+                    description="The rolebutton you clicked on is missing data, or was improperly deleted! Contact an administrator!",
+                    color=0xFF0000,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         if role.id in event.context.member.role_ids:
@@ -190,12 +200,14 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
     except (hikari.ForbiddenError, hikari.HTTPError):
-        embed = hikari.Embed(
-            title="❌ Insufficient permissions",
-            description="Failed changing role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
-            color=0xFF0000,
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="❌ Insufficient permissions",
+                description="Failed changing role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
+                color=0xFF0000,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @role_buttons.command
@@ -216,12 +228,14 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
     buttons = await RoleButton.fetch_all(ctx.guild_id)
 
     if not buttons:
-        embed = hikari.Embed(
-            title="❌ Error: No role-buttons",
-            description="There are no role-buttons for this server.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Error: No role-buttons",
+                description="There are no role-buttons for this server.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     paginator = lightbulb.utils.StringPaginator(max_chars=500)
@@ -264,31 +278,36 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
     button = await RoleButton.fetch(button_id)
 
     if not button:
-        embed = hikari.Embed(
-            title="❌ Not found",
-            description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Not found",
+                description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     try:
         await button.delete(ctx.member)
     except hikari.ForbiddenError:
-        embed = hikari.Embed(
-            title="❌ Insufficient permissions",
-            description=f"The bot cannot see and/or read messages in the channel where the button is supposed to be located (<#{button.channel_id}>).",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Insufficient permissions",
+                description=f"The bot cannot see and/or read messages in the channel where the button is supposed to be located (<#{button.channel_id}>).",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    embed = hikari.Embed(
-        title="✅ Deleted!",
-        description=f"Rolebutton **#{button.id}** was successfully deleted!",
-        color=const.EMBED_GREEN,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="✅ Deleted!",
+            description=f"Rolebutton **#{button.id}** was successfully deleted!",
+            color=const.EMBED_GREEN,
+        )
     )
-    await ctx.respond(embed=embed)
 
 
 @rolebutton.child
@@ -323,12 +342,14 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     button = await RoleButton.fetch(params.pop("button_id"))
 
     if not button:
-        embed = hikari.Embed(
-            title="❌ Not found",
-            description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Not found",
+                description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if label := params.get("label"):
@@ -345,32 +366,38 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
 
     if role := params.pop("role", None):
         if role.is_managed or role.is_premium_subscriber_role:
-            embed = hikari.Embed(
-                title="❌ Role is managed",
-                description="This role is managed by another integration and cannot be assigned manually to a user.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Role is managed",
+                    description="This role is managed by another integration and cannot be assigned manually to a user.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         top_role = ctx.member.get_top_role()
         guild = ctx.get_guild()
         if not guild or not top_role:
-            embed = hikari.Embed(
-                title="❌ Caching error",
-                description="Failed to resolve `top_role` and `guild` from cache. Please join our `/support` server for assistance.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Caching error",
+                    description="Failed to resolve `top_role` and `guild` from cache. Please join our `/support` server for assistance.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         if role.position >= top_role.position and not guild.owner_id == ctx.member.id:
-            embed = hikari.Embed(
-                title="❌ Role Hierarchy Error",
-                description="You cannot create rolebuttons for roles that are higher or equal to your highest role's position.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Role Hierarchy Error",
+                    description="You cannot create rolebuttons for roles that are higher or equal to your highest role's position.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         params["role_id"] = role.id
@@ -381,12 +408,14 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     try:
         await button.update(ctx.member)
     except hikari.ForbiddenError:
-        embed = hikari.Embed(
-            title="❌ Insufficient permissions",
-            description=f"The bot cannot edit the provided message due to insufficient permissions.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Insufficient permissions",
+                description=f"The bot cannot edit the provided message due to insufficient permissions.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     embed = hikari.Embed(
@@ -439,41 +468,50 @@ async def rolebutton_add(
         return
 
     if message.author.id != ctx.app.user_id:
-        embed = hikari.Embed(
-            title="❌ Message not authored by bot",
-            description="This message was not sent by the bot, and thus it cannot be edited to add the button.\n\n**Tip:** If you want to create a new message for the rolebutton with custom content, use the `/echo` or `/embed` command!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Message not authored by bot",
+                description="This message was not sent by the bot, and thus it cannot be edited to add the button.\n\n**Tip:** If you want to create a new message for the rolebutton with custom content, use the `/echo` or `/embed` command!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if role.is_managed or role.is_premium_subscriber_role:
-        embed = hikari.Embed(
-            title="❌ Role is managed",
-            description="This role is managed by another integration and cannot be assigned manually to a user.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role is managed",
+                description="This role is managed by another integration and cannot be assigned manually to a user.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     top_role = ctx.member.get_top_role()
     guild = ctx.get_guild()
+
     if not guild or not top_role:
-        embed = hikari.Embed(
-            title="❌ Caching error",
-            description="Failed to resolve `top_role` and `guild` from cache. Please join our `/support` server for assistance.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Caching error",
+                description="Failed to resolve `top_role` and `guild` from cache. Please join our `/support` server for assistance.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if role.position >= top_role.position and not guild.owner_id == ctx.member.id:
-        embed = hikari.Embed(
-            title="❌ Role Hierarchy Error",
-            description="You cannot create rolebuttons for roles that are higher or equal to your highest role's position.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role Hierarchy Error",
+                description="You cannot create rolebuttons for roles that are higher or equal to your highest role's position.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     parsed_emoji = hikari.Emoji.parse(emoji)
@@ -484,29 +522,33 @@ async def rolebutton_add(
             ctx.guild_id, message, role, parsed_emoji, buttonstyle, BUTTON_MODES[mode.split(" -")[0]], label, ctx.member
         )
     except ValueError:
-        embed = hikari.Embed(
-            title="❌ Too many buttons",
-            description="This message has too many buttons attached to it already, please choose a different message!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Too many buttons",
+                description="This message has too many buttons attached to it already, please choose a different message!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
     except hikari.ForbiddenError:
-        embed = hikari.Embed(
-            title="❌ Insufficient permissions",
-            description=f"The bot cannot edit the provided message due to insufficient permissions.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Insufficient permissions",
+                description=f"The bot cannot edit the provided message due to insufficient permissions.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    embed = hikari.Embed(
-        title="✅ Done!",
-        description=f"A new rolebutton for role {ctx.options.role.mention} in channel <#{message.channel_id}> has been created!",
-        color=const.EMBED_GREEN,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="✅ Done!",
+            description=f"A new rolebutton for role {ctx.options.role.mention} in channel <#{message.channel_id}> has been created!",
+            color=const.EMBED_GREEN,
+        ).set_footer(f"Button ID: {button.id}")
     )
-    embed.set_footer(f"Button ID: {button.id}")
-    await ctx.respond(embed=embed)
 
 
 @rolebutton.child
@@ -530,12 +572,14 @@ async def rolebutton_setprompt(ctx: SnedSlashContext, button_id: int, prompt_typ
 
     button = await RoleButton.fetch(button_id)
     if not button:
-        embed = hikari.Embed(
-            title="❌ Not found",
-            description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Not found",
+                description="There is no rolebutton by that ID. Check your existing rolebuttons via `/rolebutton list`",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     modal = RoleButtonConfirmModal(button, RoleButtonConfirmType(prompt_type))

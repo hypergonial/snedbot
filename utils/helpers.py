@@ -157,7 +157,6 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
         is_blacklisted = True if records and records[0]["user_id"] == user.id else False
         embed.description = f"{embed.description}\n**• Blacklisted:** `{is_blacklisted}`"
 
-    embed = add_embed_footer(embed, ctx.member)
     return embed
 
 
@@ -280,12 +279,14 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
     assert ctx.guild_id is not None
 
     if not MESSAGE_LINK_REGEX.fullmatch(message_link):
-        embed = hikari.Embed(
-            title="❌ Invalid link",
-            description="This does not appear to be a valid message link! You can get a message's link by right-clicking it and selecting `Copy Message Link`!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid link",
+                description="This does not appear to be a valid message link! You can get a message's link by right-clicking it and selecting `Copy Message Link`!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return None
 
     snowflakes = message_link.split("/channels/")[1].split("/")
@@ -294,12 +295,14 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
     message_id = hikari.Snowflake(snowflakes[2])
 
     if ctx.guild_id != guild_id:
-        embed = hikari.Embed(
-            title="❌ Invalid link",
-            description="The message seems to be from another server! Please copy a message link from this server!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid link",
+                description="The message seems to be from another server! Please copy a message link from this server!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return None
 
     channel = ctx.app.cache.get_guild_channel(channel_id)
@@ -314,12 +317,14 @@ async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Option
     try:
         message = await ctx.app.rest.fetch_message(channel_id, message_id)
     except (hikari.NotFoundError, hikari.ForbiddenError):
-        embed = hikari.Embed(
-            title="❌ Unknown message",
-            description="Could not find message with this link. Ensure the link is valid, and that the bot has permissions to view the channel.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Unknown message",
+                description="Could not find message with this link. Ensure the link is valid, and that the bot has permissions to view the channel.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return None
 
     return message

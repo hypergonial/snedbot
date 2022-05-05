@@ -31,12 +31,13 @@ RGB_REGEX = re.compile(r"[0-9]{1,3} [0-9]{1,3} [0-9]{1,3}")
 @lightbulb.command("ping", "Check the bot's latency.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def ping(ctx: SnedSlashContext) -> None:
-    embed = hikari.Embed(
-        title="🏓 Pong!",
-        description=f"Latency: `{round(ctx.app.heartbeat_latency * 1000)}ms`",
-        color=const.MISC_COLOR,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="🏓 Pong!",
+            description=f"Latency: `{round(ctx.app.heartbeat_latency * 1000)}ms`",
+            color=const.MISC_COLOR,
+        )
     )
-    await ctx.respond(embed=embed)
 
 
 @misc.command
@@ -84,21 +85,25 @@ async def embed(ctx: SnedSlashContext) -> None:
     ]
     for option in url_options:
         if option and not helpers.is_url(option):
-            embed = hikari.Embed(
-                title="❌ Invalid URL",
-                description=f"Provided an invalid URL.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Invalid URL",
+                    description=f"Provided an invalid URL.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
     if ctx.options.color is not None and not RGB_REGEX.fullmatch(ctx.options.color):
-        embed = hikari.Embed(
-            title="❌ Invalid Color",
-            description=f"Colors must be of format `RRR GGG BBB`, three values seperated by spaces.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid Color",
+                description=f"Colors must be of format `RRR GGG BBB`, three values seperated by spaces.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     embed = (
@@ -124,12 +129,14 @@ async def embed(ctx: SnedSlashContext) -> None:
     if ctx.member and not helpers.includes_permissions(
         lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
     ):
-        embed = hikari.Embed(
-            title="❌ Missing Permissions",
-            description=f"Sending embeds detached requires `Manage Messages` permissions!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Missing Permissions",
+                description=f"Sending embeds detached requires `Manage Messages` permissions!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if ctx.guild_id:
@@ -137,11 +144,13 @@ async def embed(ctx: SnedSlashContext) -> None:
         channel = ctx.get_channel()
 
         if not isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel)):
-            embed = hikari.Embed(
-                title="❌ Cannot send in thread.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Cannot send in thread.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         assert me is not None
@@ -155,8 +164,9 @@ async def embed(ctx: SnedSlashContext) -> None:
             )
 
     await ctx.app.rest.create_message(ctx.channel_id, embed=embed)
-    embed = hikari.Embed(title="✅ Embed created!", color=const.EMBED_GREEN)
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    await ctx.respond(
+        embed=hikari.Embed(title="✅ Embed created!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
+    )
 
 
 @embed.set_error_handler
@@ -164,12 +174,14 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
     if isinstance(event.exception, lightbulb.CommandInvocationError) and isinstance(
         event.exception.original, ValueError
     ):
-        embed = hikari.Embed(
-            title="❌ Parsing error",
-            description=f"An error occurred parsing parameters.\n**Error:** ```{event.exception.original}```",
-            color=const.ERROR_COLOR,
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="❌ Parsing error",
+                description=f"An error occurred parsing parameters.\n**Error:** ```{event.exception.original}```",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
     raise
 
@@ -180,36 +192,37 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
 async def about(ctx: SnedSlashContext) -> None:
     me = ctx.app.get_me()
     assert me is not None
+    process = psutil.Process()
 
-    embed = hikari.Embed(
-        title=f"ℹ️ About {me.username}",
-        description=f"""**• Made by:** `Hyper#0001`
+    await ctx.respond(
+        embed=hikari.Embed(
+            title=f"ℹ️ About {me.username}",
+            description=f"""**• Made by:** `Hyper#0001`
 **• Servers:** `{len(ctx.app.cache.get_guilds_view())}`
 **• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
 **• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
 **• Terms of Service:** [Click here!](https://github.com/HyperGH/snedbot_v2/blob/main/tos.md)
 **• Privacy Policy:** [Click here!](https://github.com/HyperGH/snedbot_v2/blob/main/privacy.md)\n
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
-        color=const.EMBED_BLUE,
+            color=const.EMBED_BLUE,
+        )
+        .set_thumbnail(me.avatar_url)
+        .add_field(
+            name="CPU utilization",
+            value=f"`{round(psutil.cpu_percent(interval=None))}%`",
+            inline=True,
+        )
+        .add_field(
+            name="Memory utilization",
+            value=f"`{round(process.memory_info().vms / 1048576)}MB`",
+            inline=True,
+        )
+        .add_field(
+            name="Latency",
+            value=f"`{round(ctx.app.heartbeat_latency * 1000)}ms`",
+            inline=True,
+        )
     )
-    embed.set_thumbnail(me.avatar_url)
-    embed.add_field(
-        name="CPU utilization",
-        value=f"`{round(psutil.cpu_percent(interval=None))}%`",
-        inline=True,
-    )
-    process = psutil.Process()  # gets current process
-    embed.add_field(
-        name="Memory utilization",
-        value=f"`{round(process.memory_info().vms / 1048576)}MB`",
-        inline=True,
-    )
-    embed.add_field(
-        name="Latency",
-        value=f"`{round(ctx.app.heartbeat_latency * 1000)}ms`",
-        inline=True,
-    )
-    await ctx.respond(embed=embed)
 
 
 @misc.command
@@ -219,19 +232,21 @@ async def invite(ctx: SnedSlashContext) -> None:
 
     if not ctx.app.dev_mode:
         invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.user_id}&permissions=1494984682710&scope=applications.commands%20bot"
-        embed = hikari.Embed(
-            title="🌟 Yay!",
-            description=f"[Click here]({invite_url}) for an invite link!",
-            color=const.MISC_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🌟 Yay!",
+                description=f"[Click here]({invite_url}) for an invite link!",
+                color=const.MISC_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
     else:
-        embed = hikari.Embed(
-            title="🌟 Oops!",
-            description=f"It looks like this bot is in developer mode, and not intended to be invited!",
-            color=const.MISC_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🌟 Oops!",
+                description=f"It looks like this bot is in developer mode, and not intended to be invited!",
+                color=const.MISC_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
 
 
 @misc.command
@@ -251,8 +266,9 @@ async def setnick(ctx: SnedSlashContext, nickname: t.Optional[str] = None) -> No
     await ctx.app.rest.edit_my_member(
         ctx.guild_id, nickname=nickname, reason=f"Nickname changed via /setnick by {ctx.author}"
     )
-    embed = hikari.Embed(title="✅ Nickname changed!", color=const.EMBED_GREEN)
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    await ctx.respond(
+        embed=hikari.Embed(title="✅ Nickname changed!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
+    )
 
 
 @misc.command
@@ -277,9 +293,10 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
     guild = ctx.app.cache.get_available_guild(ctx.guild_id)
     assert guild is not None
 
-    embed = hikari.Embed(
-        title=f"ℹ️ Server Information",
-        description=f"""**• Name:** `{guild.name}`
+    embed = (
+        hikari.Embed(
+            title=f"ℹ️ Server Information",
+            description=f"""**• Name:** `{guild.name}`
 **• ID:** `{guild.id}`
 **• Owner:** `{ctx.app.cache.get_member(guild.id, guild.owner_id)}` (`{guild.owner_id}`)
 **• Created at:** {helpers.format_dt(guild.created_at)} ({helpers.format_dt(guild.created_at, style="R")})
@@ -296,11 +313,11 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 **• Monetization enabled:** `{"Yes" if "MONETIZATION_ENABLED" in guild.features else "No"}`
 {f"**• Vanity URL:** {guild.vanity_url_code}" if guild.vanity_url_code else ""}
 """,
-        color=const.EMBED_BLUE,
+            color=const.EMBED_BLUE,
+        )
+        .set_thumbnail(guild.icon_url)
+        .set_image(guild.banner_url)
     )
-
-    embed.set_thumbnail(guild.icon_url)
-    embed.set_image(guild.banner_url)
 
     await ctx.respond(embed=embed)
 
@@ -327,8 +344,10 @@ async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.Inte
     assert ctx.guild_id is not None
 
     if not send_to:
-        embed = hikari.Embed(title="❌ Cannot send message in threads yet!", color=const.ERROR_COLOR)
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond(
+            embed=hikari.Embed(title="❌ Cannot send message in threads yet!", color=const.ERROR_COLOR),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
         return
 
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
@@ -342,8 +361,9 @@ async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.Inte
 
     await send_to.send(text[:2000])
 
-    embed = hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN)
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    await ctx.respond(
+        embed=hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
+    )
 
 
 @misc.command
@@ -393,12 +413,14 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
         )
 
     if message.author.id != ctx.app.user_id:
-        embed = hikari.Embed(
-            title="❌ Not Authored",
-            description="The bot did not author this message, thus it cannot edit it.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Not Authored",
+                description="The bot did not author this message, thus it cannot edit it.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     modal = miru.Modal(f"Editing message in #{channel.name}")
@@ -420,8 +442,9 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
     content = list(modal.values.values())[0]
     await message.edit(content=content)
 
-    embed = hikari.Embed(title="✅ Message edited!", color=const.EMBED_GREEN)
-    await modal.get_response_context().respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    await modal.get_response_context().respond(
+        embed=hikari.Embed(title="✅ Message edited!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
+    )
 
 
 @misc.command
@@ -436,12 +459,14 @@ async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
     if target.content:
         await ctx.respond(f"```{target.content[:1990]}```", flags=hikari.MessageFlag.EPHEMERAL)
     else:
-        embed = hikari.Embed(
-            title="❌ Missing Content",
-            description="Oops! It looks like this message has no content to display!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Missing Content",
+                description="Oops! It looks like this message has no content to display!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @misc.command
@@ -452,12 +477,14 @@ async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
     if timezone.title() not in pytz.common_timezones:
-        embed = hikari.Embed(
-            title="❌ Invalid Timezone",
-            description="Oops! This does not look like a valid timezone! Specify your timezone as a valid `Continent/City` combination.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid Timezone",
+                description="Oops! This does not look like a valid timezone! Specify your timezone as a valid `Continent/City` combination.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     await ctx.app.db.execute(
@@ -471,12 +498,14 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
     )
     await ctx.app.db_cache.refresh(table="preferences", user_id=ctx.user.id, timezone=timezone.title())
 
-    embed = hikari.Embed(
-        title="✅ Timezone set!",
-        description=f"Your preferred timezone has been set to `{timezone.title()}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
-        color=const.EMBED_GREEN,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="✅ Timezone set!",
+            description=f"Your preferred timezone has been set to `{timezone.title()}`, all relevant commands will try to adapt to this setting! (E.g. `/reminder`)",
+            color=const.EMBED_GREEN,
+        ),
+        flags=hikari.MessageFlag.EPHEMERAL,
     )
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @set_timezone.autocomplete("timezone")
@@ -515,12 +544,14 @@ async def timestamp_gen(ctx: SnedSlashContext, time: str, style: t.Optional[str]
             time, conversion_mode=ConversionMode.ABSOLUTE, user=ctx.user
         )
     except ValueError as error:
-        embed = hikari.Embed(
-            title="❌ Error: Invalid data entered",
-            description=f"Your timeformat is invalid! \n**Error:** {error}",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Error: Invalid data entered",
+                description=f"Your timeformat is invalid! \n**Error:** {error}",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
     style = style.split(" -")[0] if style else "f"
 

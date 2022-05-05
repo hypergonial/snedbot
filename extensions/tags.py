@@ -78,12 +78,14 @@ async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id, add_use=True)
 
     if not tag:
-        embed = hikari.Embed(
-            title="❌ Unknown tag",
-            description="Cannot find tag by that name.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Unknown tag",
+                description="Cannot find tag by that name.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
     flags = hikari.MessageFlag.EPHEMERAL if ephemeral else hikari.MessageFlag.NONE
     await ctx.respond(content=tag.parse_content(ctx), flags=flags)
@@ -122,12 +124,14 @@ async def tag_create(ctx: SnedSlashContext) -> None:
 
     tag = await Tag.fetch(modal.tag_name.casefold(), ctx.guild_id)
     if tag:
-        embed = hikari.Embed(
-            title="❌ Tag exists",
-            description=f"This tag already exists. If the owner of this tag is no longer in the server, you can try doing `/tags claim {modal.tag_name.casefold()}`",
-            color=const.ERROR_COLOR,
+        await mctx.respond(
+            embed=hikari.Embed(
+                title="❌ Tag exists",
+                description=f"This tag already exists. If the owner of this tag is no longer in the server, you can try doing `/tags claim {modal.tag_name.casefold()}`",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await mctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     tag = await Tag.create(
@@ -139,12 +143,13 @@ async def tag_create(ctx: SnedSlashContext) -> None:
         content=modal.tag_content,
     )
 
-    embed = hikari.Embed(
-        title="✅ Tag created!",
-        description=f"You can now call it with `/tag {tag.name}`",
-        color=const.EMBED_GREEN,
+    await mctx.respond(
+        embed=hikari.Embed(
+            title="✅ Tag created!",
+            description=f"You can now call it with `/tag {tag.name}`",
+            color=const.EMBED_GREEN,
+        )
     )
-    await mctx.respond(embed=embed)
 
 
 @tag_group.child
@@ -156,12 +161,14 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if not tag:
-        embed = hikari.Embed(
-            title="❌ Unknown tag",
-            description="Cannot find tag by that name.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Unknown tag",
+                description="Cannot find tag by that name.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     owner = ctx.app.cache.get_member(ctx.guild_id, tag.owner_id) or tag.owner_id
@@ -200,12 +207,14 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
 
     alias_tag = await Tag.fetch(alias.casefold(), ctx.guild_id)
     if alias_tag:
-        embed = hikari.Embed(
-            title="❌ Alias taken",
-            description=f"A tag or alias already exists with a same name. Try picking a different alias.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Alias taken",
+                description=f"A tag or alias already exists with a same name. Try picking a different alias.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
@@ -217,30 +226,35 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
             tag.aliases.append(alias.casefold())
 
         else:
-            embed = hikari.Embed(
-                title="❌ Too many aliases",
-                description=f"Tag `{tag.name}` can only have up to **5** aliases.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Too many aliases",
+                    description=f"Tag `{tag.name}` can only have up to **5** aliases.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         await tag.update()
 
-        embed = hikari.Embed(
-            title="✅ Alias created",
-            description=f"Alias created for tag `{tag.name}`!\nYou can now also call it with `/tag {alias.casefold()}`",
-            color=const.EMBED_GREEN,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="✅ Alias created",
+                description=f"Alias created for tag `{tag.name}`!\nYou can now also call it with `/tag {alias.casefold()}`",
+                color=const.EMBED_GREEN,
+            )
         )
-        await ctx.respond(embed=embed)
 
     else:
-        embed = hikari.Embed(
-            title="❌ Invalid tag",
-            description="You either do not own this tag or it does not exist.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid tag",
+                description="You either do not own this tag or it does not exist.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
 
@@ -268,30 +282,35 @@ async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
             tag.aliases.remove(alias.casefold())
 
         else:
-            embed = hikari.Embed(
-                title="❌ Unknown alias",
-                description=f"Tag `{tag.name}` does not have an alias called `{alias.casefold()}`",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Unknown alias",
+                    description=f"Tag `{tag.name}` does not have an alias called `{alias.casefold()}`",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         await tag.update()
 
-        embed = hikari.Embed(
-            title="✅ Alias removed",
-            description=f"Alias `{alias.casefold()}` for tag `{tag.name}` has been deleted.",
-            color=const.EMBED_GREEN,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="✅ Alias removed",
+                description=f"Alias `{alias.casefold()}` for tag `{tag.name}` has been deleted.",
+                color=const.EMBED_GREEN,
+            )
         )
-        await ctx.respond(embed=embed)
 
     else:
-        embed = hikari.Embed(
-            title="❌ Invalid tag",
-            description="You either do not own this tag or it does not exist.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid tag",
+                description="You either do not own this tag or it does not exist.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
 
@@ -324,20 +343,23 @@ async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member
         tag.owner_id = receiver.id
         await tag.update()
 
-        embed = hikari.Embed(
-            title="✅ Tag transferred",
-            description=f"Tag `{tag.name}`'s ownership was successfully transferred to {receiver.mention}",
-            color=const.EMBED_GREEN,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="✅ Tag transferred",
+                description=f"Tag `{tag.name}`'s ownership was successfully transferred to {receiver.mention}",
+                color=const.EMBED_GREEN,
+            )
         )
-        await ctx.respond(embed=embed)
 
     else:
-        embed = hikari.Embed(
-            title="❌ Invalid tag",
-            description="You either do not own this tag or it does not exist.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid tag",
+                description="You either do not own this tag or it does not exist.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
 
@@ -375,29 +397,34 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
             tag.owner_id = ctx.author.id
             await tag.update()
 
-            embed = hikari.Embed(
-                title="✅ Tag claimed",
-                description=f"Tag `{tag.name}` now belongs to you.",
-                color=const.EMBED_GREEN,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="✅ Tag claimed",
+                    description=f"Tag `{tag.name}` now belongs to you.",
+                    color=const.EMBED_GREEN,
+                )
             )
-            await ctx.respond(embed=embed)
 
         else:
-            embed = hikari.Embed(
-                title="❌ Owner present",
-                description="Tag owner is still in the server. You can only claim tags that have been abandoned.",
-                color=const.ERROR_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Owner present",
+                    description="Tag owner is still in the server. You can only claim tags that have been abandoned.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
     else:
-        embed = hikari.Embed(
-            title="❌ Unknown tag",
-            description="Cannot find tag by that name.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Unknown tag",
+                description="Cannot find tag by that name.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
 
@@ -421,12 +448,14 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if not tag or tag.owner_id != ctx.author.id:
-        embed = hikari.Embed(
-            title="❌ Invalid tag",
-            description="You either do not own this tag or it does not exist.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid tag",
+                description="You either do not own this tag or it does not exist.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     modal = TagEditorModal(name=tag.name, content=tag.content)
@@ -441,12 +470,13 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
 
     await tag.update()
 
-    embed = hikari.Embed(
-        title="✅ Tag edited",
-        description=f"Tag `{tag.name}` has been successfully edited.",
-        color=const.EMBED_GREEN,
+    await mctx.respond(
+        embed=hikari.Embed(
+            title="✅ Tag edited",
+            description=f"Tag `{tag.name}` has been successfully edited.",
+            color=const.EMBED_GREEN,
+        )
     )
-    await mctx.respond(embed=embed)
 
 
 @tag_edit.autocomplete("name")
@@ -475,20 +505,23 @@ async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
 
         await tag.delete()
 
-        embed = hikari.Embed(
-            title="✅ Tag deleted",
-            description=f"Tag `{tag.name}` has been deleted.",
-            color=const.EMBED_GREEN,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="✅ Tag deleted",
+                description=f"Tag `{tag.name}` has been deleted.",
+                color=const.EMBED_GREEN,
+            )
         )
-        await ctx.respond(embed=embed)
 
     else:
-        embed = hikari.Embed(
-            title="❌ Invalid tag",
-            description="You either do not own this tag or it does not exist.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid tag",
+                description="You either do not own this tag or it does not exist.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
 
@@ -528,12 +561,13 @@ async def tag_list(ctx: SnedSlashContext, owner: t.Optional[hikari.User] = None)
         await navigator.send(ctx.interaction)
 
     else:
-        embed = hikari.Embed(
-            title=f"💬 Available tags{f' owned by {owner.username}' if owner else ''}:",
-            description="No tags found! You can create one via `/tags create`",
-            color=const.EMBED_BLUE,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title=f"💬 Available tags{f' owned by {owner.username}' if owner else ''}:",
+                description="No tags found! You can create one via `/tags create`",
+                color=const.EMBED_BLUE,
+            )
         )
-        await ctx.respond(embed=embed)
 
 
 @tag_group.child
@@ -555,24 +589,27 @@ async def tag_search(ctx: SnedSlashContext, query: str) -> None:
         response += [f"*{alias}*" for alias in get_close_matches(query.casefold(), aliases)]
 
         if response:
-            embed = hikari.Embed(title=f"🔎 Search results for '{query}':", description="\n".join(response[:10]))
-            await ctx.respond(embed=embed)
+            await ctx.respond(
+                embed=hikari.Embed(title=f"🔎 Search results for '{query}':", description="\n".join(response[:10]))
+            )
 
         else:
-            embed = hikari.Embed(
-                title="Not found",
-                description="Unable to find tags with that name.",
-                color=const.WARN_COLOR,
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="Not found",
+                    description="Unable to find tags with that name.",
+                    color=const.WARN_COLOR,
+                )
             )
-            await ctx.respond(embed=embed)
 
     else:
-        embed = hikari.Embed(
-            title="🔎 Search failed",
-            description="There are no tags on this server yet! You can create one via `/tags create`",
-            color=const.WARN_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🔎 Search failed",
+                description="There are no tags on this server yet! You can create one via `/tags create`",
+                color=const.WARN_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
 
 
 def load(bot: SnedBot) -> None:

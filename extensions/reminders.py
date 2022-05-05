@@ -67,15 +67,12 @@ class SnoozeSelect(miru.Select):
             notes=json.dumps(reminder_data),
         )
 
-        embed = hikari.Embed(
-            title="✅ Reminder snoozed",
-            description=f"Reminder snoozed until: {helpers.format_dt(expiry)} ({helpers.format_dt(expiry, style='R')})\n\n**Message:**\n{message}",
-            color=const.EMBED_GREEN,
-        )
-        embed.set_footer(f"Reminder ID: {timer.id}")
-
         await ctx.edit_response(
-            embed=embed,
+            embed=hikari.Embed(
+                title="✅ Reminder snoozed",
+                description=f"Reminder snoozed until: {helpers.format_dt(expiry)} ({helpers.format_dt(expiry, style='R')})\n\n**Message:**\n{message}",
+                color=const.EMBED_GREEN,
+            ).set_footer(f"Reminder ID: {timer.id}"),
             components=miru.View()
             .add_item(miru.Select(placeholder="Reminder snoozed!", options=[miru.SelectOption("foo")], disabled=True))
             .build(),
@@ -108,29 +105,33 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
         author_id = hikari.Snowflake(event.context.custom_id.split(":")[1])
 
         if author_id != event.context.user.id:
-            embed = hikari.Embed(
-                title="❌ Invalid interaction",
-                description="You cannot snooze someone else's reminder!",
-                color=const.ERROR_COLOR,
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="❌ Invalid interaction",
+                    description="You cannot snooze someone else's reminder!",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         if not event.context.message.embeds:
             return
-
-        embed = hikari.Embed(
-            title="🕔 Select a snooze duration!",
-            description="Select a duration to snooze the reminder for!",
-            color=const.EMBED_BLUE,
-        )
 
         view = miru.View.from_message(event.context.message)
         view.children[0].disabled = True  # type: ignore
         await event.context.edit_response(components=view.build())
 
         view = SnoozeView(event.context.message)  # I literally added InteractionResponse just for this
-        resp = await event.context.respond(embed=embed, components=view.build(), flags=hikari.MessageFlag.EPHEMERAL)
+        resp = await event.context.respond(
+            embed=hikari.Embed(
+                title="🕔 Select a snooze duration!",
+                description="Select a duration to snooze the reminder for!",
+                color=const.EMBED_BLUE,
+            ),
+            components=view.build(),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
         view.start(await resp.retrieve_message())
 
     else:  # Reminder additional recipients
@@ -141,12 +142,14 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
                 raise ValueError
 
         except ValueError:
-            embed = hikari.Embed(
-                title="❌ Invalid interaction",
-                description="Oops! It looks like this reminder is no longer valid!",
-                color=const.ERROR_COLOR,
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="❌ Invalid interaction",
+                    description="Oops! It looks like this reminder is no longer valid!",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             view = miru.View.from_message(event.context.message)
 
             for item in view.children:
@@ -156,12 +159,14 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
             return
 
         if timer.user_id == event.context.user.id:
-            embed = hikari.Embed(
-                title="❌ Invalid interaction",
-                description="You cannot do this on your own reminder.",
-                color=const.ERROR_COLOR,
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="❌ Invalid interaction",
+                    description="You cannot do this on your own reminder.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         assert timer.notes is not None
@@ -170,34 +175,40 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
         if event.context.user.id not in notes["additional_recipients"]:
 
             if len(notes["additional_recipients"]) > 50:
-                embed = hikari.Embed(
-                    title="❌ Invalid interaction",
-                    description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
-                    color=const.ERROR_COLOR,
+                await event.context.respond(
+                    embed=hikari.Embed(
+                        title="❌ Invalid interaction",
+                        description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
+                        color=const.ERROR_COLOR,
+                    ),
+                    flags=hikari.MessageFlag.EPHEMERAL,
                 )
-                await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
                 return
 
             notes["additional_recipients"].append(event.context.user.id)
             timer.notes = json.dumps(notes)
             await plugin.app.scheduler.update_timer(timer)
-            embed = hikari.Embed(
-                title="✅ Signed up to reminder",
-                description="You will be notified when this reminder is due!",
-                color=const.EMBED_GREEN,
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="✅ Signed up to reminder",
+                    description="You will be notified when this reminder is due!",
+                    color=const.EMBED_GREEN,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
         else:
             notes["additional_recipients"].remove(event.context.user.id)
             timer.notes = json.dumps(notes)
             await plugin.app.scheduler.update_timer(timer)
-            embed = hikari.Embed(
-                title="✅ Removed from reminder",
-                description="Removed you from the list of recipients!",
-                color=const.EMBED_GREEN,
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="✅ Removed from reminder",
+                    description="Removed you from the list of recipients!",
+                    color=const.EMBED_GREEN,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 
 @reminders.command
@@ -219,49 +230,51 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
     assert ctx.guild_id is not None
 
     if message and len(message) >= 1000:
-        embed = hikari.Embed(
-            title="❌ Reminder too long",
-            description="Your reminder cannot exceed **1000** characters!",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Reminder too long",
+                description="Your reminder cannot exceed **1000** characters!",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     try:
         time = await ctx.app.scheduler.convert_time(when, user=ctx.user, future_time=True)
 
     except ValueError as error:
-        embed = hikari.Embed(
-            title="❌ Invalid data entered",
-            description=f"Your timeformat is invalid! \n**Error:** {error}",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid data entered",
+                description=f"Your timeformat is invalid! \n**Error:** {error}",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if (time - helpers.utcnow()).total_seconds() >= 31536000 * 5:
-        embed = hikari.Embed(
-            title="❌ Invalid data entered",
-            description="Sorry, but that's a bit too far in the future.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid data entered",
+                description="Sorry, but that's a bit too far in the future.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
     if (time - helpers.utcnow()).total_seconds() < 10:
-        embed = hikari.Embed(
-            title="❌ Invalid data entered",
-            description="Sorry, but that's a bit too short, reminders must last longer than `10` seconds.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid data entered",
+                description="Sorry, but that's a bit too short, reminders must last longer than `10` seconds.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
-
-    embed = hikari.Embed(
-        title="✅ Reminder set",
-        description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{message}",
-        color=const.EMBED_GREEN,
-    )
 
     reminder_data = {
         "message": message,
@@ -277,10 +290,13 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
         channel=ctx.channel_id,
         notes=json.dumps(reminder_data),
     )
-    embed.set_footer(f"Reminder ID: {timer.id}")
 
     proxy = await ctx.respond(
-        embed=embed,
+        embed=hikari.Embed(
+            title="✅ Reminder set",
+            description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{message}",
+            color=const.EMBED_GREEN,
+        ).set_footer(f"Reminder ID: {timer.id}"),
         components=miru.View()
         .add_item(miru.Button(label="Remind me too!", emoji="✉️", custom_id=f"RMAR:{timer.id}"))
         .build(),
@@ -302,20 +318,23 @@ async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
     try:
         await ctx.app.scheduler.cancel_timer(id, ctx.guild_id)
     except ValueError:
-        embed = hikari.Embed(
-            title="❌ Reminder not found",
-            description=f"Cannot find reminder with ID **{id}**.",
-            color=const.ERROR_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Reminder not found",
+                description=f"Cannot find reminder with ID **{id}**.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
         return
 
-    embed = hikari.Embed(
-        title="✅ Reminder deleted",
-        description=f"Reminder **{id}** has been deleted.",
-        color=const.EMBED_GREEN,
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="✅ Reminder deleted",
+            description=f"Reminder **{id}** has been deleted.",
+            color=const.EMBED_GREEN,
+        )
     )
-    await ctx.respond(embed=embed)
 
 
 @reminder.child
@@ -329,12 +348,13 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
     )
 
     if not records:
-        embed = hikari.Embed(
-            title="✉️ No pending reminders!",
-            description="You have no pending reminders. You can create one via `/reminder create`!",
-            color=const.WARN_COLOR,
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="✉️ No pending reminders!",
+                description="You have no pending reminders. You can create one via `/reminder create`!",
+                color=const.WARN_COLOR,
+            )
         )
-        await ctx.respond(embed=embed)
         return
 
     reminders = []
@@ -386,7 +406,7 @@ async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
     assert event.timer.notes is not None
     notes = json.loads(event.timer.notes)
     embed = hikari.Embed(
-        title=f"✉️ {user.display_name}, your {'snoozed' if notes.get('is_snoozed') else ''} reminder:",
+        title=f"✉️ {user.display_name}, your {'snoozed ' if notes.get('is_snoozed') else ''}reminder:",
         description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
         color=const.EMBED_BLUE,
     )
