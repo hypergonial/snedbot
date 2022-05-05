@@ -1,15 +1,14 @@
 import asyncio
-import functools
 import logging
 import os
 import pathlib
 import typing as t
 
+import aiohttp
 import hikari
 import kosu
 import lightbulb
 import miru
-from hikari.snowflakes import Snowflake
 
 import utils.db_backup as db_backup
 from config import Config
@@ -116,6 +115,7 @@ class SnedBot(lightbulb.BotApp):
         # Initizaling configuration and database
         self._config = config
         self._db = Database(self)
+        self._session: t.Optional[aiohttp.ClientSession] = None
         self._db_cache = cache.DatabaseCache(self)
         self._mod = ModActions(self)
         miru.load(self)
@@ -124,17 +124,17 @@ class SnedBot(lightbulb.BotApp):
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
         self._db_backup_loop = IntervalLoop(self.backup_db, seconds=3600 * 24)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
-        self._user_id: t.Optional[Snowflake] = None
+        self._user_id: t.Optional[hikari.Snowflake] = None
         self._perspective: t.Optional[kosu.Client] = None
         self._scheduler = scheduler.Scheduler(self)
-        self._initial_guilds: t.List[Snowflake] = []
+        self._initial_guilds: t.List[hikari.Snowflake] = []
 
         self.check(is_not_blacklisted)
 
         self.start_listeners()
 
     @property
-    def user_id(self) -> Snowflake:
+    def user_id(self) -> hikari.Snowflake:
         """The application user's ID."""
         if self._user_id is None:
             raise hikari.ComponentStateConflictError("The bot is not yet initialized, user_id is unavailable.")
@@ -151,6 +151,13 @@ class SnedBot(lightbulb.BotApp):
     def base_dir(self) -> str:
         """The absolute path to the bot's project."""
         return self._base_dir
+
+    @property
+    def session(self) -> aiohttp.ClientSession:
+        """The aiohttp client session used by the bot."""
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+        return self.session
 
     @property
     def db(self) -> Database:

@@ -35,12 +35,11 @@ async def search_fandom(site: str, query: str) -> str:
 
     query = query.replace(" ", "+")
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(link.format(query=query, site=site)) as response:
-            if response.status == 200:
-                results = await response.json()
-            else:
-                raise RuntimeError(f"Failed to communicate with server. Response code: {response.status}")
+    async with fandom.app.session.get(link.format(query=query, site=site)) as response:
+        if response.status == 200:
+            results = await response.json()
+        else:
+            raise RuntimeError(f"Failed to communicate with server. Response code: {response.status}")
 
     desc = ""
     if results[1]:  # 1 is text, 3 is links

@@ -654,81 +654,77 @@ async def dice(ctx: SnedSlashContext, sides: t.Optional[int] = None, amount: t.O
 @lightbulb.command("cat", "Searches the interwebz™️ for a random cat picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomcat(ctx: SnedSlashContext) -> None:
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://api.thecatapi.com/v1/images/search") as response:
-            if response.status == 200:
-                catjson = await response.json()
+    async with ctx.app.session.get("https://api.thecatapi.com/v1/images/search") as response:
+        if response.status == 200:
+            catjson = await response.json()
 
-                embed = hikari.Embed(title="🐱 Random kitten", color=const.EMBED_BLUE).set_image(catjson[0]["url"])
-            else:
-                embed = hikari.Embed(
-                    title="🐱 Random kitten",
-                    description="Oops! Looks like the cat delivery service is unavailable! Check back later.",
-                    color=const.ERROR_COLOR,
-                )
+            embed = hikari.Embed(title="🐱 Random kitten", color=const.EMBED_BLUE).set_image(catjson[0]["url"])
+        else:
+            embed = hikari.Embed(
+                title="🐱 Random kitten",
+                description="Oops! Looks like the cat delivery service is unavailable! Check back later.",
+                color=const.ERROR_COLOR,
+            )
 
-            await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
 
 
 @fun.command
 @lightbulb.command("dog", "Searches the interwebz™️ for a random dog picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomdog(ctx: SnedSlashContext) -> None:
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://api.thedogapi.com/v1/images/search") as response:
-            if response.status == 200:
-                dogjson = await response.json()
+    async with ctx.app.session.get("https://api.thedogapi.com/v1/images/search") as response:
+        if response.status == 200:
+            dogjson = await response.json()
 
-                embed = hikari.Embed(title="🐶 Random doggo", color=const.EMBED_BLUE).set_image(dogjson[0]["url"])
-            else:
-                embed = hikari.Embed(
-                    title="🐶 Random doggo",
-                    description="Oops! Looks like the dog delivery service is unavailable! Check back later.",
-                    color=const.ERROR_COLOR,
-                )
-            await ctx.respond(embed=embed)
+            embed = hikari.Embed(title="🐶 Random doggo", color=const.EMBED_BLUE).set_image(dogjson[0]["url"])
+        else:
+            embed = hikari.Embed(
+                title="🐶 Random doggo",
+                description="Oops! Looks like the dog delivery service is unavailable! Check back later.",
+                color=const.ERROR_COLOR,
+            )
+        await ctx.respond(embed=embed)
 
 
 @fun.command
 @lightbulb.command("fox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomfox(ctx: SnedSlashContext) -> None:
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://foxapi.dev/foxes/") as response:
-            if response.status == 200:
-                foxjson = await response.json()
+    async with ctx.app.session.get("https://foxapi.dev/foxes/") as response:
+        if response.status == 200:
+            foxjson = await response.json()
 
-                embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00).set_image(foxjson["image"])
-            else:
-                embed = hikari.Embed(
-                    title="🦊 Random fox",
-                    description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
-                    color=const.ERROR_COLOR,
-                )
+            embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00).set_image(foxjson["image"])
+        else:
+            embed = hikari.Embed(
+                title="🦊 Random fox",
+                description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
+                color=const.ERROR_COLOR,
+            )
 
-            await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
 
 
 @fun.command
 @lightbulb.command("otter", "Searches the interwebz™️ for a random otter picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomotter(ctx: SnedSlashContext) -> None:
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://otter.bruhmomentlol.repl.co/random") as response:
-            if response.status == 200:
-                otter_image = await response.content.read()
+    async with ctx.app.session.get("https://otter.bruhmomentlol.repl.co/random") as response:
+        if response.status == 200:
+            otter_image = await response.content.read()
 
-                embed = hikari.Embed(title="🦦 Random otter", color=0xA78E81).set_image(
-                    hikari.Bytes(otter_image, "otter.jpeg")
-                )
-            else:
-                embed = hikari.Embed(
-                    title="🦦 Random otter",
-                    description="Oops! Looks like the otter delivery service is unavailable! Check back later.",
-                    color=const.ERROR_COLOR,
-                )
+            embed = hikari.Embed(title="🦦 Random otter", color=0xA78E81).set_image(
+                hikari.Bytes(otter_image, "otter.jpeg")
+            )
+        else:
+            embed = hikari.Embed(
+                title="🦦 Random otter",
+                description="Oops! Looks like the otter delivery service is unavailable! Check back later.",
+                color=const.ERROR_COLOR,
+            )
 
-            await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
 
 
 @fun.command
@@ -754,11 +750,10 @@ async def eightball(ctx: SnedSlashContext, question: str) -> None:
 async def wiki(ctx: SnedSlashContext, query: str) -> None:
     link = "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5"
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(link.format(query=query)) as response:
-            results = await response.json()
-            results_text = results[1]
-            results_link = results[3]
+    async with ctx.app.session.get(link.format(query=query)) as response:
+        results = await response.json()
+        results_text = results[1]
+        results_link = results[3]
 
         if len(results_text) > 0:
             desc = ""
