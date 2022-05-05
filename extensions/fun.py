@@ -402,7 +402,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
 
     await ctx.respond(
         embed=hikari.Embed(
-            title=f"🏁 Typeracing begins {helpers.format_dt(helpers.utcnow() + datetime.timedelta(seconds=10))}",
+            title=f"🏁 Typeracing begins {helpers.format_dt(helpers.utcnow() + datetime.timedelta(seconds=10), style='R')}",
             description="Prepare your keyboard of choice!",
             color=const.EMBED_BLUE,
         )
