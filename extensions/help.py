@@ -92,11 +92,9 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
 @lightbulb.implements(lightbulb.SlashCommand)
 async def help_cmd(ctx: SnedSlashContext, topic: t.Optional[str] = None) -> None:
     if ctx.member:
-        guild = ctx.get_guild()
         topic = (
             topic or "admin_home"
             if (lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_GUILD)
-            or (guild and ctx.member.id == guild.owner_id)
             else topic
         )
     await ctx.respond(embed=help_embeds[topic])
