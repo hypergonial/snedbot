@@ -173,7 +173,7 @@ class ModActions:
 
         if action == "UNBAN":
             perms = lightbulb.utils.permissions_for(event.member)
-            if perms ^ hikari.Permissions.BAN_MEMBERS:
+            if not helpers.includes_permissions(perms, hikari.Permissions.BAN_MEMBERS):
                 await event.context.respond(
                     embed=hikari.Embed(
                         title="❌ Missing Permissions",
