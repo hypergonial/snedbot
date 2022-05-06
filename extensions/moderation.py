@@ -5,6 +5,7 @@ import typing as t
 
 import hikari
 import lightbulb
+import miru
 
 import models
 from etc import constants as const
@@ -266,7 +267,14 @@ async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
     helpers.is_member(user)
     assert ctx.member is not None
     embed = await ctx.app.mod.warn(user, ctx.member, reason=reason)
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=miru.View().add_item(
+            miru.Button(
+                label="View Journal", custom_id=f"JOURNAL:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SECONDARY
+            )
+        ),
+    )
 
 
 @mod.command
@@ -306,7 +314,14 @@ async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opti
 
     assert ctx.guild_id is not None and ctx.member is not None
     embed = await ctx.app.mod.clear_warns(user, ctx.member, reason=reason)
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=miru.View().add_item(
+            miru.Button(
+                label="View Journal", custom_id=f"JOURNAL:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SECONDARY
+            )
+        ),
+    )
 
 
 @warns.child
@@ -321,7 +336,14 @@ async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opt
     assert ctx.guild_id is not None and ctx.member is not None
 
     embed = await ctx.app.mod.remove_warn(user, ctx.member, reason=reason)
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=miru.View().add_item(
+            miru.Button(
+                label="View Journal", custom_id=f"JOURNAL:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SECONDARY
+            )
+        ),
+    )
 
 
 @mod.command
@@ -375,7 +397,14 @@ async def timeout_cmd(
 
     embed = await ctx.app.mod.timeout(user, ctx.member, communication_disabled_until, reason)
 
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=miru.View().add_item(
+            miru.Button(
+                label="View Journal", custom_id=f"JOURNAL:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SECONDARY
+            )
+        ),
+    )
 
 
 @mod.command
@@ -421,7 +450,12 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason
             title="🔉 " + "Timeout removed",
             description=f"**{user}**'s timeout was removed.\n**Reason:** ```{reason}```",
             color=const.EMBED_GREEN,
-        )
+        ),
+        components=miru.View().add_item(
+            miru.Button(
+                label="View Journal", custom_id=f"JOURNAL:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SECONDARY
+            )
+        ),
     )
 
 
@@ -485,7 +519,24 @@ async def ban_cmd(
         days_to_delete=int(days_to_delete) if days_to_delete else 0,
         reason=reason,
     )
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=(
+            miru.View()
+            .add_item(
+                miru.Button(
+                    label="Unban", custom_id=f"UNBAN:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SUCCESS
+                )
+            )
+            .add_item(
+                miru.Button(
+                    label="View Journal",
+                    custom_id=f"JOURNAL:{user.id}:{ctx.member.id}",
+                    style=hikari.ButtonStyle.SECONDARY,
+                )
+            )
+        ),
+    )
 
 
 @mod.command
@@ -544,7 +595,14 @@ async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     embed = await ctx.app.mod.unban(user, ctx.member, reason=reason)
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=miru.View().add_item(
+            miru.Button(
+                label="View Journal", custom_id=f"JOURNAL:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SECONDARY
+            )
+        ),
+    )
 
 
 @mod.command
@@ -565,7 +623,14 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     embed = await ctx.app.mod.kick(user, ctx.member, reason=reason)
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=miru.View().add_item(
+            miru.Button(
+                label="View Journal", custom_id=f"JOURNAL:{user.id}:{ctx.member.id}", style=hikari.ButtonStyle.SECONDARY
+            )
+        ),
+    )
 
 
 @mod.command
