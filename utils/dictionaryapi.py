@@ -122,7 +122,7 @@ class DictionaryEntry:
             word=data["meta"]["id"].split(":")[0],
             definitions=data["shortdef"],
             functional_label=data.get("fl", None),
-            offensive=data["meta"]["offensive"],
+            offensive=data["meta"].get("offensive") or False,
             etymology=et,
             date=data.get("date", None),
         )
