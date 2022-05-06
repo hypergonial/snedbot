@@ -9,7 +9,6 @@ from io import BytesIO
 from pathlib import Path
 from textwrap import fill
 
-import aiohttp
 import hikari
 import Levenshtein as lev
 import lightbulb
