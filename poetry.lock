@@ -275,7 +275,7 @@ docs = ["furo (>=2022.1.2,<2022.2.0)", "sphinx (==4.4.0)"]
 type = "git"
 url = "https://github.com/HyperGH/hikari-miru.git"
 reference = "cursed/branch"
-resolved_reference = "96463b8a14b68e578bbd9a457b35e5923d4df3f4"
+resolved_reference = "498cc0b5d084e2a940f2fec7f6ca582eebe79f90"
 
 [[package]]
 name = "idna"
