@@ -9,6 +9,7 @@ import attr
 import hikari
 import lightbulb
 import miru
+from miru.abc import ViewItem
 
 from etc import constants as const
 from models.db_user import DatabaseUser
@@ -20,6 +21,7 @@ from models.events import WarnCreateEvent
 from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
 from models.timer import TimerEvent
+from models.views import AuthorOnlyNavigator
 from utils import helpers
 
 if t.TYPE_CHECKING:
@@ -145,7 +147,79 @@ class ModActions:
         pass
 
     async def handle_mod_buttons(self, event: miru.ComponentInteractionCreateEvent) -> None:
-        """Handle buttons related to moderation buttons."""
+        """Handle buttons related to moderation quick-actions."""
+
+        # Format: ACTION:<user_id>:<moderator_id>
+        if not event.custom_id.startswith(("UNBAN:", "JOURNAL:")):
+            return
+
+        moderator_id = hikari.Snowflake(event.custom_id.split(":")[2])
+
+        if moderator_id != event.user.id:
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="❌ Action prohibited",
+                    description="This action is only available to the moderator who executed the command.",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
+            )
+            return
+
+        action = event.custom_id.split(":")[0]
+        user_id = hikari.Snowflake(event.custom_id.split(":")[1])
+
+        assert event.member and event.guild_id and isinstance(event.app, SnedBot)
+
+        if action == "UNBAN":
+            perms = lightbulb.utils.permissions_for(event.member)
+            if perms ^ hikari.Permissions.BAN_MEMBERS:
+                await event.context.respond(
+                    embed=hikari.Embed(
+                        title="❌ Missing Permissions",
+                        description="You do not have the required permissions to unban members.",
+                        color=const.ERROR_COLOR,
+                    ),
+                    flags=hikari.MessageFlag.EPHEMERAL,
+                )
+                return
+
+            user = await event.app.rest.fetch_user(user_id)
+            embed = await self.unban(
+                user,
+                event.member,
+                reason=helpers.format_reason("Unbanned via quick-action button.", moderator=event.member),
+            )
+            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+        if action == "JOURNAL":
+            notes = await event.app.mod.get_notes(event.user, event.guild_id)
+
+            if notes:
+                navigator = models.AuthorOnlyNavigator(ctx, pages=helpers.build_note_pages(notes))  # type: ignore
+                await navigator.send(event.interaction, ephemeral=True)
+
+            else:
+                await event.context.respond(
+                    embed=hikari.Embed(
+                        title="📒 Journal entries for this user:",
+                        description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {event.user}`",
+                        color=const.EMBED_BLUE,
+                    ),
+                    flags=hikari.MessageFlag.EPHEMERAL,
+                )
+
+        if not event.message:
+            return
+
+        view = miru.View.from_message(event.message)
+
+        for item in view.children:
+            assert isinstance(item, ViewItem)
+            if item.custom_id == event.custom_id:
+                item.disabled = True
+
+        await event.message.edit(components=view)
 
     async def timeout_extend(self, event: TimerCompleteEvent) -> None:
         """

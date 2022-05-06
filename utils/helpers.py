@@ -274,7 +274,25 @@ def is_member(user: hikari.PartialUser) -> bool:  # Such useful
 
 
 async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Optional[hikari.Message]:
-    """Parse a message_link string into a message object."""
+    """Parse a message_link string into a message object.
+
+    Parameters
+    ----------
+    ctx : SnedSlashContext
+        The context to parse the message link under.
+    message_link : str
+        The message link.
+
+    Returns
+    -------
+    Optional[hikari.Message]
+        The message object, if found.
+
+    Raises
+    ------
+    lightbulb.BotMissingRequiredPermission
+        The application is missing required permissions to acquire the message.
+    """
 
     assert ctx.guild_id is not None
 
@@ -347,8 +365,21 @@ async def maybe_edit(message: hikari.PartialMessage, *args, **kwargs) -> None:
 def format_reason(
     reason: t.Optional[str] = None, moderator: Optional[hikari.Member] = None, *, max_length: Optional[int] = 512
 ) -> str:
-    """
-    Format a reason for a moderation action
+    """Format a reason for a moderation action.
+
+    Parameters
+    ----------
+    reason : t.Optional[str], optional
+        The reason for the action, by default None
+    moderator : Optional[hikari.Member], optional
+        The moderator who executed the action, by default None
+    max_length : Optional[int], optional
+        The maximum allowed length of the reason, by default 512
+
+    Returns
+    -------
+    str
+        The formatted reason
     """
     if not reason:
         reason = "No reason provided."
@@ -361,6 +392,23 @@ def format_reason(
         reason = reason[: max_length - 3] + "..."
 
     return reason
+
+
+def build_note_pages(notes: t.List[str]) -> t.List[hikari.Embed]:
+    """Build a list of embeds to send to a user containing journal entries, with pagination."""
+
+    paginator = lightbulb.utils.StringPaginator(max_chars=1500)
+    [paginator.add_line(f"`#{i}` {note}") for i, note in enumerate(notes)]
+
+    embeds = [
+        hikari.Embed(
+            title="📒 " + "Journal entries for this user:",
+            description=page,
+            color=const.EMBED_BLUE,
+        )
+        for page in paginator.build_pages()
+    ]
+    return embeds
 
 
 # Copyright (C) 2022-present HyperGH

@@ -218,27 +218,9 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
 
     assert ctx.guild_id is not None
     notes = await ctx.app.mod.get_notes(user, ctx.guild_id)
-    paginator = lightbulb.utils.StringPaginator(max_chars=1500)
 
     if notes:
-        notes_fmt = []
-        for i, note in enumerate(notes):
-            notes_fmt.append(f"`#{i}` {note}")
-
-        for note in notes_fmt:
-            paginator.add_line(note)
-
-        embeds = [
-            hikari.Embed(
-                title="📒 " + "Journal entries for this user:",
-                description=page,
-                color=const.EMBED_BLUE,
-            )
-            for page in paginator.build_pages()
-        ]
-
-        navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)  # type: ignore
-
+        navigator = models.AuthorOnlyNavigator(ctx, pages=helpers.build_note_pages(notes))  # type: ignore
         ephemeral = bool((await ctx.app.mod.get_settings(ctx.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
         await navigator.send(ctx.interaction, ephemeral=ephemeral)
 
@@ -246,7 +228,7 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
         await ctx.mod_respond(
             embed=hikari.Embed(
                 title="📒 Journal entries for this user:",
-                description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {ctx.options.user}` ",
+                description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {ctx.options.user}`",
                 color=const.EMBED_BLUE,
             )
         )
