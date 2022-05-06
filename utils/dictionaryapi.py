@@ -27,7 +27,7 @@ class DictionaryException(Exception):
     """An exception raised if the connection to the Dictionary API fails."""
 
 
-@attr.frozen()
+@attr.frozen(weakref_slot=False)
 class UrbanEntry:
     """A dictionary entry in the Urban Dictionary."""
 
@@ -83,7 +83,7 @@ class UrbanEntry:
         )
 
 
-@attr.frozen()
+@attr.frozen(weakref_slot=False)
 class DictionaryEntry:
     """A dictionary entry in the Merriam-Webster Dictionary."""
 
