@@ -115,7 +115,6 @@ class DictionaryEntry:
             if et and et[0][0] == "text":
                 et = re.sub(r"[{]\S+[}]", "", et[0][1])
         except IndexError:
-            print("IndexError")
             et = None
 
         return cls(
