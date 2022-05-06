@@ -169,7 +169,7 @@ class ModActions:
         action = event.custom_id.split(":")[0]
         user_id = hikari.Snowflake(event.custom_id.split(":")[1])
 
-        assert event.member and event.guild_id and isinstance(event.app, SnedBot)
+        assert event.member and event.guild_id
 
         if action == "UNBAN":
             perms = lightbulb.utils.permissions_for(event.member)
@@ -193,10 +193,10 @@ class ModActions:
             await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
         if action == "JOURNAL":
-            notes = await event.app.mod.get_notes(event.user, event.guild_id)
+            notes = await self.get_notes(user_id, event.guild_id)
 
             if notes:
-                navigator = models.AuthorOnlyNavigator(ctx, pages=helpers.build_note_pages(notes))  # type: ignore
+                navigator = AuthorOnlyNavigator(event.context, pages=helpers.build_note_pages(notes))  # type: ignore
                 await navigator.send(event.interaction, ephemeral=True)
 
             else:
