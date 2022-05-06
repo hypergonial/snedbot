@@ -8,6 +8,7 @@ import typing as t
 import attr
 import hikari
 import lightbulb
+import miru
 
 from etc import constants as const
 from models.db_user import DatabaseUser
@@ -67,12 +68,13 @@ class ModActions:
     """Class containing all moderation actions that can be performed by the bot.
     It also handles miscallaneous moderation tasks such as tempban timers, timeout chunks & more."""
 
-    def __init__(self, bot: SnedBot):
+    def __init__(self, bot: SnedBot) -> None:
         self.app = bot
         self.app.subscribe(TimerCompleteEvent, self.timeout_extend)
         self.app.subscribe(hikari.MemberCreateEvent, self.reapply_timeout_extensions)
         self.app.subscribe(hikari.MemberUpdateEvent, self.remove_timeout_extensions)
         self.app.subscribe(TimerCompleteEvent, self.tempban_expire)
+        self.app.subscribe(miru.ComponentInteractionCreateEvent, self.handle_mod_buttons)
 
     async def get_settings(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> ModerationSettings:
         """Get moderation settings for a guild.
@@ -141,6 +143,9 @@ class ModActions:
         Actions that need to be executed after a moderation action took place.
         """
         pass
+
+    async def handle_mod_buttons(self, event: miru.ComponentInteractionCreateEvent) -> None:
+        """Handle buttons related to moderation buttons."""
 
     async def timeout_extend(self, event: TimerCompleteEvent) -> None:
         """
