@@ -157,7 +157,7 @@ class SnedBot(lightbulb.BotApp):
         """The aiohttp client session used by the bot."""
         if self._session is None:
             self._session = aiohttp.ClientSession()
-        return self.session
+        return self._session
 
     @property
     def db(self) -> Database:
