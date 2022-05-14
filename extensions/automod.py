@@ -329,8 +329,8 @@ async def scan_messages(
 
     if policies["caps"]["state"] != AutoModState.DISABLED.value and len(message.content) > 15:
         chars = [char for char in message.content if char.isalnum()]
-        uppers = [char for char in chars if char.isupper()]
-        if len(uppers) / len(chars) > 0.6:
+        uppers = [char for char in chars if char.isupper() and char.isalnum()]
+        if chars and len(uppers) / len(chars) > 0.6:
             return await punish(
                 message,
                 policies,

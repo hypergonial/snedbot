@@ -226,6 +226,14 @@ def can_harm(
             raise errors.RoleHierarchyError
         return False
 
+    guild = member.get_guild()
+    assert guild is not None
+
+    if guild.owner_id == member.id:
+        if raise_error:
+            raise errors.RoleHierarchyError
+        return False
+
     return True
 
 
