@@ -18,7 +18,7 @@ license = "GNU GPL-v3"
 python = ">=3.10,<3.11"
 # Change dateparser to 1.1.1 due to broken dependency issue
 dateparser = {git = "https://github.com/scrapinghub/dateparser.git", tag="v1.1.1"}
-psutil = "^5.9.0"
+psutil = "^5.9.1"
 Pillow = "^9.1.1"
 asyncpg = "^0.25.0"
 Levenshtein = "^0.18.1"
