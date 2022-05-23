@@ -144,23 +144,20 @@ class Scheduler:
             matches = time_regex.findall(timestr)
             time = 0
 
-            for val, category in matches:
-                val = val.replace(",", ".")  # Replace commas with periods to correctly register decimal places
+            for input, category in matches:
+                input = input.replace(",", ".")  # Replace commas with periods to correctly register decimal places
                 # If this is a single letter
 
                 if len(category) == 1:
-                    if category in time_letter_dict.keys():
-                        time += time_letter_dict[category] * float(val)
+                    if value := time_letter_dict.get(category):
+                        time += value * float(input)
 
                 else:
-                    # If a partial match is found with any of the keys
-                    # Reason for making the same code here is because words are case-insensitive, as opposed to single letters
-
-                    for string in time_word_dict.keys():
+                    for string, value in time_word_dict.items():
                         if (
-                            lev.distance(category.lower(), string.lower()) <= 1
-                        ):  # If str has 1 or less different letters (For plural)
-                            time += time_word_dict[string] * float(val)
+                            category.lower() == string or category.lower()[:-1] == string
+                        ):  # Account for plural forms of the word
+                            time += value * float(input)
                             break
 
             if time > 0:  # If we found time
