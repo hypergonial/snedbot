@@ -430,7 +430,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
         img.save(buffer, format="PNG")
         return buffer
 
-    buffer: BytesIO = await asyncio.get_running_loop().run_in_executor(None, create_image())  # type: ignore
+    buffer: BytesIO = await asyncio.get_running_loop().run_in_executor(None, create_image)
     await ctx.respond(
         embed=hikari.Embed(
             description="🏁 Type in the text from above as fast as you can!",
