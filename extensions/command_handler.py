@@ -74,44 +74,21 @@ async def log_exc_to_channel(
             logging.error(f"Failed sending traceback to error-logging channel: {error}")
 
 
-async def application_error_handler(ctx: SnedContext, error: lightbulb.LightbulbError) -> None:
+async def application_error_handler(ctx: SnedContext, error: BaseException) -> None:
 
     if isinstance(error, lightbulb.CheckFailure):
-        cause = error.causes[0] if error.causes else error.__cause__
+        error = error.causes[0] if error.causes else error.__cause__ if error.__cause__ else error
 
-        if isinstance(cause, UserBlacklistedError):
-            await ctx.respond(
-                embed=hikari.Embed(
-                    title="❌ Application access terminated",
-                    color=const.ERROR_COLOR,
-                ),
-                flags=hikari.MessageFlag.EPHEMERAL,
-            )
-            return
+    if isinstance(error, UserBlacklistedError):
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Application access terminated",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
 
-        if isinstance(cause, lightbulb.MissingRequiredPermission):
-            await ctx.respond(
-                embed=hikari.Embed(
-                    title="❌ Missing Permissions",
-                    description=f"You require `{get_perm_str(cause.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-                    color=const.ERROR_COLOR,
-                ),
-                flags=hikari.MessageFlag.EPHEMERAL,
-            )
-            return
-
-        if isinstance(cause, lightbulb.BotMissingRequiredPermission):
-            await ctx.respond(
-                embed=hikari.Embed(
-                    title="❌ Bot Missing Permissions",
-                    description=f"The bot requires `{get_perm_str(cause.missing_perms).replace('|', ', ')}` permissions to execute this command.",
-                    color=const.ERROR_COLOR,
-                ),
-                flags=hikari.MessageFlag.EPHEMERAL,
-            )
-            return
-
-    # These may be raised outside of a check too
     if isinstance(error, lightbulb.MissingRequiredPermission):
         await ctx.respond(
             embed=hikari.Embed(
