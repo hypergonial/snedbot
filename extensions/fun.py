@@ -638,7 +638,7 @@ async def dice(ctx: SnedSlashContext, sides: t.Optional[int] = None, amount: t.O
     amount = amount or 1
     sides = sides or 6
 
-    calc = " ".join([f"`[{i+1}: {random.randint(1, sides)}]`" for i in range(0, amount)])
+    calc = " ".join([f"`[{random.randint(1, sides)}]`" for i in range(0, amount)])
 
     await ctx.respond(
         embed=hikari.Embed(
