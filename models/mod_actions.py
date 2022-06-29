@@ -312,7 +312,7 @@ class ModActions:
 
         else:
             await event.member.edit(
-                communication_disabled_until=expiry,
+                communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=expiry),
                 reason="Automatic timeout extension applied.",
             )
 
