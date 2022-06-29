@@ -640,7 +640,14 @@ async def penguinfact(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.command("dice", "Roll the dice!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def dice(ctx: SnedSlashContext, sides: int = 6, amount: int = 1, show_sum: bool = False) -> None:
+async def dice(
+    ctx: SnedSlashContext,
+    sides: t.Optional[int] = None,
+    amount: t.Optional[int] = None,
+    show_sum: t.Optional[bool] = None,
+) -> None:
+    sides = sides or 6
+    amount = amount or 1
     throws = [random.randint(1, sides) for _ in range(amount)]
     description = f'**Results (`{amount}d{sides}`):** {" ".join([f"`[{throw}]`" for throw in throws])}'
 
