@@ -652,7 +652,7 @@ async def dice(
     description = f'**Results (`{amount}d{sides}`):** {" ".join([f"`[{throw}]`" for throw in throws])}'
 
     if show_sum:
-        description += f"\n**Sum:** `{sum(throws)}`."
+        description += f"\n**Sum:** `{sum(throws)}`"
 
     await ctx.respond(
         embed=hikari.Embed(
