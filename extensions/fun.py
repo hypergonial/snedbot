@@ -629,21 +629,28 @@ async def penguinfact(ctx: SnedSlashContext) -> None:
     "The amount of sides a single die should have. 6 by default.",
     required=False,
     type=int,
-    min_value=6,
+    min_value=4,
     max_value=100,
+)
+@lightbulb.option(
+    "show_sum",
+    "If true, shows the sum of the throws. False by default.",
+    required=False,
+    type=bool,
 )
 @lightbulb.command("dice", "Roll the dice!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def dice(ctx: SnedSlashContext, sides: t.Optional[int] = None, amount: t.Optional[int] = None) -> None:
-    amount = amount or 1
-    sides = sides or 6
+async def dice(ctx: SnedSlashContext, sides: int = 6, amount: int = 1, show_sum: bool = False) -> None:
+    throws = [random.randint(1, sides) for _ in range(amount)]
+    description = f'**Results (`{amount}d{sides}`):** {" ".join([f"`[{throw}]`" for throw in throws])}'
 
-    calc = " ".join([f"`[{random.randint(1, sides)}]`" for i in range(0, amount)])
+    if show_sum:
+        description += f"\n**Sum:** `{sum(throws)}`."
 
     await ctx.respond(
         embed=hikari.Embed(
             title=f"🎲 Rolled the {'die' if amount == 1 else 'dice'}!",
-            description=f"**Results (`{amount}d{sides}`):** {calc}",
+            description=description,
             color=const.EMBED_BLUE,
         )
     )
