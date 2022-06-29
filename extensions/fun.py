@@ -700,23 +700,25 @@ async def randomdog(ctx: SnedSlashContext) -> None:
         await ctx.respond(embed=embed)
 
 
-@fun.command
-@lightbulb.command("fox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def randomfox(ctx: SnedSlashContext) -> None:
-    async with ctx.app.session.get("https://foxapi.dev/foxes/") as response:
-        if response.status == 200:
-            foxjson = await response.json()
+# API was shut down
 
-            embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00).set_image(foxjson["image"])
-        else:
-            embed = hikari.Embed(
-                title="🦊 Random fox",
-                description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
-                color=const.ERROR_COLOR,
-            )
-
-        await ctx.respond(embed=embed)
+# @fun.command
+# @lightbulb.command("fox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
+# @lightbulb.implements(lightbulb.SlashCommand)
+# async def randomfox(ctx: SnedSlashContext) -> None:
+#    async with ctx.app.session.get("https://foxapi.dev/foxes/") as response:
+#        if response.status == 200:
+#            foxjson = await response.json()
+#
+#            embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00).set_image(foxjson["image"])
+#        else:
+#            embed = hikari.Embed(
+#                title="🦊 Random fox",
+#                description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
+#                color=const.ERROR_COLOR,
+#            )
+#
+#        await ctx.respond(embed=embed)
 
 
 @fun.command
