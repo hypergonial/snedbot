@@ -21,6 +21,7 @@ from PIL import ImageFont
 from etc import constants as const
 from models import SnedBot
 from models import SnedSlashContext
+from models import components
 from models.checks import bot_has_permissions
 from models.context import SnedContext
 from models.context import SnedUserContext
@@ -620,6 +621,36 @@ async def penguinfact(ctx: SnedSlashContext) -> None:
     )
 
 
+def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
+    """Roll dice & generate embed for user display.
+
+    Parameters
+    ----------
+    amount : int
+        Amount of dice to roll.
+    sides : int
+        The number of sides on the dice.
+    show_sum : bool
+        Determines if the sum is shown to the user or not.
+
+    Returns
+    -------
+    hikari.Embed
+        The diceroll results as an embed.
+    """
+    throws = [random.randint(1, sides) for _ in range(amount)]
+    description = f'**Results (`{amount}d{sides}`):** {" ".join([f"`[{throw}]`" for throw in throws])}'
+
+    if show_sum:
+        description += f"\n**Sum:** `{sum(throws)}`"
+
+    return hikari.Embed(
+        title=f"🎲 Rolled the {'die' if amount == 1 else 'dice'}!",
+        description=description,
+        color=const.EMBED_BLUE,
+    )
+
+
 @fun.command
 @lightbulb.option(
     "amount", "The amount of dice to roll. 1 by default.", required=False, type=int, min_value=1, max_value=20
@@ -648,19 +679,41 @@ async def dice(
 ) -> None:
     sides = sides or 6
     amount = amount or 1
-    throws = [random.randint(1, sides) for _ in range(amount)]
-    description = f'**Results (`{amount}d{sides}`):** {" ".join([f"`[{throw}]`" for throw in throws])}'
-
-    if show_sum:
-        description += f"\n**Sum:** `{sum(throws)}`"
+    show_sum = show_sum or False
 
     await ctx.respond(
-        embed=hikari.Embed(
-            title=f"🎲 Rolled the {'die' if amount == 1 else 'dice'}!",
-            description=description,
-            color=const.EMBED_BLUE,
-        )
+        embed=roll_dice(amount, sides, show_sum),
+        components=miru.View().add_item(
+            miru.Button(emoji="🎲", label="Reroll", custom_id=f"DICE:{amount}:{sides}:{int(show_sum)}:{ctx.author.id}")
+        ),
     )
+
+
+@fun.listener(miru.ComponentInteractionCreateEvent)
+async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
+    if event.custom_id.startswith("DICE:"):
+        amount, sides, show_sum, author_id = event.custom_id.split(":")
+        amount, sides, show_sum, author_id = int(amount), int(sides), bool(show_sum), hikari.Snowflake(author_id)
+
+        if event.author.id != author_id:
+            await event.context.respond(
+                embed=hikari.Embed(
+                    title="❌ Cannot reroll",
+                    description=f"Only the user who rolled the dice can reroll it.",
+                    color=const.ERROR_COLOR,
+                )
+            )
+
+        await event.context.respond(
+            embed=roll_dice(amount, sides, show_sum),
+            components=miru.View().add_item(
+                miru.Button(
+                    emoji="🎲",
+                    label="Reroll",
+                    custom_id=f"DICE:{amount}:{sides}:{int(show_sum)}:{event.context.author.id}",
+                )
+            ),
+        )
 
 
 @fun.command
