@@ -19,7 +19,7 @@ python = ">=3.10,<3.11"
 # Change dateparser to 1.1.1 due to broken dependency issue
 dateparser = {git = "https://github.com/scrapinghub/dateparser.git", tag="v1.1.1"}
 psutil = "^5.9.1"
-Pillow = "^9.1.1"
+Pillow = "^9.2.0"
 asyncpg = "^0.25.0"
 Levenshtein = "^0.18.1"
 uvloop = {version = "==0.16.0", platform="linux"}
@@ -32,7 +32,7 @@ hikari-lightbulb = {git = "https://github.com/HyperGH/hikari-lightbulb.git", bra
 hikari-miru = {git = "https://github.com/HyperGH/hikari-miru.git", branch="cursed/branch"}
 
 [tool.poetry.dev-dependencies]
-black = "^22.3"
+black = "^22.6"
 isort = "^5.10.1"
 
 [build-system]
