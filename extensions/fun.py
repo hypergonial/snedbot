@@ -704,6 +704,7 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,
             )
+            return
 
         await event.context.edit_response(
             embed=roll_dice(amount, sides, show_sum),
