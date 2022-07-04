@@ -701,10 +701,11 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
                     title="❌ Cannot reroll",
                     description=f"Only the user who rolled the dice can reroll it.",
                     color=const.ERROR_COLOR,
-                )
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
             )
 
-        await event.context.respond(
+        await event.context.edit_response(
             embed=roll_dice(amount, sides, show_sum),
             components=miru.View().add_item(
                 miru.Button(
