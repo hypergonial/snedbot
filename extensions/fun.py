@@ -661,7 +661,7 @@ def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
     required=False,
     type=int,
     min_value=4,
-    max_value=100,
+    max_value=1000,
 )
 @lightbulb.option(
     "show_sum",
@@ -693,7 +693,7 @@ async def dice(
 async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
     if event.custom_id.startswith("DICE:"):
         amount, sides, show_sum, author_id = event.custom_id.split(":", maxsplit=1)[1].split(":")
-        amount, sides, show_sum, author_id = int(amount), int(sides), bool(show_sum), hikari.Snowflake(author_id)
+        amount, sides, show_sum, author_id = int(amount), int(sides), bool(int(show_sum)), hikari.Snowflake(author_id)
 
         if event.author.id != author_id:
             await event.context.respond(
