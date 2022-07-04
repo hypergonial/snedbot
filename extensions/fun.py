@@ -692,7 +692,7 @@ async def dice(
 @fun.listener(miru.ComponentInteractionCreateEvent)
 async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
     if event.custom_id.startswith("DICE:"):
-        amount, sides, show_sum, author_id = event.custom_id.split(":")
+        amount, sides, show_sum, author_id = event.custom_id.split(":", maxsplit=1)[1].split(":")
         amount, sides, show_sum, author_id = int(amount), int(sides), bool(show_sum), hikari.Snowflake(author_id)
 
         if event.author.id != author_id:
