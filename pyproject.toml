@@ -21,7 +21,7 @@ dateparser = {git = "https://github.com/scrapinghub/dateparser.git", tag="v1.1.1
 psutil = "^5.9.1"
 Pillow = "^9.2.0"
 asyncpg = "^0.25.0"
-Levenshtein = "^0.18.1"
+Levenshtein = "^0.18.2"
 uvloop = {version = "==0.16.0", platform="linux"}
 aiodns = "~=3.0"
 cchardet = "~=2.1"
