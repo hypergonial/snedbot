@@ -28,7 +28,7 @@ DO
 $do$
 DECLARE _schema_version integer;
 BEGIN
-    SELECT 3 INTO _schema_version; -- The current schema version, change this when creating new migrations
+    SELECT 5 INTO _schema_version; -- The current schema version, change this when creating new migrations
 
 	IF NOT EXISTS (SELECT schema_version FROM schema_info) THEN
 		INSERT INTO schema_info (schema_version) 
