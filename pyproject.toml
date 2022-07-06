@@ -16,8 +16,7 @@ license = "GNU GPL-v3"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-# Change dateparser to 1.1.1 due to broken dependency issue
-dateparser = {git = "https://github.com/scrapinghub/dateparser.git", tag="v1.1.1"}
+dateparser = "^1.1.1"
 psutil = "^5.9.1"
 Pillow = "^9.2.0"
 asyncpg = "^0.25.0"
