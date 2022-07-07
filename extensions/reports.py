@@ -169,6 +169,7 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
 
 
 @reports.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("user", "The user that is to be reported.", type=hikari.Member, required=True)
 @lightbulb.command("report", "Report a user to the moderation team of this server.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -178,6 +179,7 @@ async def report_cmd(ctx: SnedSlashContext, user: hikari.Member) -> None:
 
 
 @reports.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("Report User", "Report the targeted user to the moderation team of this server.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
 async def report_user_cmd(ctx: SnedUserContext, target: hikari.Member) -> None:
@@ -186,6 +188,7 @@ async def report_user_cmd(ctx: SnedUserContext, target: hikari.Member) -> None:
 
 
 @reports.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command(
     "Report Message", "Report the targeted message to the moderation team of this server.", pass_options=True
 )

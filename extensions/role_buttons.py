@@ -211,6 +211,7 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
 
 
 @role_buttons.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_ROLES, dm_enabled=False)
 @lightbulb.command("rolebutton", "Commands relating to rolebuttons.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def rolebutton(ctx: SnedSlashContext) -> None:
@@ -218,7 +219,6 @@ async def rolebutton(ctx: SnedSlashContext) -> None:
 
 
 @rolebutton.child
-@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.command("list", "List all registered rolebuttons on this server.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_list(ctx: SnedSlashContext) -> None:
@@ -263,7 +263,6 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
 
 
 @rolebutton.child
-@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
     "button_id",
     "The ID of the rolebutton to delete. You can get this via /rolebutton list",
@@ -311,7 +310,6 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 
 
 @rolebutton.child
-@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
     "mode",
     "The mode of operation for this rolebutton.",
@@ -427,7 +425,6 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
 
 
 @rolebutton.child
-@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
     "mode",
     "The mode of operation for this rolebutton.",
@@ -552,7 +549,6 @@ async def rolebutton_add(
 
 
 @rolebutton.child
-@lightbulb.add_checks(has_permissions(hikari.Permissions.MANAGE_ROLES))
 @lightbulb.option(
     "prompt_type",
     "'add' is displayed to the user when the role is added, 'remove' is when it is removed.",

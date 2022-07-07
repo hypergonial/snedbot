@@ -28,6 +28,7 @@ RGB_REGEX = re.compile(r"[0-9]{1,3} [0-9]{1,3} [0-9]{1,3}")
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=True)
 @lightbulb.command("ping", "Check the bot's latency.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def ping(ctx: SnedSlashContext) -> None:
@@ -41,6 +42,7 @@ async def ping(ctx: SnedSlashContext) -> None:
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("detach", "Send the embed in a detached manner from the slash command.", type=bool, required=False)
 @lightbulb.option(
     "color",
@@ -187,6 +189,7 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=True)
 @lightbulb.command("about", "Displays information about the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def about(ctx: SnedSlashContext) -> None:
@@ -226,6 +229,7 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=True)
 @lightbulb.command("invite", "Invite the bot to your server!")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def invite(ctx: SnedSlashContext) -> None:
@@ -250,9 +254,9 @@ async def invite(ctx: SnedSlashContext) -> None:
 
 
 @misc.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_NICKNAMES, dm_enabled=False)
 @lightbulb.add_cooldown(10.0, 1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
-    has_permissions(hikari.Permissions.MANAGE_NICKNAMES),
     bot_has_permissions(hikari.Permissions.CHANGE_NICKNAME),
 )
 @lightbulb.option("nickname", "The nickname to set the bot's nickname to. Type 'None' to reset it!")
@@ -286,6 +290,7 @@ async def source(ctx: SnedSlashContext) -> None:
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("serverinfo", "Provides detailed information about this server.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def serverinfo(ctx: SnedSlashContext) -> None:
@@ -323,9 +328,9 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 
 
 @misc.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
-    has_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option(
     "channel",
@@ -367,11 +372,11 @@ async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.Inte
 
 
 @misc.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(
         hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
     ),
-    has_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option("message_link", "You can get this by right-clicking a message.", type=str)
 @lightbulb.command("edit", "Edit a message that was sent by the bot.", pass_options=True)
@@ -448,6 +453,7 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY
@@ -470,6 +476,7 @@ async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("timezone", "The timezone to set as your default. Example: 'Europe/Kiev'", autocomplete=True)
 @lightbulb.command(
     "timezone", "Sets your preferred timezone for other time-related commands to use.", pass_options=True
@@ -519,6 +526,7 @@ async def tz_opts(
 
 
 @misc.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option(
     "style",
     "Timestamp style.",

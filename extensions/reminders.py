@@ -212,6 +212,7 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
 
 
 @reminders.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("reminder", "Manage reminders!")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def reminder(ctx: SnedSlashContext) -> None:

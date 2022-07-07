@@ -1352,10 +1352,10 @@ async def ask_settings(
 
 
 @settings.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_GUILD, dm_enabled=False)
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
-    has_permissions(hikari.Permissions.MANAGE_GUILD),
 )
 @lightbulb.command("settings", "Adjust different settings of the bot via an interactive menu.")
 @lightbulb.implements(lightbulb.SlashCommand)

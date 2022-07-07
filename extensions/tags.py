@@ -68,6 +68,7 @@ class TagEditorModal(miru.Modal):
 
 
 @tags.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("ephemeral", "If True, sends the tag in a way that only you can see it.", type=bool, default=False)
 @lightbulb.option("name", "The name of the tag you want to call.", autocomplete=True)
 @lightbulb.command("tag", "Call a tag and display it's contents.", pass_options=True)
@@ -101,6 +102,7 @@ async def tag_name_ac(
 
 
 @tags.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("tags", "All commands for managing tags.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def tag_group(ctx: SnedSlashContext) -> None:

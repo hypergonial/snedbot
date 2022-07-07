@@ -82,6 +82,7 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
 
 
 @help.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option(
     "topic",
     "A specific topic to get help about.",

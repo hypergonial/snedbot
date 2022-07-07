@@ -21,7 +21,6 @@ from PIL import ImageFont
 from etc import constants as const
 from models import SnedBot
 from models import SnedSlashContext
-from models import components
 from models.checks import bot_has_permissions
 from models.context import SnedContext
 from models.context import SnedUserContext
@@ -337,6 +336,7 @@ class DictionaryNavigator(AuthorOnlyNavigator):
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("size", "The size of the board. Default is 3.", required=False, choices=["3", "4", "5"])
 @lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
 @lightbulb.command("tictactoe", "Play tic tac toe with someone!", pass_options=True)
@@ -382,6 +382,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.set_max_concurrency(1, lightbulb.ChannelBucket)
 @lightbulb.add_checks(bot_has_permissions(hikari.Permissions.ADD_REACTIONS))
 @lightbulb.option("length", "The amount of words provided.", required=False, type=int, min_value=1, max_value=15)
@@ -502,6 +503,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.add_checks(has_dictionary_client)
 @lightbulb.option("word", "The word to look up.", required=True, autocomplete=True)
 @lightbulb.command("dictionary", "Look up a word in the dictionary!", pass_options=True)
@@ -531,6 +533,7 @@ async def dictionary_lookup(ctx: SnedSlashContext, word: str) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.add_checks(has_dictionary_client)
 @lightbulb.option("word", "The word to look up.", required=True)
 @lightbulb.command("urban", "Look up a word in the Urban dictionary!", pass_options=True)
@@ -554,6 +557,7 @@ async def urban_lookup(ctx: SnedSlashContext, word: str) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option(
     "show_global",
     "To show the global avatar or not, if applicable",
@@ -579,6 +583,7 @@ async def avatar(
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("Show Avatar", "Displays the target's avatar for your viewing pleasure.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
 async def avatar_context(ctx: SnedUserContext, target: t.Union[hikari.User, hikari.Member]) -> None:
@@ -592,6 +597,7 @@ async def avatar_context(ctx: SnedUserContext, target: t.Union[hikari.User, hika
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("funfact", "Shows a random fun fact.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def funfact(ctx: SnedSlashContext) -> None:
@@ -607,6 +613,7 @@ async def funfact(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("penguinfact", "Shows a fact about penguins.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def penguinfact(ctx: SnedSlashContext) -> None:
@@ -652,6 +659,7 @@ def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option(
     "amount", "The amount of dice to roll. 1 by default.", required=False, type=int, min_value=1, max_value=20
 )
@@ -719,6 +727,7 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("cat", "Searches the interwebz™️ for a random cat picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomcat(ctx: SnedSlashContext) -> None:
@@ -738,6 +747,7 @@ async def randomcat(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("dog", "Searches the interwebz™️ for a random dog picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomdog(ctx: SnedSlashContext) -> None:
@@ -756,6 +766,7 @@ async def randomdog(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("fox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomfox(ctx: SnedSlashContext) -> None:
@@ -775,6 +786,7 @@ async def randomfox(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("otter", "Searches the interwebz™️ for a random otter picture.", auto_defer=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def randomotter(ctx: SnedSlashContext) -> None:
@@ -796,6 +808,7 @@ async def randomotter(ctx: SnedSlashContext) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("question", "The question you want to ask of the mighty 8ball.")
 @lightbulb.command("8ball", "Ask a question, and the answers shall reveal themselves.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -812,6 +825,7 @@ async def eightball(ctx: SnedSlashContext, question: str) -> None:
 
 
 @fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("query", "The query you want to search for on Wikipedia.")
 @lightbulb.command("wiki", "Search Wikipedia for articles!", auto_defer=True, pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)

@@ -51,6 +51,7 @@ async def search_fandom(site: str, query: str) -> str:
 
 
 @fandom.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("query", "What are you looking for?")
 @lightbulb.option("wiki", "Choose the wiki to get results from. This is the 'xxxx.fandom.com' part of the URL.")
 @lightbulb.command("fandom", "Search a Fandom wiki for articles!", pass_options=True)

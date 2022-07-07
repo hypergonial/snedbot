@@ -28,6 +28,7 @@ mod = SnedPlugin("Moderation", include_datastore=True)
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_GUILD, dm_enabled=False)
 @lightbulb.option("user", "The user to show information about.", type=hikari.User)
 @lightbulb.command("whois", "Show user information about the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
@@ -37,6 +38,7 @@ async def whois(ctx: SnedSlashContext, user: hikari.User) -> None:
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_GUILD, dm_enabled=False)
 @lightbulb.command("Show Userinfo", "Show user information about the target user.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
 async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
@@ -45,10 +47,10 @@ async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
 @lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY),
-    has_permissions(hikari.Permissions.MANAGE_MESSAGES),
 )
 @lightbulb.option("user", "Only delete messages authored by this user.", type=hikari.User, required=False)
 @lightbulb.option("regex", "Only delete messages that match with the regular expression.", required=False)
@@ -160,9 +162,9 @@ async def purge(ctx: SnedSlashContext) -> None:
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_NICKNAMES, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.MANAGE_NICKNAMES),
-    has_permissions(hikari.Permissions.MANAGE_NICKNAMES),
     is_invoker_above_target,
     is_above_target,
 )
@@ -204,6 +206,7 @@ async def deobfuscate_nick(ctx: SnedSlashContext, user: hikari.Member, strict: b
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
 @lightbulb.command("journal", "Access and manage the moderation journal.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def journal(ctx: SnedSlashContext) -> None:
@@ -211,7 +214,6 @@ async def journal(ctx: SnedSlashContext) -> None:
 
 
 @journal.child
-@lightbulb.add_checks(has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("user", "The user to retrieve the journal for.", type=hikari.User)
 @lightbulb.command("get", "Retrieve the journal for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
@@ -236,7 +238,6 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
 
 
 @journal.child
-@lightbulb.add_checks(has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
 @lightbulb.option("note", "The journal note to add.")
 @lightbulb.option("user", "The user to add a journal entry for.", type=hikari.User)
 @lightbulb.command("add", "Add a new journal entry for the specified user.", pass_options=True)
@@ -256,7 +257,8 @@ async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> No
 
 
 @mod.command
-@lightbulb.add_checks(is_invoker_above_target, has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
+@lightbulb.add_checks(is_invoker_above_target)
 @lightbulb.option("reason", "The reason for this warn", required=False)
 @lightbulb.option("user", "The user to be warned.", type=hikari.Member)
 @lightbulb.command(
@@ -278,6 +280,7 @@ async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
 @lightbulb.command("warns", "Manage warnings.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def warns(ctx: SnedSlashContext) -> None:
@@ -304,7 +307,7 @@ async def warns_list(ctx: SnedSlashContext, user: hikari.Member) -> None:
 
 
 @warns.child
-@lightbulb.add_checks(is_invoker_above_target, has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.add_checks(is_invoker_above_target)
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to clear warnings for.", type=hikari.Member)
 @lightbulb.command("clear", "Clear warnings for the specified user.", pass_options=True)
@@ -325,7 +328,7 @@ async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opti
 
 
 @warns.child
-@lightbulb.add_checks(is_invoker_above_target, has_permissions(hikari.Permissions.VIEW_AUDIT_LOG))
+@lightbulb.add_checks(is_invoker_above_target)
 @lightbulb.option("reason", "The reason for clearing this user's warns.", required=False)
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
 @lightbulb.command("remove", "Remove a single warning from the specified user.", pass_options=True)
@@ -347,9 +350,9 @@ async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opt
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MODERATE_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.MODERATE_MEMBERS),
-    has_permissions(hikari.Permissions.MODERATE_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -408,6 +411,7 @@ async def timeout_cmd(
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MODERATE_MEMBERS, dm_enabled=False)
 @lightbulb.command("timeouts", "Manage timeouts.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def timeouts(ctx: SnedSlashContext) -> None:
@@ -417,7 +421,6 @@ async def timeouts(ctx: SnedSlashContext) -> None:
 @timeouts.child
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.MODERATE_MEMBERS),
-    has_permissions(hikari.Permissions.MODERATE_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -460,9 +463,9 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.BAN_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
-    has_permissions(hikari.Permissions.BAN_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -540,9 +543,9 @@ async def ban_cmd(
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.KICK_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
-    has_permissions(hikari.Permissions.KICK_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -579,9 +582,9 @@ async def softban_cmd(
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.BAN_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
-    has_permissions(hikari.Permissions.BAN_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -606,9 +609,9 @@ async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.KICK_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.KICK_MEMBERS),
-    has_permissions(hikari.Permissions.KICK_MEMBERS),
     is_above_target,
     is_invoker_above_target,
 )
@@ -634,9 +637,9 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_CHANNELS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.MANAGE_CHANNELS, hikari.Permissions.MANAGE_MESSAGES),
-    has_permissions(hikari.Permissions.MANAGE_CHANNELS),
 )
 @lightbulb.option(
     "interval", "The slowmode interval in seconds, use 0 to disable it.", type=int, min_value=0, max_value=21600
@@ -655,11 +658,11 @@ async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
 
 
 @mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.NONE, dm_enabled=False)
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_cooldown(60.0, 1, bucket=lightbulb.GuildBucket)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
-    has_permissions(hikari.Permissions.BAN_MEMBERS),
 )
 @lightbulb.option(
     "show",

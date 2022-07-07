@@ -243,6 +243,7 @@ async def on_reaction(
 
 
 @starboard.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("star", "Handle the starboard.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
 async def star(ctx: SnedSlashContext) -> None:

@@ -70,6 +70,7 @@ PERM_DESCRIPTIONS = {
 
 
 @troubleshooter.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_GUILD, dm_enabled=False)
 @lightbulb.command("troubleshoot", "Diagnose and locate common configuration issues.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def troubleshoot(ctx: SnedSlashContext) -> None:
