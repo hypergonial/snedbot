@@ -298,9 +298,9 @@ async def scan_messages(
 
     policies = await get_policies(message.guild_id)
 
-    if policies["mass_mentions"]["state"] != AutoModState.DISABLED.value and message.mentions.users:
+    if policies["mass_mentions"]["state"] != AutoModState.DISABLED.value and message.user_mentions:
         assert message.author
-        mentions = sum(user.id != message.author.id and not user.is_bot for user in message.mentions.users.values())
+        mentions = sum(user.id != message.author.id and not user.is_bot for user in message.user_mentions.values())
 
         if mentions >= policies["mass_mentions"]["count"]:
             return await punish(
