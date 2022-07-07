@@ -658,7 +658,7 @@ async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
 
 
 @mod.command
-@lightbulb.app_command_permissions(hikari.Permissions.NONE, dm_enabled=False)
+@lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_cooldown(60.0, 1, bucket=lightbulb.GuildBucket)
 @lightbulb.add_checks(
