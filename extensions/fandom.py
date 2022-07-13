@@ -77,6 +77,7 @@ async def fandom_cmd(ctx: SnedSlashContext, wiki: str, query: str) -> None:
 
 
 @fandom.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option(
     "wiki",
     "Choose the wiki to get results from. Defaults to 1800 if not specified.",
@@ -114,6 +115,7 @@ async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> Non
 
 
 @fandom.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("query", "What are you looking for?")
 @lightbulb.command(
     "ffwiki",
