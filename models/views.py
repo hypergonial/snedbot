@@ -72,7 +72,7 @@ class AuthorOnlyNavigator(SnedNavigator):
         *,
         pages: List[Union[str, hikari.Embed]],
         buttons: Optional[List[nav.NavButton]] = None,
-        timeout: Optional[float] = 120,
+        timeout: Optional[float] = 300,
         autodefer: bool = True,
     ) -> None:
         self.lctx = lctx

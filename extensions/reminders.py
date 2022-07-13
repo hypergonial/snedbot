@@ -377,7 +377,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
         for content in reminders
     ]
     # TODO: wtf
-    navigator = AuthorOnlyNavigator(ctx, pages=pages)  # type: ignore
+    navigator = AuthorOnlyNavigator(ctx, pages=pages, timeout=600)  # type: ignore
     await navigator.send(ctx.interaction)
 
 
