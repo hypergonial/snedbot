@@ -48,7 +48,6 @@ class ModerationFlags(enum.Flag):
     """An empty set of moderation setting flags."""
 
     DM_USERS_ON_PUNISH = 1 << 0
-
     """DM users when punishing them via a moderation action."""
 
     IS_EPHEMERAL = 1 << 1
