@@ -67,12 +67,26 @@ async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
     assert me
 
+    if role.is_managed or role.is_premium_subscriber_role:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role is managed",
+                description="This role is managed by another integration and cannot be assigned manually to a user.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
+
     bot_top_role = me.get_top_role()
     if not bot_top_role or bot_top_role.position <= role.position:
         raise errors.BotRoleHierarchyError("Target role is higher than bot's highest role.")
 
     author_top_role = ctx.member.get_top_role()
-    if not author_top_role or author_top_role.position <= role.position:
+    guild = ctx.get_guild()
+    if (not author_top_role or author_top_role.position <= role.position) and (
+        not guild or guild.owner_id != ctx.member.id
+    ):
         raise errors.RoleHierarchyError("Target role is higher than your highest role.")
 
     await ctx.app.rest.add_role_to_member(
@@ -92,12 +106,26 @@ async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
     assert me
 
+    if role.is_managed or role.is_premium_subscriber_role:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role is managed",
+                description="This role is managed by another integration and cannot be assigned manually to a user.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
+
     bot_top_role = me.get_top_role()
     if not bot_top_role or bot_top_role.position <= role.position:
         raise errors.BotRoleHierarchyError("Target role is higher than bot's highest role.")
 
     author_top_role = ctx.member.get_top_role()
-    if not author_top_role or author_top_role.position <= role.position:
+    guild = ctx.get_guild()
+    if (not author_top_role or author_top_role.position <= role.position) and (
+        not guild or guild.owner_id != ctx.member.id
+    ):
         raise errors.RoleHierarchyError("Target role is higher than your highest role.")
 
     await ctx.app.rest.remove_role_from_member(
