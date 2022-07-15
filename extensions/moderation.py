@@ -9,6 +9,7 @@ import miru
 
 import models
 from etc import constants as const
+from models import errors
 from models.bot import SnedBot
 from models.checks import bot_has_permissions
 from models.checks import has_permissions
@@ -44,6 +45,64 @@ async def whois(ctx: SnedSlashContext, user: hikari.User) -> None:
 async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
     embed = await helpers.get_userinfo(ctx, target)
     await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+
+@mod.command
+@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_ROLES, dm_enabled=False)
+@lightbulb.command("role", "Manage roles using commands.", pass_options=True)
+@lightbulb.implements(lightbulb.SlashCommandGroup)
+async def role_group(ctx: SnedSlashContext) -> None:
+    pass
+
+
+@role_group.child
+@lightbulb.option("role", "The role to add", type=hikari.Role)
+@lightbulb.option("user", "The user to add the role to", type=hikari.Member)
+@lightbulb.command("add", "Add a role to the target user.", pass_options=True)
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role) -> None:
+    helpers.is_member(user)
+    assert ctx.guild_id and ctx.member
+
+    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    assert me
+
+    bot_top_role = me.get_top_role()
+    if not bot_top_role or bot_top_role.position <= role.position:
+        raise errors.BotRoleHierarchyError("Target role is higher than bot's highest role.")
+
+    author_top_role = ctx.member.get_top_role()
+    if not author_top_role or author_top_role.position <= role.position:
+        raise errors.RoleHierarchyError("Target role is higher than your highest role.")
+
+    await ctx.app.rest.add_role_to_member(
+        ctx.guild_id, user, role, reason=f"{ctx.member} ({ctx.member.id}): Added role via Sned"
+    )
+
+
+@role_group.child
+@lightbulb.option("role", "The role to remove", type=hikari.Role)
+@lightbulb.option("user", "The user to remove the role from", type=hikari.Member)
+@lightbulb.command("remove", "Remove a role from the target user.", pass_options=True)
+@lightbulb.implements(lightbulb.SlashSubCommand)
+async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role) -> None:
+    helpers.is_member(user)
+    assert ctx.guild_id and ctx.member
+
+    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    assert me
+
+    bot_top_role = me.get_top_role()
+    if not bot_top_role or bot_top_role.position <= role.position:
+        raise errors.BotRoleHierarchyError("Target role is higher than bot's highest role.")
+
+    author_top_role = ctx.member.get_top_role()
+    if not author_top_role or author_top_role.position <= role.position:
+        raise errors.RoleHierarchyError("Target role is higher than your highest role.")
+
+    await ctx.app.rest.remove_role_from_member(
+        ctx.guild_id, user, role, reason=f"{ctx.member} ({ctx.member.id}): Removed role via Sned"
+    )
 
 
 @mod.command
