@@ -363,7 +363,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
         params["emoji"] = hikari.Emoji.parse(emoji)
 
     if role := params.pop("role", None):
-        if role.is_managed or role.is_premium_subscriber_role:
+        if role.is_managed or role.is_premium_subscriber_role or role.id == ctx.guild_id:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Role is managed",
@@ -475,7 +475,7 @@ async def rolebutton_add(
         )
         return
 
-    if role.is_managed or role.is_premium_subscriber_role:
+    if role.is_managed or role.is_premium_subscriber_role or role.id == ctx.guild_id:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Role is managed",

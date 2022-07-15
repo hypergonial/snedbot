@@ -67,7 +67,7 @@ async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
     assert me
 
-    if role.is_managed or role.is_premium_subscriber_role:
+    if role.is_managed or role.is_premium_subscriber_role or role.id == ctx.guild_id:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Role is managed",
@@ -106,7 +106,7 @@ async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
     assert me
 
-    if role.is_managed or role.is_premium_subscriber_role:
+    if role.is_managed or role.is_premium_subscriber_role or role.id == ctx.guild_id:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Role is managed",
