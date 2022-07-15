@@ -78,6 +78,17 @@ async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
         )
         return
 
+    if role.id in user.role_ids:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role already assigned",
+                description="This user already has this role.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
+
     bot_top_role = me.get_top_role()
     if not bot_top_role or bot_top_role.position <= role.position:
         raise errors.BotRoleHierarchyError("Target role is higher than bot's highest role.")
@@ -91,6 +102,11 @@ async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
 
     await ctx.app.rest.add_role_to_member(
         ctx.guild_id, user, role, reason=f"{ctx.member} ({ctx.member.id}): Added role via Sned"
+    )
+    await ctx.mod_respond(
+        embed=hikari.Embed(
+            title="✅ Role added", description=f"Added role {role.mention} to `{user}`.", color=const.EMBED_GREEN
+        )
     )
 
 
@@ -117,6 +133,17 @@ async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
         )
         return
 
+    if role.id not in user.role_ids:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Role not assigned",
+                description="This user does not have this role.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
+
     bot_top_role = me.get_top_role()
     if not bot_top_role or bot_top_role.position <= role.position:
         raise errors.BotRoleHierarchyError("Target role is higher than bot's highest role.")
@@ -130,6 +157,11 @@ async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
 
     await ctx.app.rest.remove_role_from_member(
         ctx.guild_id, user, role, reason=f"{ctx.member} ({ctx.member.id}): Removed role via Sned"
+    )
+    await ctx.mod_respond(
+        embed=hikari.Embed(
+            title="✅ Role removed", description=f"Removed role {role.mention} from `{user}`.", color=const.EMBED_GREEN
+        )
     )
 
 
