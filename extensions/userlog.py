@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import logging
+import re
 import sys
 import traceback
 import typing as t
@@ -22,6 +23,8 @@ from models.events import WarnRemoveEvent
 from models.events import WarnsClearEvent
 from models.plugin import SnedPlugin
 from utils import helpers
+
+BOT_REASON_REGEX = re.compile(r"(?P<name>.*#\d{4})\s\((?P<id>\d+)\):\s(?P<reason>.*)")
 
 logger = logging.getLogger(__name__)
 
@@ -407,14 +410,12 @@ def strip_bot_reason(reason: t.Optional[str]) -> t.Tuple[t.Optional[str], t.Opti
     """
     Strip action author for it to be parsed into the actual embed instead of the bot
     """
-    if not reason:
-        return None, None
+    match = BOT_REASON_REGEX.match(str(reason))
 
-    fmt_reason = (
-        reason.split("): ", maxsplit=1)[1] if len(reason.split("): ", maxsplit=1)) > 1 else reason
-    )  # Remove author
-    moderator = reason.split(" (")[0] if fmt_reason != reason else None  # Get actual moderator, not the bot
-    return fmt_reason, moderator
+    if not match:
+        return reason, None
+
+    return match.group("reason"), match.group("name")
 
 
 # Event Listeners start below
@@ -831,7 +832,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 
         if entry.user_id == plugin.app.user_id:
             reason, moderator = strip_bot_reason(reason)
-            moderator = moderator or plugin.app.get_me()
+            moderator = moderator or str(plugin.app.get_me())
 
         if comms_disabled_until is None:
             embed = hikari.Embed(
@@ -888,10 +889,15 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
         )
 
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry and entry.user_id else "Unknown"
-        reason: t.Optional[str] = entry.reason if entry else "No reason provided."
 
-        if isinstance(moderator, (hikari.Member)) and moderator.is_bot:
+        if entry and entry.user_id == plugin.app.user_id:
+            # Attempt to find the moderator in reason if sent by us
+            _, moderator = strip_bot_reason(entry.reason)
+            moderator = moderator or plugin.app.get_me()
+
+        if isinstance(moderator, (hikari.User)) and moderator.is_bot:
             # Do not log role updates done by ourselves or other bots
+            # Provided that the role was not added through /role
             return
 
         if add_diff:
