@@ -137,7 +137,7 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Role Hierarchy Error",
-                description=f"The targeted user's highest role is higher than the bot's highest role.",
+                description=str(error) or "The targeted user's highest role is higher than the bot's highest role.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -148,7 +148,7 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Role Hierarchy Error",
-                description=f"The targeted user's highest role is higher than your highest role.",
+                description=str(error) or "The targeted user's highest role is higher than your highest role.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,

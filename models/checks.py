@@ -45,7 +45,7 @@ async def is_above_target(ctx: SnedContext) -> bool:
     if helpers.is_above(me, member):
         return True
 
-    raise BotRoleHierarchyError("Target user top role is higher than bot.")
+    raise BotRoleHierarchyError("The targeted user's highest role is higher than the bot's highest role.")
 
 
 @lightbulb.Check  # type: ignore
@@ -76,7 +76,7 @@ async def is_invoker_above_target(ctx: SnedContext) -> bool:
     if helpers.is_above(ctx.member, member):
         return True
 
-    raise RoleHierarchyError("Target user top role is higher than author.")
+    raise RoleHierarchyError
 
 
 async def _has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -> bool:
