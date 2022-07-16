@@ -317,18 +317,11 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
 )
-@lightbulb.option(
-    "channel",
-    "The channel to send the message to, defaults to the current channel.",
-    required=False,
-    type=hikari.TextableGuildChannel,
-    channel_types=[hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS],
-)
 @lightbulb.option("text", "The text to echo.")
 @lightbulb.command("echo", "Repeat the provided text as the bot.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.InteractionChannel] = None) -> None:
-    assert ctx.interaction.app_permissions is not None and isinstance(channel, hikari.TextableGuildChannel)
+async def echo(ctx: SnedSlashContext, text: str) -> None:
+    assert ctx.interaction.app_permissions is not None
 
     if not helpers.includes_permissions(
         ctx.interaction.app_permissions, hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
@@ -337,7 +330,7 @@ async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.Inte
             perms=hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
         )
 
-    await ctx.app.rest.create_message(channel, text[:2000])
+    await ctx.app.rest.create_message(ctx.channel_id, text[:2000])
 
     await ctx.respond(
         embed=hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
