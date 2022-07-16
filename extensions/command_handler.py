@@ -16,6 +16,7 @@ from models.bot import SnedBot
 from models.context import SnedPrefixContext
 from models.context import SnedSlashContext
 from models.errors import BotRoleHierarchyError
+from models.errors import InteractionTimeOutError
 from models.errors import MemberExpectedError
 from models.errors import RoleHierarchyError
 from models.errors import UserBlacklistedError
@@ -238,13 +239,9 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
             ).set_footer(text=f"Guild: {ctx.guild_id}"),
             flags=hikari.MessageFlag.EPHEMERAL,
         )
-    except hikari.NotFoundError as err:
-        raise hikari.NotFoundError(
+    except hikari.NotFoundError:
+        raise InteractionTimeOutError(
             f"Interaction timed out while handling error: \n{error.__class__} {error}\nCommand: {ctx.command.name if ctx.command else 'None'}\nGuild: {ctx.guild_id}\nUser: {ctx.user.id}",
-            url=err.url,
-            headers=err.headers,
-            raw_body=err.raw_body,
-            code=err.code,
         )
 
     await log_exc_to_channel(exception_msg, ctx)

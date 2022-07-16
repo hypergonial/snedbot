@@ -49,6 +49,12 @@ class DatabaseStateConflictError(Exception):
     """
 
 
+class InteractionTimeOutError(Exception):
+    """
+    Raised when a user interaction times out.
+    """
+
+
 # Copyright (C) 2022-present HyperGH
 
 # This program is free software: you can redistribute it and/or modify
