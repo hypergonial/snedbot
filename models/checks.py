@@ -113,8 +113,8 @@ async def _has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -> bo
 async def _bot_has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -> bool:
     _guild_only(ctx)
 
-    if isinstance(ctx, lightbulb.SlashContext):
-        bot_perms = ctx.interaction.app_permissions
+    if interaction := ctx.interaction:
+        bot_perms = interaction.app_permissions
         assert bot_perms is not None
     else:
         try:
