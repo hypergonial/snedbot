@@ -373,6 +373,8 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     else:
         await ctx.respond("📥 Restored database from backup file.")
 
+    await ctx.app.db.update_schema()
+
     await ctx.app.db_cache.start()
     ctx.app.scheduler.restart()
 
