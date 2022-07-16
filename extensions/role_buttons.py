@@ -120,10 +120,9 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         )
         return
 
-    me = plugin.app.cache.get_member(event.context.guild_id, plugin.app.user_id)
-    assert me is not None
+    assert event.context.app_permissions is not None
 
-    if not helpers.includes_permissions(lightbulb.utils.permissions_for(me), hikari.Permissions.MANAGE_ROLES):
+    if not helpers.includes_permissions(event.context.app_permissions, hikari.Permissions.MANAGE_ROLES):
         await event.context.respond(
             embed=hikari.Embed(
                 title="❌ Missing Permissions",

@@ -175,15 +175,19 @@ class SnedContext(lightbulb.Context):
         return super().bot  # type: ignore
 
 
-class SnedSlashContext(SnedContext, lightbulb.SlashContext):
+class SnedApplicationContext(SnedContext, lightbulb.ApplicationContext):
+    """Custom ApplicationContext for Sned."""
+
+
+class SnedSlashContext(SnedApplicationContext, lightbulb.SlashContext):
     """Custom SlashContext for Sned."""
 
 
-class SnedUserContext(SnedContext, lightbulb.UserContext):
+class SnedUserContext(SnedApplicationContext, lightbulb.UserContext):
     """Custom UserContext for Sned."""
 
 
-class SnedMessageContext(SnedContext, lightbulb.MessageContext):
+class SnedMessageContext(SnedApplicationContext, lightbulb.MessageContext):
     """Custom MessageContext for Sned."""
 
 

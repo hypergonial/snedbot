@@ -141,24 +141,9 @@ async def embed(ctx: SnedSlashContext) -> None:
         )
         return
 
-    if ctx.guild_id:
-        me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-        channel = ctx.get_channel()
-
-        if not isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel)):
-            await ctx.respond(
-                embed=hikari.Embed(
-                    title="❌ Cannot send in thread.",
-                    color=const.ERROR_COLOR,
-                ),
-                flags=hikari.MessageFlag.EPHEMERAL,
-            )
-            return
-
-        assert me is not None
-
+    if ctx.interaction.app_permissions:
         if not helpers.includes_permissions(
-            lightbulb.utils.permissions_in(channel, me),
+            ctx.interaction.app_permissions,
             hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL,
         ):
             raise lightbulb.BotMissingRequiredPermission(
@@ -343,28 +328,16 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 @lightbulb.command("echo", "Repeat the provided text as the bot.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def echo(ctx: SnedSlashContext, text: str, channel: t.Optional[hikari.InteractionChannel] = None) -> None:
-    # InteractionChannel has no overrides data
-    send_to = (ctx.app.cache.get_guild_channel(channel.id) or ctx.get_channel()) if channel else ctx.get_channel()
+    assert ctx.interaction.app_permissions is not None and isinstance(channel, hikari.TextableGuildChannel)
 
-    assert ctx.guild_id is not None
-
-    if not send_to:
-        await ctx.respond(
-            embed=hikari.Embed(title="❌ Cannot send message in threads yet!", color=const.ERROR_COLOR),
-            flags=hikari.MessageFlag.EPHEMERAL,
-        )
-        return
-
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-    assert isinstance(send_to, hikari.TextableGuildChannel) and me is not None
-
-    perms = lightbulb.utils.permissions_in(send_to, me)
-    if not helpers.includes_permissions(perms, hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL):
+    if not helpers.includes_permissions(
+        ctx.interaction.app_permissions, hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
+    ):
         raise lightbulb.BotMissingRequiredPermission(
             perms=hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
         )
 
-    await send_to.send(text[:2000])
+    await ctx.app.rest.create_message(channel, text[:2000])
 
     await ctx.respond(
         embed=hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
@@ -387,28 +360,14 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
     if not message:
         return
 
-    assert ctx.guild_id is not None
+    assert ctx.interaction.app_permissions is not None
 
     channel = ctx.app.cache.get_guild_channel(message.channel_id) or await ctx.app.rest.fetch_channel(
         message.channel_id
     )
 
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-
-    overwrites_channel = (
-        channel
-        if not isinstance(channel, hikari.GuildThreadChannel)
-        else ctx.app.cache.get_guild_channel(channel.parent_id)
-    )
-    assert (
-        isinstance(channel, (hikari.TextableGuildChannel))
-        and me is not None
-        and isinstance(overwrites_channel, hikari.GuildChannel)
-    )
-
-    perms = lightbulb.utils.permissions_in(overwrites_channel, me)
     if not helpers.includes_permissions(
-        perms,
+        ctx.interaction.app_permissions,
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
     ):
         raise lightbulb.BotMissingRequiredPermission(

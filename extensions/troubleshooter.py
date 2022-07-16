@@ -46,7 +46,7 @@ REQUIRED_PERMISSIONS = (
 # Explain why the bot requires the perm
 PERM_DESCRIPTIONS = {
     hikari.Permissions.VIEW_AUDIT_LOG: "Required in logs to fill in details such as who the moderator in question was, or the reason of the action.",
-    hikari.Permissions.MANAGE_ROLES: "Required to give users roles via role-buttons.",
+    hikari.Permissions.MANAGE_ROLES: "Required to give users roles via role-buttons, and for the `/role` command to function.",
     hikari.Permissions.MANAGE_CHANNELS: "Used by `/slowmode` to set a custom slow mode duration for the channel.",
     hikari.Permissions.MANAGE_THREADS: "Used by `/slowmode` to set a custom slow mode duration for the thread.",
     hikari.Permissions.MANAGE_NICKNAMES: "Used by `/deobfuscate` to deobfuscate other user's nicknames.",
@@ -74,14 +74,9 @@ PERM_DESCRIPTIONS = {
 @lightbulb.command("troubleshoot", "Diagnose and locate common configuration issues.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def troubleshoot(ctx: SnedSlashContext) -> None:
+    assert ctx.interaction.app_permissions is not None
 
-    assert ctx.guild_id is not None
-
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-    assert me is not None
-
-    perms = lightbulb.utils.permissions_for(me)
-    missing_perms = ~perms & REQUIRED_PERMISSIONS
+    missing_perms = ~ctx.interaction.app_permissions & REQUIRED_PERMISSIONS
     content = []
 
     if missing_perms is not hikari.Permissions.NONE:

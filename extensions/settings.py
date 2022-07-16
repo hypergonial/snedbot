@@ -702,10 +702,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             color=const.EMBED_BLUE,
         )
 
-        me = self.app.cache.get_member(self.last_ctx.guild_id, self.app.user_id)
-        assert me is not None
-        perms = lightbulb.utils.permissions_for(me)
-        if not (perms & hikari.Permissions.VIEW_AUDIT_LOG):
+        assert self.last_ctx.app_permissions is not None
+        if not (self.last_ctx.app_permissions & hikari.Permissions.VIEW_AUDIT_LOG):
             embed.add_field(
                 name="⚠️ Warning!",
                 value=f"The bot currently has no permissions to view the audit logs! This will severely limit logging capabilities. Please consider enabling `View Audit Log` for the bot in your server's settings!",
