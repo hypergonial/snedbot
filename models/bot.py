@@ -24,21 +24,6 @@ from utils.tasks import IntervalLoop
 from .context import *
 
 
-async def get_prefix(bot: lightbulb.BotApp, message: hikari.Message) -> t.Union[t.Tuple[str], str]:
-    """
-    Get custom prefix for guild to show prefix command deprecation warn
-    """
-    assert isinstance(bot, SnedBot)
-    if message.guild_id is None:
-        return "sn "
-
-    records = await bot.db_cache.get(table="global_config", guild_id=message.guild_id, limit=1)
-    if records and records[0]["prefix"]:
-        return tuple(records[0]["prefix"])
-
-    return "sn "
-
-
 async def is_not_blacklisted(ctx: SnedContext) -> bool:
     """Evaluate if the user is blacklisted or not.
 
@@ -321,19 +306,6 @@ class SnedBot(lightbulb.BotApp):
                         title="Beep Boop!",
                         description="Use `/` to access my commands and see what I can do!",
                         color=0xFEC01D,
-                    ).set_thumbnail(user.avatar_url if user else None)
-                )
-                return
-
-            elif not event.content in await get_prefix(self, event.message) and event.content.startswith(
-                await get_prefix(self, event.message)
-            ):
-                user = self.get_me()
-                await event.message.respond(
-                    embed=hikari.Embed(
-                        title="Uh Oh!",
-                        description="This bot has transitioned to slash commands, to see a list of all commands, type `/`!\nIf you have any questions, or feel lost, feel free to join the [support server](https://discord.gg/KNKr8FPmJa)!",
-                        color=const.ERROR_COLOR,
                     ).set_thumbnail(user.avatar_url if user else None)
                 )
                 return
