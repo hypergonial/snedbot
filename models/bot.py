@@ -64,7 +64,7 @@ class SnedBot(lightbulb.BotApp):
         self._is_started = False
 
         cache_settings = hikari.impl.CacheSettings(
-            components=hikari.api.CacheComponents.ALL, max_messages=10000, max_dm_channel_ids=50
+            components=hikari.api.CacheComponents.ALL, max_messages=100000, max_dm_channel_ids=50
         )
         intents = (
             hikari.Intents.GUILDS
