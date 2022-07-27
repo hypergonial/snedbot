@@ -12,7 +12,6 @@ import miru
 
 import utils.db_backup as db_backup
 from config import Config
-from etc import constants as const
 from models.db import Database
 from models.errors import UserBlacklistedError
 from models.mod_actions import ModActions
