@@ -133,3 +133,6 @@ config.py
 
 # DB backup files
 *.pgdmp
+
+# Dolphin directory meta files
+.directory
