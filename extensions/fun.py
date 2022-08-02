@@ -26,11 +26,25 @@ from models.context import SnedContext
 from models.context import SnedUserContext
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator
+from utils import BucketType
+from utils import RateLimiter
 from utils import helpers
 from utils.dictionaryapi import DictionaryClient
 from utils.dictionaryapi import DictionaryEntry
 from utils.dictionaryapi import DictionaryException
 from utils.dictionaryapi import UrbanEntry
+
+ANIMAL_EMOJI_MAPPING: t.Dict[str, str] = {
+    "dog": "🐶",
+    "cat": "🐱",
+    "panda": "🐼",
+    "red_panda": "🐾",
+    "bird": "🐦",
+    "fox": "🦊",
+    "racoon": "🦝",
+}
+
+animal_ratelimiter = RateLimiter(60, 45, BucketType.GLOBAL, wait=False)
 
 logger = logging.getLogger(__name__)
 
@@ -728,83 +742,44 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
 
 @fun.command
 @lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("cat", "Searches the interwebz™️ for a random cat picture.", auto_defer=True)
+@lightbulb.option(
+    "animal", "The animal to show.", choices=["cat", "dog", "panda", "fox", "bird", "red_panda", "racoon"]
+)
+@lightbulb.command("animal", "Shows a random picture of the selected animal.")
 @lightbulb.implements(lightbulb.SlashCommand)
-async def randomcat(ctx: SnedSlashContext) -> None:
-    async with ctx.app.session.get("https://api.thecatapi.com/v1/images/search") as response:
-        if response.status == 200:
-            catjson = await response.json()
+async def animal(ctx: SnedSlashContext, animal: str) -> None:
 
-            embed = hikari.Embed(title="🐱 Random kitten", color=const.EMBED_BLUE).set_image(catjson[0]["url"])
-        else:
-            embed = hikari.Embed(
-                title="🐱 Random kitten",
-                description="Oops! Looks like the cat delivery service is unavailable! Check back later.",
+    await animal_ratelimiter.acquire(ctx)
+    if animal_ratelimiter.is_rate_limited(ctx):
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Ratelimited",
+                description=f"Please wait a couple minutes before trying again.",
                 color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
+
+    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+
+    async with ctx.bot.session.get(f"https://some-random-api.ml/img/{animal}") as response:
+        if response.status != 200:
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Network Error",
+                    description=f"Could not access the API. Please try again later.",
+                    color=const.ERROR_COLOR,
+                )
             )
-
-        await ctx.respond(embed=embed)
-
-
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("dog", "Searches the interwebz™️ for a random dog picture.", auto_defer=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def randomdog(ctx: SnedSlashContext) -> None:
-    async with ctx.app.session.get("https://api.thedogapi.com/v1/images/search") as response:
-        if response.status == 200:
-            dogjson = await response.json()
-
-            embed = hikari.Embed(title="🐶 Random doggo", color=const.EMBED_BLUE).set_image(dogjson[0]["url"])
-        else:
-            embed = hikari.Embed(
-                title="🐶 Random doggo",
-                description="Oops! Looks like the dog delivery service is unavailable! Check back later.",
-                color=const.ERROR_COLOR,
-            )
-        await ctx.respond(embed=embed)
-
-
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("fox", "Searches the interwebz™️ for a random fox picture.", auto_defer=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def randomfox(ctx: SnedSlashContext) -> None:
-    async with ctx.app.session.get("https://randomfox.ca/floof/") as response:
-        if response.status == 200:
-            foxjson = await response.json()
-
-            embed = hikari.Embed(title="🦊 Random fox", color=0xFF7F00).set_image(foxjson["image"])
-        else:
-            embed = hikari.Embed(
-                title="🦊 Random fox",
-                description="Oops! Looks like the fox delivery service is unavailable! Check back later.",
-                color=const.ERROR_COLOR,
-            )
-
-        await ctx.respond(embed=embed)
-
-
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("otter", "Searches the interwebz™️ for a random otter picture.", auto_defer=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def randomotter(ctx: SnedSlashContext) -> None:
-    async with ctx.app.session.get("https://otter.bruhmomentlol.repl.co/random") as response:
-        if response.status == 200:
-            otter_image = await response.content.read()
-
-            embed = hikari.Embed(title="🦦 Random otter", color=0xA78E81).set_image(
-                hikari.Bytes(otter_image, "otter.jpeg")
-            )
-        else:
-            embed = hikari.Embed(
-                title="🦦 Random otter",
-                description="Oops! Looks like the otter delivery service is unavailable! Check back later.",
-                color=const.ERROR_COLOR,
-            )
-
-        await ctx.respond(embed=embed)
+            return
+        response = await response.json()
+        await ctx.respond(
+            embed=hikari.Embed(
+                title=f"{ANIMAL_EMOJI_MAPPING[animal]} Random {animal.replace('_', ' ')}!",
+                color=const.EMBED_BLUE,
+            ).set_image(response["link"])
+        )
 
 
 @fun.command
@@ -837,10 +812,8 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
         results_text = results[1]
         results_link = results[3]
 
-        if len(results_text) > 0:
-            desc = ""
-            for i, result in enumerate(results_text):
-                desc = f"{desc}[{result}]({results_link[i]})\n"
+        if results_text:
+            desc = "\n".join([f"[{result}]({results_link[i]})" for i, result in enumerate(results_text)])
             embed = hikari.Embed(
                 title=f"Wikipedia: {query}",
                 description=desc,

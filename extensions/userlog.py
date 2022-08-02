@@ -272,7 +272,7 @@ async def find_auditlog_data(
     takes_an_obscene_amount_of_time = [hikari.AuditLogEventType.MESSAGE_BULK_DELETE]
 
     guild = userlog.app.cache.get_guild(event.guild_id)  # type: ignore
-    sleep_time = 5.0 if event_type not in takes_an_obscene_amount_of_time else 15.0
+    sleep_time = 15.0 if event_type not in takes_an_obscene_amount_of_time else 30.0
     await asyncio.sleep(sleep_time)  # Wait for auditlog to hopefully fill in
 
     if not guild:
@@ -293,7 +293,7 @@ async def find_auditlog_data(
         async for log in userlog.app.rest.fetch_audit_log(guild, event_type=event_type):
             for entry in log.entries.values():
                 # We do not want to return entries older than 15 seconds
-                if (helpers.utcnow() - entry.id.created_at).total_seconds() > 30 or count >= 5:
+                if (helpers.utcnow() - entry.id.created_at).total_seconds() > 30 or count > 5:
                     return
 
                 if user_id and user_id == entry.target_id:
