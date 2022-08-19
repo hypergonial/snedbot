@@ -8,6 +8,7 @@ import miru
 from etc import constants as const
 from models import SnedSlashContext
 from models.bot import SnedBot
+from models.context import SnedApplicationContext
 from models.context import SnedContext
 from models.context import SnedMessageContext
 from models.context import SnedUserContext
@@ -71,7 +72,7 @@ async def report_error(ctx: SnedContext) -> None:
     )
 
 
-async def report_perms_error(ctx: SnedContext) -> None:
+async def report_perms_error(ctx: SnedApplicationContext) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title="❌ Oops!",
@@ -82,7 +83,9 @@ async def report_perms_error(ctx: SnedContext) -> None:
     )
 
 
-async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hikari.Message] = None) -> None:
+async def report(
+    ctx: SnedApplicationContext, member: hikari.Member, message: t.Optional[hikari.Message] = None
+) -> None:
 
     assert ctx.member is not None and ctx.guild_id is not None
 
@@ -117,12 +120,9 @@ async def report(ctx: SnedContext, member: hikari.Member, message: t.Optional[hi
         await ctx.app.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
         return await report_error(ctx)
 
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-    assert me is not None
+    assert ctx.interaction.app_permissions is not None
 
-    perms = lightbulb.utils.permissions_in(channel, me)
-
-    if not (perms & hikari.Permissions.SEND_MESSAGES):
+    if not (ctx.interaction.app_permissions & hikari.Permissions.SEND_MESSAGES):
         return await report_perms_error(ctx)
 
     assert ctx.interaction is not None

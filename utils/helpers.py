@@ -13,8 +13,8 @@ import lightbulb
 from etc import constants as const
 from models import errors
 from models.components import *
+from models.context import SnedApplicationContext
 from models.context import SnedContext
-from models.context import SnedSlashContext
 from models.db_user import DatabaseUser
 
 MESSAGE_LINK_REGEX = re.compile(
@@ -272,12 +272,12 @@ def is_member(user: hikari.PartialUser) -> bool:  # Such useful
     raise errors.MemberExpectedError(f"Expected an instance of hikari.Member, not {user.__class__.__name__}!")
 
 
-async def parse_message_link(ctx: SnedSlashContext, message_link: str) -> Optional[hikari.Message]:
+async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> Optional[hikari.Message]:
     """Parse a message_link string into a message object.
 
     Parameters
     ----------
-    ctx : SnedSlashContext
+    ctx : SnedApplicationContext
         The context to parse the message link under.
     message_link : str
         The message link.

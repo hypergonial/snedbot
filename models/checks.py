@@ -1,9 +1,11 @@
 import functools
 import operator
+from code import interact
 
 import hikari
 import lightbulb
 
+from models.context import SnedApplicationContext
 from models.context import SnedContext
 from models.context import SnedSlashContext
 from models.errors import BotRoleHierarchyError
@@ -80,28 +82,35 @@ async def is_invoker_above_target(ctx: SnedContext) -> bool:
     raise RoleHierarchyError
 
 
-async def _has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -> bool:
+async def _has_permissions(ctx: SnedApplicationContext, *, perms: hikari.Permissions) -> bool:
     _guild_only(ctx)
-    try:
-        channel, guild = (ctx.get_channel() or await ctx.app.rest.fetch_channel(ctx.channel_id)), ctx.get_guild()
-    except hikari.ForbiddenError:
-        raise lightbulb.BotMissingRequiredPermission(
-            "Check cannot run due to missing permissions.", perms=hikari.Permissions.VIEW_CHANNEL
-        )
 
-    if guild is None:
-        raise lightbulb.InsufficientCache("Some objects required for this check could not be resolved from the cache.")
-    if guild.owner_id == ctx.author.id:
-        return True
+    if ctx.interaction is not None and ctx.interaction.member is not None:
+        member_perms = ctx.interaction.member.permissions
+    else:
+        try:
+            channel, guild = (ctx.get_channel() or await ctx.app.rest.fetch_channel(ctx.channel_id)), ctx.get_guild()
+        except hikari.ForbiddenError:
+            raise lightbulb.BotMissingRequiredPermission(
+                "Check cannot run due to missing permissions.", perms=hikari.Permissions.VIEW_CHANNEL
+            )
 
-    assert ctx.member is not None
+        if guild is None:
+            raise lightbulb.InsufficientCache(
+                "Some objects required for this check could not be resolved from the cache."
+            )
+        if guild.owner_id == ctx.author.id:
+            return True
 
-    if isinstance(channel, hikari.GuildThreadChannel):
-        channel = ctx.app.cache.get_guild_channel(channel.parent_id)
+        assert ctx.member is not None
 
-    assert isinstance(channel, hikari.GuildChannel)
+        if isinstance(channel, hikari.GuildThreadChannel):
+            channel = ctx.app.cache.get_guild_channel(channel.parent_id)
 
-    missing_perms = ~lightbulb.utils.permissions_in(channel, ctx.member) & perms
+        assert isinstance(channel, hikari.GuildChannel)
+        member_perms = lightbulb.utils.permissions_in(channel, ctx.member)
+
+    missing_perms = ~member_perms & perms
     if missing_perms is not hikari.Permissions.NONE:
         raise lightbulb.MissingRequiredPermission(
             "You are missing one or more permissions required in order to run this command", perms=missing_perms
