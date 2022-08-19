@@ -1,6 +1,5 @@
 import functools
 import operator
-from code import interact
 
 import hikari
 import lightbulb

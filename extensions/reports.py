@@ -120,9 +120,11 @@ async def report(
         await ctx.app.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
         return await report_error(ctx)
 
-    assert ctx.interaction.app_permissions is not None
+    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    assert me is not None
+    perms = lightbulb.utils.permissions_in(channel, me)
 
-    if not (ctx.interaction.app_permissions & hikari.Permissions.SEND_MESSAGES):
+    if not (perms & hikari.Permissions.SEND_MESSAGES):
         return await report_perms_error(ctx)
 
     assert ctx.interaction is not None
