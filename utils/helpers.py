@@ -74,7 +74,7 @@ def add_embed_footer(embed: hikari.Embed, invoker: hikari.Member) -> hikari.Embe
 
 
 def get_color(member: hikari.Member) -> t.Optional[hikari.Color]:
-    roles = member.get_roles().__reversed__()
+    roles = sort_roles(member.get_roles())
     if roles:
         for role in roles:
             if role.color != hikari.Color.from_rgb(0, 0, 0):

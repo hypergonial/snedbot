@@ -896,7 +896,7 @@ async def massban(ctx: SnedSlashContext) -> None:
 
         predicates.append(joined_before)
 
-    to_ban = [member for member in members if all(predicate(member) for predicate in predicates)]
+    to_ban = [member for member in members if all(predicate(member) for predicate in predicates)][:5000]
 
     if len(to_ban) == 0:
         await ctx.respond(
