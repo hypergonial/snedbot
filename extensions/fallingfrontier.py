@@ -8,9 +8,9 @@ from models.bot import SnedBot
 from models.context import SnedSlashContext
 from models.plugin import SnedPlugin
 
-TESTER_STAGING_ROLE = 939665137328095242 #971843694896513074
-TESTER_STAGING_CHANNEL = 956313445802852412 #971844463884382259
-FF_GUILD = 861603964642525204 #684324252786360476
+TESTER_STAGING_ROLE = 939665137328095242  # 971843694896513074
+TESTER_STAGING_CHANNEL = 956313445802852412  # 971844463884382259
+FF_GUILD = 861603964642525204  # 684324252786360476
 
 TEST_NOTICE = """
 **You are being contacted in regards to the Falling Frontier Tester Recruitment.**
@@ -52,13 +52,29 @@ async def handle_test_invite(event: miru.ComponentInteractionCreateEvent) -> Non
     if event.custom_id == "FFTEST:ACCEPT":
         await event.context.defer()
         await event.app.rest.add_role_to_member(FF_GUILD, event.context.user, TESTER_STAGING_ROLE)
-        await event.context.respond(embed=hikari.Embed(title="Tester Invite Accepted", description=f"Please see <#{TESTER_STAGING_CHANNEL}> for further instructions.\n\nThank you for participating!", color=const.EMBED_GREEN))
-        await event.app.rest.create_message(TESTER_STAGING_CHANNEL, f"{event.user.mention} accepted the testing invitation! Welcome! <:FoxWave:851099801608388628>", user_mentions=True)
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="Tester Invite Accepted",
+                description=f"Please see <#{TESTER_STAGING_CHANNEL}> for further instructions.\n\nThank you for participating!",
+                color=const.EMBED_GREEN,
+            )
+        )
+        await event.app.rest.create_message(
+            TESTER_STAGING_CHANNEL,
+            f"{event.user.mention} accepted the testing invitation! Welcome! <:FoxWave:851099801608388628>",
+            user_mentions=True,
+        )
 
     elif event.custom_id == "FFTEST:DECLINE":
-        await event.context.respond(embed=hikari.Embed(title="Tester Invite Declined", description="Thank you for your interest in the Falling Frontier Testing Program.", color=const.ERROR_COLOR))
+        await event.context.respond(
+            embed=hikari.Embed(
+                title="Tester Invite Declined",
+                description="Thank you for your interest in the Falling Frontier Testing Program.",
+                color=const.ERROR_COLOR,
+            )
+        )
         await event.app.rest.create_message(TESTER_STAGING_CHANNEL, f"`{event.user}` declined the testing invitation.")
-    
+
     view = miru.View.from_message(event.context.message)
     for item in view.children:
         assert isinstance(item, miru.Button)
@@ -69,15 +85,28 @@ async def handle_test_invite(event: miru.ComponentInteractionCreateEvent) -> Non
 
 @ff.command
 @lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
-@lightbulb.option("recipients", "A list of all users to send the notice to, one user per line. Format: User#1234", type=hikari.Attachment)
-@lightbulb.command("sendtestnotice", "Send out tester notice to new people.", guilds=Config().DEBUG_GUILDS or (FF_GUILD,), pass_options=True)
+@lightbulb.option(
+    "recipients",
+    "A list of all users to send the notice to, one user per line. Format: User#1234",
+    type=hikari.Attachment,
+)
+@lightbulb.command(
+    "sendtestnotice",
+    "Send out tester notice to new people.",
+    guilds=Config().DEBUG_GUILDS or (FF_GUILD,),
+    pass_options=True,
+)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment) -> None:
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
     converter = lightbulb.converters.UserConverter(ctx)
     users = [await converter.convert(user_str) for user_str in (await recipients.read()).decode("utf-8").splitlines()]
-    view = miru.View().add_item(miru.Button(label="Accept", style=hikari.ButtonStyle.SUCCESS, emoji="✔️", custom_id="FFTEST:ACCEPT")).add_item(miru.Button(label="Decline", style=hikari.ButtonStyle.DANGER, emoji="✖️", custom_id="FFTEST:DECLINE"))
+    view = (
+        miru.View()
+        .add_item(miru.Button(label="Accept", style=hikari.ButtonStyle.SUCCESS, emoji="✔️", custom_id="FFTEST:ACCEPT"))
+        .add_item(miru.Button(label="Decline", style=hikari.ButtonStyle.DANGER, emoji="✖️", custom_id="FFTEST:DECLINE"))
+    )
     failed = []
     for user in users:
         try:
@@ -85,7 +114,9 @@ async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment)
         except (hikari.ForbiddenError, hikari.NotFoundError):
             failed.append(user)
 
-    await ctx.respond(f"Sent testing notice to **{len(users) - len(failed)}/{len(users)}** users.\n\n**Failed to send to:** ```{'\n'.join(failed) if failed else 'All users were sent the notice.'}```")
+    await ctx.respond(
+        f"Sent testing notice to **{len(users) - len(failed)}/{len(users)}** users.\n\n**Failed to send to:** ```{'\n'.join(failed) if failed else 'All users were sent the notice.'}```"
+    )
 
 
 def load(bot: SnedBot) -> None:
