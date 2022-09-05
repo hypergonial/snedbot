@@ -115,7 +115,7 @@ async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment)
             failed.append(user)
 
     await ctx.respond(
-        f"Sent testing notice to **{len(users) - len(failed)}/{len(users)}** users.\n\n**Failed to send to:** ```{'\n'.join(failed) if failed else 'All users were sent the notice.'}```"
+        f"Sent testing notice to **{len(users) - len(failed)}/{len(users)}** users.\n\n**Failed to send to:** ```{' '.join(failed) if failed else 'All users were sent the notice.'}```"
     )
 
 
