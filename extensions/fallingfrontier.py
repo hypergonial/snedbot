@@ -49,8 +49,16 @@ async def handle_test_invite(event: miru.ComponentInteractionCreateEvent) -> Non
     if not event.custom_id.startswith("FFTEST:") or event.guild_id is not None:
         return
 
+    await event.context.defer()
+
+    view = miru.View.from_message(event.context.message)
+    for item in view.children:
+        assert isinstance(item, miru.Button)
+        item.disabled = True
+
+    await event.context.message.edit(components=view)
+
     if event.custom_id == "FFTEST:ACCEPT":
-        await event.context.defer()
         await event.app.rest.add_role_to_member(FF_GUILD, event.context.user, TESTER_STAGING_ROLE)
         await event.context.respond(
             embed=hikari.Embed(
@@ -75,13 +83,6 @@ async def handle_test_invite(event: miru.ComponentInteractionCreateEvent) -> Non
         )
         await event.app.rest.create_message(TESTER_STAGING_CHANNEL, f"`{event.user}` declined the testing invitation.")
 
-    view = miru.View.from_message(event.context.message)
-    for item in view.children:
-        assert isinstance(item, miru.Button)
-        item.disabled = True
-
-    await event.context.edit_response(components=view)
-
 
 @ff.command
 @lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
@@ -101,21 +102,23 @@ async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment)
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
     converter = lightbulb.converters.UserConverter(ctx)
-    users = [await converter.convert(user_str) for user_str in (await recipients.read()).decode("utf-8").splitlines()]
     view = (
         miru.View()
         .add_item(miru.Button(label="Accept", style=hikari.ButtonStyle.SUCCESS, emoji="✔️", custom_id="FFTEST:ACCEPT"))
         .add_item(miru.Button(label="Decline", style=hikari.ButtonStyle.DANGER, emoji="✖️", custom_id="FFTEST:DECLINE"))
     )
     failed = []
-    for user in users:
+    user_str_list = (await recipients.read()).decode("utf-8").splitlines()
+
+    for user_str in user_str_list:
         try:
+            user = await converter.convert(user_str)
             await user.send(TEST_NOTICE, components=view)
-        except (hikari.ForbiddenError, hikari.NotFoundError):
-            failed.append(user)
+        except (hikari.ForbiddenError, hikari.NotFoundError, ValueError, TypeError):
+            failed.append(user_str)
 
     await ctx.respond(
-        f"Sent testing notice to **{len(users) - len(failed)}/{len(users)}** users.\n\n**Failed to send to:** ```{' '.join(failed) if failed else 'All users were sent the notice.'}```"
+        f"Sent testing notice to **{len(user_str_list) - len(failed)}/{len(user_str_list)}** users.\n\n**Failed to send to:** ```{' '.join(failed) if failed else 'All users were sent the notice.'}```"
     )
 
 
