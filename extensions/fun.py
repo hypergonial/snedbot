@@ -745,7 +745,7 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
 @lightbulb.option(
     "animal", "The animal to show.", choices=["cat", "dog", "panda", "fox", "bird", "red_panda", "racoon"]
 )
-@lightbulb.command("animal", "Shows a random picture of the selected animal.")
+@lightbulb.command("animal", "Shows a random picture of the selected animal.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def animal(ctx: SnedSlashContext, animal: str) -> None:
 
