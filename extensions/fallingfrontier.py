@@ -122,6 +122,42 @@ async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment)
     )
 
 
+@ff.command
+@lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
+@lightbulb.option(
+    "recipients",
+    "A list of users and keys to send the notice to, one user per line. Format: User#1234:KEY",
+    type=hikari.Attachment,
+)
+@lightbulb.command(
+    "sendkeys",
+    "Send out tester keys to new people.",
+    guilds=Config().DEBUG_GUILDS or (FF_GUILD,),
+    pass_options=True,
+)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def send_test_key(ctx: SnedSlashContext, recipients: hikari.Attachment) -> None:
+    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+
+    converter = lightbulb.converters.UserConverter(ctx)
+    failed = []
+    recipients_list = (await recipients.read()).decode("utf-8").splitlines()
+
+    for line in recipients_list:
+        try:
+            user, key = line.split(":", maxsplit=1)
+            user = await converter.convert(user.strip())
+            await user.send(
+                f"Hello!\nYour key for the Falling Frontier Testing Program is: ```{key.strip()}```\nYou may activate it by opening **Steam**, navigating to `Games > Activate a Product on Steam...`, and entering the key."
+            )
+        except (hikari.ForbiddenError, hikari.NotFoundError, ValueError, TypeError):
+            failed.append(line.split(":", maxsplit=1)[0])
+
+    await ctx.respond(
+        f"Sent testing keys to **{len(recipients_list) - len(failed)}/{len(recipients_list)}** users.\n\n**Failed to send to:** ```{' '.join(failed) if failed else 'All users were sent their key.'}```"
+    )
+
+
 def load(bot: SnedBot) -> None:
     bot.add_plugin(ff)
 
