@@ -416,7 +416,7 @@ async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
                 to_ping.append(member)
 
     embed = hikari.Embed(
-        title=f"✉️ {user.display_name} {f'and {len(to_ping)-1} others' if len(to_ping) > 1 else ''}, your {'snoozed ' if notes.get('is_snoozed') else ''}reminder:",
+        title=f"✉️ {user.display_name}{f' and {len(to_ping)-1} others' if len(to_ping) > 1 else ''}, your {'snoozed ' if notes.get('is_snoozed') else ''}reminder:",
         description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
         color=const.EMBED_BLUE,
     )
