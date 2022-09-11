@@ -406,24 +406,25 @@ async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
 
     assert event.timer.notes is not None
     notes = json.loads(event.timer.notes)
-    embed = hikari.Embed(
-        title=f"✉️ {user.display_name}, your {'snoozed ' if notes.get('is_snoozed') else ''}reminder:",
-        description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
-        color=const.EMBED_BLUE,
-    )
 
-    pings = [user.mention]
+    to_ping = [user]
 
     if len(notes["additional_recipients"]) > 0:
         for user_id in notes["additional_recipients"]:
             member = guild.get_member(user_id)
             if member:
-                pings.append(member.mention)
+                to_ping.append(member)
+
+    embed = hikari.Embed(
+        title=f"✉️ {user.display_name} {f'and {len(to_ping)-1} others' if len(to_ping) > 1 else ''}, your {'snoozed ' if notes.get('is_snoozed') else ''}reminder:",
+        description=f"{notes['message']}\n\n[Jump to original message!]({notes['jump_url']})",
+        color=const.EMBED_BLUE,
+    )
 
     try:
         await plugin.app.rest.create_message(
             event.timer.channel_id,
-            content=" ".join(pings),
+            content=" ".join([user.mention for user in to_ping]),
             embed=embed,
             components=miru.View()
             .add_item(miru.Button(emoji="🕔", label="Snooze!", custom_id=f"RMSS:{event.timer.user_id}"))
