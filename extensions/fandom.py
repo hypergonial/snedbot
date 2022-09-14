@@ -87,7 +87,7 @@ async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> Non
 
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     try:
-        if results := await search_fandom(wiki, query):
+        if results := await search_fandom(f"anno{wiki}", query):
             embed = hikari.Embed(
                 title=f"Anno {wiki} Wiki: {query}",
                 description=results,
