@@ -387,6 +387,7 @@ async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> No
 async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
     helpers.is_member(user)
     assert ctx.member is not None
+    await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
     embed = await ctx.app.mod.warn(user, ctx.member, reason=reason)
     await ctx.mod_respond(
         embed=embed,
@@ -499,7 +500,6 @@ async def timeout_cmd(
             flags=hikari.MessageFlag.EPHEMERAL,
         )
         return
-
     try:
         communication_disabled_until: datetime.datetime = await ctx.app.scheduler.convert_time(
             duration, user=ctx.user, future_time=True
