@@ -20,7 +20,7 @@ dateparser = "^1.1.1"
 psutil = "^5.9.2"
 Pillow = "^9.2.0"
 asyncpg = "^0.26.0"
-Levenshtein = "^0.20.3"
+Levenshtein = "^0.20.5"
 uvloop = {version = "==0.17.0", platform="linux"}
 aiodns = "~=3.0"
 cchardet = "~=2.1"
