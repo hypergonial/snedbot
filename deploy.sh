@@ -1,4 +1,5 @@
 #!/bin/sh
+echo "WARN: Deprecated. Use 'make' instead."
 git pull
 # $1 can be used to add --no-cache if necessary
 docker compose build $1
