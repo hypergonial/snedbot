@@ -157,7 +157,7 @@ async def embed(ctx: SnedSlashContext) -> None:
 
 
 @embed.set_error_handler
-async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
+async def embed_error(event: lightbulb.CommandErrorEvent) -> bool:
     if isinstance(event.exception, lightbulb.CommandInvocationError) and isinstance(
         event.exception.original, ValueError
     ):
@@ -169,8 +169,8 @@ async def embed_error(event: lightbulb.CommandErrorEvent) -> None:
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
         )
-        return
-    raise
+        return True
+    return False
 
 
 @misc.command
