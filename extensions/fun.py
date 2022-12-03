@@ -828,9 +828,17 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
         await ctx.respond(embed=embed)
 
 
+vesztettem_limiter = RateLimiter(1800, 1, BucketType.GLOBAL, wait=False)
+
+
 @fun.listener(hikari.GuildMessageCreateEvent)
 async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
     if event.guild_id != 1012448659029381190 or not event.is_human:
+        return
+
+    await vesztettem_limiter.acquire(event.message)
+
+    if not vesztettem_limiter.is_rate_limited(event.message):
         return
 
     if event.content and "vesztettem" in event.content.lower():
