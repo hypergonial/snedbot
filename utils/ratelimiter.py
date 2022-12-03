@@ -46,7 +46,6 @@ class RateLimiter:
 
         self._bucket_data = {}
 
-        # deque is basically a list optimized for append and pop at begin&end
         self._queue: t.Deque[asyncio.Event] = deque()
         self._task: t.Optional[asyncio.Task[t.Any]] = None
 

@@ -18,6 +18,7 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 
+from config import Config
 from etc import constants as const
 from models import SnedBot
 from models import SnedSlashContext
@@ -828,20 +829,20 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
         await ctx.respond(embed=embed)
 
 
-vesztettem_limiter = RateLimiter(1800, 2, BucketType.GLOBAL, wait=False)
+vesztettem_limiter = RateLimiter(1800, 1, BucketType.GLOBAL, wait=False)
 
 
 @fun.listener(hikari.GuildMessageCreateEvent)
 async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
-    if event.guild_id != 1012448659029381190 or not event.is_human:
-        return
-
-    await vesztettem_limiter.acquire(event.message)
-
-    if vesztettem_limiter.is_rate_limited(event.message):
+    if event.guild_id not in (Config().DEBUG_GUILDS or (1012448659029381190,)) or not event.is_human:
         return
 
     if event.content and "vesztettem" in event.content.lower():
+        await vesztettem_limiter.acquire(event.message)
+
+        if vesztettem_limiter.is_rate_limited(event.message):
+            return
+
         await event.message.respond("Vesztettem")
 
 
