@@ -830,7 +830,7 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
 
 @fun.listener(hikari.GuildMessageCreateEvent)
 async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
-    if event.guild_id != 1012448659029381190:
+    if event.guild_id != 1012448659029381190 or not event.is_human:
         return
 
     if event.content and "vesztettem" in event.content.lower():
