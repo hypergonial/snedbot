@@ -828,7 +828,7 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
         await ctx.respond(embed=embed)
 
 
-vesztettem_limiter = RateLimiter(1800, 1, BucketType.GLOBAL, wait=False)
+vesztettem_limiter = RateLimiter(1800, 2, BucketType.GLOBAL, wait=False)
 
 
 @fun.listener(hikari.GuildMessageCreateEvent)
