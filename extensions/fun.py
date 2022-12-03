@@ -828,6 +828,15 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
         await ctx.respond(embed=embed)
 
 
+@fun.listener(hikari.GuildMessageCreateEvent)
+async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
+    if event.guild_id != 1012448659029381190:
+        return
+
+    if event.content and "vesztettem" in event.content.lower():
+        await event.message.respond("Vesztettem")
+
+
 def load(bot: SnedBot) -> None:
     bot.add_plugin(fun)
 
