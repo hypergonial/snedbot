@@ -313,7 +313,7 @@ async def deobfuscate_nick(ctx: SnedSlashContext, user: hikari.Member, strict: b
         )
         return
 
-    await user.edit(nick=new_nick, reason=f"{ctx.author} ({ctx.author.id}): Deobfuscated nickname")
+    await user.edit(nickname=new_nick, reason=f"{ctx.author} ({ctx.author.id}): Deobfuscated nickname")
 
     await ctx.mod_respond(
         embed=hikari.Embed(
