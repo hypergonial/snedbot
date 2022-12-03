@@ -838,7 +838,7 @@ async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
 
     await vesztettem_limiter.acquire(event.message)
 
-    if not vesztettem_limiter.is_rate_limited(event.message):
+    if vesztettem_limiter.is_rate_limited(event.message):
         return
 
     if event.content and "vesztettem" in event.content.lower():
