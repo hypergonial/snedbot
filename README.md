@@ -18,7 +18,6 @@
 - Fun commands such as tic-tac-toe and typeracer
 - Much much more!
 
-
 ### Sned in action:
 
 | Moderation tools | Settings & configuration | Rolebuttons | Reminders |
@@ -28,3 +27,17 @@
 ### Configuration:
 
 To get started with setting up the bot on a server you have `Manage Server` permissions on, simply type `/settings`!
+
+### Development:
+
+If you'd like to contribute to Sned, or host it locally, you need the following utilities:
+
+- `make`
+- `docker` and `docker compose`
+- `python` - 3.10 or higher
+- `poetry` - for managing python dependencies
+
+To deploy the bot, create and fill out `.env`, you can see an example in `.env_example`, along with `config.py`, for which you can find an example in `config_example.py`.
+Then simply run `make deploy` to start the bot in the background along with it's database.
+
+If you'd like to contribute, please make sure to run `nox` in the project folder before submitting your changes. This should format all your code to match the project.
