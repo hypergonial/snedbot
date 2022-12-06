@@ -9,12 +9,10 @@ import miru
 import psutil
 import pytz
 
-from etc import constants as const
+from etc import const
 from models import SnedBot
-from models.checks import bot_has_permissions
-from models.checks import has_permissions
-from models.context import SnedMessageContext
-from models.context import SnedSlashContext
+from models.checks import bot_has_permissions, has_permissions
+from models.context import SnedMessageContext, SnedSlashContext
 from models.plugin import SnedPlugin
 from utils import helpers
 from utils.scheduler import ConversionMode
@@ -393,13 +391,13 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
     )
     await modal.send(ctx.interaction)
     await modal.wait()
-    if not modal.values:
+    if not modal.last_context:
         return
 
-    content = list(modal.values.values())[0]
+    content = list(modal.last_context.values.values())[0]
     await message.edit(content=content)
 
-    await modal.get_response_context().respond(
+    await modal.last_context.respond(
         embed=hikari.Embed(title="✅ Message edited!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
     )
 

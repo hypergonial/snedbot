@@ -5,7 +5,7 @@ include = ".*py$"
 
 [tool.isort]
 profile = "black"
-force_single_line = true
+force_single_line = false
 
 [tool.poetry]
 name = "snedbot"
@@ -27,8 +27,8 @@ cchardet = "~=2.1"
 Brotli = "~=1.0"
 ciso8601 = "~=2.2"
 kosu = {git = "https://github.com/HyperGH/kosu.git", branch="main"}
-hikari-lightbulb = {git = "https://github.com/HyperGH/hikari-lightbulb.git", branch="development"}
-hikari-miru = {git = "https://github.com/HyperGH/hikari-miru.git", branch="cursed/branch"}
+hikari-lightbulb = "==2.3.0"
+hikari-miru = "==2.0.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.10"

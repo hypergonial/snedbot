@@ -15,9 +15,7 @@ from config import Config
 from models.db import Database
 from models.errors import UserBlacklistedError
 from models.mod_actions import ModActions
-from utils import cache
-from utils import helpers
-from utils import scheduler
+from utils import cache, helpers, scheduler
 from utils.tasks import IntervalLoop
 
 from .context import *

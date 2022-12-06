@@ -89,15 +89,15 @@ class SnedContext(lightbulb.Context):
         kwargs.pop("component", None)
 
         if message and edit:
-            message = await message.edit(*args, components=view.build(), **kwargs)
+            message = await message.edit(*args, components=view, **kwargs)
         elif edit:
-            resp = await self.edit_last_response(*args, components=view.build(), **kwargs)
+            resp = await self.edit_last_response(*args, components=view, **kwargs)
         else:
-            resp = await self.respond(*args, components=view.build(), **kwargs)
+            resp = await self.respond(*args, components=view, **kwargs)
             message = await resp.message()
 
         assert message is not None
-        view.start(message)
+        await view.start(message)
         await view.wait()
         return view.value
 

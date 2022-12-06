@@ -5,13 +5,15 @@ import hikari
 import lightbulb
 import miru
 
-from etc import constants as const
+from etc import const
 from models import SnedSlashContext
 from models.bot import SnedBot
-from models.context import SnedApplicationContext
-from models.context import SnedContext
-from models.context import SnedMessageContext
-from models.context import SnedUserContext
+from models.context import (
+    SnedApplicationContext,
+    SnedContext,
+    SnedMessageContext,
+    SnedUserContext,
+)
 from models.plugin import SnedPlugin
 from utils import helpers
 
@@ -22,7 +24,7 @@ reports = SnedPlugin("Reports")
 
 class ReportModal(miru.Modal):
     def __init__(self, member: hikari.Member) -> None:
-        super().__init__(f"Reporting {member}", autodefer=False)
+        super().__init__(f"Reporting {member}")
         self.add_item(
             miru.TextInput(
                 label="Reason for the Report",
@@ -133,7 +135,7 @@ async def report(
     await modal.send(ctx.interaction)
     await modal.wait()
 
-    if not modal.reason:  # Modal was closed/timed out
+    if not modal.last_context:  # Modal was closed/timed out
         return
 
     role_ids = records[0]["pinged_role_ids"] or []
@@ -153,14 +155,13 @@ async def report(
     components = hikari.UNDEFINED
 
     if message:
-        components = (
-            miru.View().add_item(miru.Button(label="Associated Message", url=message.make_link(ctx.guild_id))).build()
-        )
+        components = miru.View().add_item(miru.Button(label="Associated Message", url=message.make_link(ctx.guild_id)))
 
     await channel.send(
         " ".join(role_mentions) or hikari.UNDEFINED, embed=embed, components=components, role_mentions=True
     )
-    await modal.get_response_context().respond(
+
+    await modal.last_context.respond(
         embed=hikari.Embed(
             title="✅ Report Submitted",
             description="A moderator will review your report shortly!",

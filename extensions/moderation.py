@@ -8,15 +8,16 @@ import lightbulb
 import miru
 
 import models
-from etc import constants as const
+from etc import const
 from models import errors
 from models.bot import SnedBot
-from models.checks import bot_has_permissions
-from models.checks import has_permissions
-from models.checks import is_above_target
-from models.checks import is_invoker_above_target
-from models.context import SnedSlashContext
-from models.context import SnedUserContext
+from models.checks import (
+    bot_has_permissions,
+    has_permissions,
+    is_above_target,
+    is_invoker_above_target,
+)
+from models.context import SnedSlashContext, SnedUserContext
 from models.db_user import DatabaseUser
 from models.events import MassBanEvent
 from models.mod_actions import ModerationFlags

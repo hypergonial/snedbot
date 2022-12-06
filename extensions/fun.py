@@ -14,26 +14,22 @@ import Levenshtein as lev
 import lightbulb
 import miru
 from miru.ext import nav
-from PIL import Image
-from PIL import ImageDraw
-from PIL import ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 from config import Config
-from etc import constants as const
-from models import SnedBot
-from models import SnedSlashContext
+from etc import const
+from models import SnedBot, SnedSlashContext
 from models.checks import bot_has_permissions
-from models.context import SnedContext
-from models.context import SnedUserContext
+from models.context import SnedContext, SnedUserContext
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator
-from utils import BucketType
-from utils import RateLimiter
-from utils import helpers
-from utils.dictionaryapi import DictionaryClient
-from utils.dictionaryapi import DictionaryEntry
-from utils.dictionaryapi import DictionaryException
-from utils.dictionaryapi import UrbanEntry
+from utils import BucketType, RateLimiter, helpers
+from utils.dictionaryapi import (
+    DictionaryClient,
+    DictionaryEntry,
+    DictionaryException,
+    UrbanEntry,
+)
 
 ANIMAL_EMOJI_MAPPING: t.Dict[str, str] = {
     "dog": "🐶",
@@ -49,8 +45,6 @@ animal_ratelimiter = RateLimiter(60, 45, BucketType.GLOBAL, wait=False)
 
 logger = logging.getLogger(__name__)
 
-fun = SnedPlugin("Fun")
-
 if api_key := os.getenv("DICTIONARYAPI_API_KEY"):
     dictionary_client = DictionaryClient(api_key)
 else:
@@ -62,6 +56,9 @@ def has_dictionary_client(_: SnedContext) -> bool:
     if dictionary_client:
         return True
     raise DictionaryException("Dictionary API key not set.")
+
+
+fun = SnedPlugin("Fun")
 
 
 @fun.set_error_handler()
@@ -94,83 +91,80 @@ class TicTacToeButton(miru.Button):
         self.y: int = y
 
     async def callback(self, ctx: miru.Context) -> None:
-        if isinstance(self.view, TicTacToeView) and self.view.current_player.id == ctx.user.id:
-            view: TicTacToeView = self.view
-            value: int = view.board[self.y][self.x]
+        if not isinstance(self.view, TicTacToeView) or self.view.current_player.id != ctx.user.id:
+            return
 
-            if value in (view.size, -view.size):  # If already clicked
-                return
+        view: TicTacToeView = self.view
+        value: int = view.board[self.y][self.x]
 
-            if view.current_player.id == view.playerx.id:
-                self.style = hikari.ButtonStyle.DANGER
-                self.label = "X"
-                self.disabled = True
-                view.board[self.y][self.x] = -1
-                view.current_player = view.playero
+        if value in (view.size, -view.size):  # If already clicked
+            return
+
+        if view.current_player.id == view.player_x.id:
+            self.style = hikari.ButtonStyle.DANGER
+            self.label = "X"
+            self.disabled = True
+            view.board[self.y][self.x] = -1
+            view.current_player = view.player_o
+            embed = hikari.Embed(
+                title="Tic Tac Toe!",
+                description=f"It is **{view.player_o.display_name}**'s turn!",
+                color=0x009DFF,
+            ).set_thumbnail(view.player_o.display_avatar_url)
+
+        else:
+            self.style = hikari.ButtonStyle.SUCCESS
+            self.label = "O"
+            self.disabled = True
+            view.board[self.y][self.x] = 1
+            view.current_player = view.player_x
+            embed = hikari.Embed(
+                title="Tic Tac Toe!",
+                description=f"It is **{view.player_x.display_name}**'s turn!",
+                color=0x009DFF,
+            ).set_thumbnail(view.player_x.display_avatar_url)
+
+        winner = view.check_winner()
+
+        if winner is not None:
+
+            if winner == WinState.PLAYER_X:
                 embed = hikari.Embed(
                     title="Tic Tac Toe!",
-                    description=f"It is **{view.playero.display_name}**'s turn!",
-                    color=0x009DFF,
-                ).set_thumbnail(view.playero.display_avatar_url)
+                    description=f"**{view.player_x.display_name}** won!",
+                    color=0x77B255,
+                ).set_thumbnail(view.player_x.display_avatar_url)
+
+            elif winner == WinState.PLAYER_O:
+                embed = hikari.Embed(
+                    title="Tic Tac Toe!",
+                    description=f"**{view.player_o.display_name}** won!",
+                    color=0x77B255,
+                ).set_thumbnail(view.player_o.display_avatar_url)
 
             else:
-                self.style = hikari.ButtonStyle.SUCCESS
-                self.label = "O"
-                self.disabled = True
-                view.board[self.y][self.x] = 1
-                view.current_player = view.playerx
-                embed = hikari.Embed(
-                    title="Tic Tac Toe!",
-                    description=f"It is **{view.playerx.display_name}**'s turn!",
-                    color=0x009DFF,
-                ).set_thumbnail(view.playerx.display_avatar_url)
+                embed = hikari.Embed(title="Tic Tac Toe!", description=f"It's a tie!", color=0x77B255).set_thumbnail(
+                    None
+                )
 
-            winner = view.check_winner()
+            for button in view.children:
+                assert isinstance(button, miru.Button)
+                button.disabled = True
 
-            if winner is not None:
+            view.stop()
 
-                if winner == WinState.PLAYER_X:
-                    embed = hikari.Embed(
-                        title="Tic Tac Toe!",
-                        description=f"**{view.playerx.display_name}** won!",
-                        color=0x77B255,
-                    ).set_thumbnail(view.playerx.display_avatar_url)
-
-                elif winner == WinState.PLAYER_O:
-                    embed = hikari.Embed(
-                        title="Tic Tac Toe!",
-                        description=f"**{view.playero.display_name}** won!",
-                        color=0x77B255,
-                    ).set_thumbnail(view.playero.display_avatar_url)
-
-                else:
-                    embed = hikari.Embed(
-                        title="Tic Tac Toe!", description=f"It's a tie!", color=0x77B255
-                    ).set_thumbnail(None)
-
-                for button in view.children:
-                    assert isinstance(button, miru.Button)
-                    button.disabled = True
-
-                view.stop()
-
-            await ctx.edit_response(embed=embed, components=view.build())
+        await ctx.edit_response(embed=embed, components=view)
 
 
 class TicTacToeView(miru.View):
-    def __init__(self, size: int, playerx: hikari.Member, playero: hikari.Member, *args, **kwargs) -> None:
+    def __init__(self, size: int, player_x: hikari.Member, player_o: hikari.Member, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.current_player: hikari.Member = playerx
+        self.current_player: hikari.Member = player_x
         self.size: int = size
-        self.playerx: hikari.Member = playerx
-        self.playero: hikari.Member = playero
+        self.player_x: hikari.Member = player_x
+        self.player_o: hikari.Member = player_o
 
-        if size in [3, 4, 5]:
-            # Create board
-            self.board = [[0 for _ in range(size)] for _ in range(size)]
-
-        else:
-            raise TypeError("Invalid size specified. Must be either 3, 4, 5.")
+        self.board = [[0 for _ in range(size)] for _ in range(size)]
 
         for x in range(size):
             for y in range(size):
@@ -189,7 +183,7 @@ class TicTacToeView(miru.View):
                 description="This game timed out! Try starting a new one!",
                 color=0xFF0000,
             ),
-            components=self.build(),
+            components=self,
         )
 
     def check_blocked(self) -> bool:
@@ -382,7 +376,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
             ).set_thumbnail(ctx.member.display_avatar_url),
             components=view.build(),
         )
-        view.start(await proxy.message())
+        await view.start(await proxy.message())
 
     else:
         await ctx.respond(
@@ -412,8 +406,8 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
 
     file = open(Path(ctx.app.base_dir, "etc", "text", f"words_{difficulty}.txt"), "r")
     words = [word.strip() for word in file.readlines()]
-    font = Path(ctx.app.base_dir, "etc", "fonts", "roboto-slab.ttf")
-    text = " ".join([random.choice(words) for i in range(0, length)])
+
+    text = " ".join([random.choice(words) for _ in range(0, length)])
     file.close()
 
     await ctx.respond(
@@ -426,7 +420,8 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
 
     await asyncio.sleep(10.0)
 
-    def create_image() -> BytesIO:
+    def draw_text(text: str) -> BytesIO:
+        font = Path(ctx.app.base_dir, "etc", "fonts", "roboto-slab.ttf")
         display_text = fill(text, 60)
 
         img = Image.new("RGBA", (1, 1), color=0)  # 1x1 transparent image
@@ -439,15 +434,14 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
         margin = 20
         img = img.resize((textwidth + margin, textheight + margin))
         draw = ImageDraw.Draw(img)
-        # draw.text(
-        #    (margin/2, margin/2), display_text, font=outline, fill=(54, 57, 63)
-        # )
+
         draw.text((margin / 2, margin / 2), display_text, font=text_font, fill="white")
         buffer = BytesIO()
         img.save(buffer, format="PNG")
         return buffer
 
-    buffer: BytesIO = await asyncio.get_running_loop().run_in_executor(None, create_image)
+    buffer: BytesIO = await asyncio.get_running_loop().run_in_executor(None, draw_text)
+
     await ctx.respond(
         embed=hikari.Embed(
             description="🏁 Type in the text from above as fast as you can!",
@@ -513,8 +507,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
             )
         )
 
-    finally:
-        msg_listener.cancel()
+    msg_listener.cancel()
 
 
 @fun.command
@@ -528,7 +521,7 @@ async def dictionary_lookup(ctx: SnedSlashContext, word: str) -> None:
     entries = await dictionary_client.get_mw_entries(word)
 
     channel = ctx.get_channel()
-    is_nsfw = channel.is_nsfw if isinstance(channel, hikari.GuildChannel) else False
+    is_nsfw = channel.is_nsfw if isinstance(channel, hikari.PermissibleGuildChannel) else False
     entries = [entry for entry in entries if is_nsfw or not is_nsfw and not entry.offensive]
 
     if not entries:
@@ -774,6 +767,7 @@ async def animal(ctx: SnedSlashContext, animal: str) -> None:
                 )
             )
             return
+
         response = await response.json()
         await ctx.respond(
             embed=hikari.Embed(

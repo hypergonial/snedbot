@@ -7,11 +7,8 @@ import hikari
 import lightbulb
 import miru
 
-from etc import constants as const
-from models import SnedBot
-from models import SnedSlashContext
-from models import Timer
-from models import events
+from etc import const
+from models import SnedBot, SnedSlashContext, Timer, events
 from models.plugin import SnedPlugin
 from models.timer import TimerEvent
 from models.views import AuthorOnlyNavigator
@@ -73,9 +70,9 @@ class SnoozeSelect(miru.Select):
                 description=f"Reminder snoozed until: {helpers.format_dt(expiry)} ({helpers.format_dt(expiry, style='R')})\n\n**Message:**\n{message}",
                 color=const.EMBED_GREEN,
             ).set_footer(f"Reminder ID: {timer.id}"),
-            components=miru.View()
-            .add_item(miru.Select(placeholder="Reminder snoozed!", options=[miru.SelectOption("foo")], disabled=True))
-            .build(),
+            components=miru.View().add_item(
+                miru.Select(placeholder="Reminder snoozed!", options=[miru.SelectOption("foo")], disabled=True)
+            ),
             flags=hikari.MessageFlag.EPHEMERAL,
         )
         self.view.stop()
@@ -120,7 +117,7 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
 
         view = miru.View.from_message(event.context.message)
         view.children[0].disabled = True  # type: ignore
-        await event.context.edit_response(components=view.build())
+        await event.context.edit_response(components=view)
 
         view = SnoozeView(event.context.message)  # I literally added InteractionResponse just for this
         resp = await event.context.respond(
@@ -129,10 +126,10 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
                 description="Select a duration to snooze the reminder for!",
                 color=const.EMBED_BLUE,
             ),
-            components=view.build(),
+            components=view,
             flags=hikari.MessageFlag.EPHEMERAL,
         )
-        view.start(await resp.retrieve_message())
+        await view.start(await resp.retrieve_message())
 
     else:  # Reminder additional recipients
         timer_id = int(event.context.custom_id.split(":")[1])
@@ -155,7 +152,7 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
             for item in view.children:
                 if isinstance(item, miru.Button):
                     item.disabled = True
-            await event.context.message.edit(components=view.build())
+            await event.context.message.edit(components=view)
             return
 
         if timer.user_id == event.context.user.id:
@@ -298,9 +295,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
             description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{message}",
             color=const.EMBED_GREEN,
         ).set_footer(f"Reminder ID: {timer.id}"),
-        components=miru.View()
-        .add_item(miru.Button(label="Remind me too!", emoji="✉️", custom_id=f"RMAR:{timer.id}"))
-        .build(),
+        components=miru.View().add_item(miru.Button(label="Remind me too!", emoji="✉️", custom_id=f"RMAR:{timer.id}")),
     )
     reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
     timer.notes = json.dumps(reminder_data)
@@ -426,9 +421,9 @@ async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
             event.timer.channel_id,
             content=" ".join([user.mention for user in to_ping]),
             embed=embed,
-            components=miru.View()
-            .add_item(miru.Button(emoji="🕔", label="Snooze!", custom_id=f"RMSS:{event.timer.user_id}"))
-            .build(),
+            components=miru.View().add_item(
+                miru.Button(emoji="🕔", label="Snooze!", custom_id=f"RMSS:{event.timer.user_id}")
+            ),
             user_mentions=True,
         )
     except (

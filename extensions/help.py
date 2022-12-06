@@ -5,7 +5,7 @@ import typing as t
 import hikari
 import lightbulb
 
-import etc.constants as const
+import etc.const as const
 from models.context import SnedSlashContext
 from models.plugin import SnedPlugin
 

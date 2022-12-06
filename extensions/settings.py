@@ -10,11 +10,10 @@ import miru
 from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
 
 import models
-from etc import constants as const
+from etc import const
 from etc.settings_static import *
 from models.bot import SnedBot
-from models.checks import bot_has_permissions
-from models.checks import has_permissions
+from models.checks import bot_has_permissions, has_permissions
 from models.components import *
 from models.context import SnedSlashContext
 from models.mod_actions import ModerationFlags
@@ -105,7 +104,7 @@ class SettingsView(models.AuthorOnlyView):
         assert self.last_ctx is not None
         self.clear_items()
         self.add_item(BackButton(parent=parent, **kwargs))
-        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
     async def on_timeout(self) -> None:
@@ -121,18 +120,18 @@ class SettingsView(models.AuthorOnlyView):
             item.disabled = True
 
         try:
-            await self.last_ctx.edit_response(components=self.build(), flags=self.flags)
+            await self.last_ctx.edit_response(components=self, flags=self.flags)
         except hikari.NotFoundError:
             pass
 
-    async def wait_for_input(self) -> None:
-        """Wait until a user input is given, then reset the event.
-        Other functions should check if view.value is None and return if so after waiting for this event."""
+    """ async def wait_for_input(self) -> None:
+        Wait until a user input is given, then reset the event.
+        Other functions should check if view.value is None and return if so after waiting for this event.
         self.input_event.clear()
         await self.input_event.wait()
 
         if self._stopped.is_set():
-            raise asyncio.CancelledError
+            raise asyncio.CancelledError """
 
     async def quit_settings(self) -> None:
         """Exit settings menu."""
@@ -143,7 +142,7 @@ class SettingsView(models.AuthorOnlyView):
             item.disabled = True
 
         try:
-            await self.last_ctx.edit_response(components=self.build(), flags=self.flags)
+            await self.last_ctx.edit_response(components=self, flags=self.flags)
         except hikari.NotFoundError:
             pass
 
@@ -177,12 +176,12 @@ Click one of the buttons below to get started!""",
 
         self.add_buttons(buttons)
         if initial:
-            resp = await self.lctx.respond(embed=embed, components=self.build(), flags=self.flags)
+            resp = await self.lctx.respond(embed=embed, components=self, flags=self.flags)
             message = await resp.message()
-            self.start(message)
+            await self.start(message)
         else:
             assert self.last_ctx is not None
-            await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+            await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
 
         await self.wait_for_input()
         if self.value is None:
@@ -237,7 +236,7 @@ Click one of the buttons below to get started!""",
             ),
         ]
         self.add_buttons(buttons, parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if not self.value:
@@ -411,7 +410,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed.add_field(name=mod_flags_strings[flag], value=str(value), inline=True)
 
         self.add_buttons(buttons, parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if not self.value:
@@ -497,7 +496,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             inline=True,
         )
         self.add_buttons(buttons, parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if self.value is None:
@@ -725,7 +724,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         is_color = await userlog.d.actions.is_color_enabled(self.last_ctx.guild_id)
         self.add_item(BooleanButton(state=is_color, label="Color logs"))
 
-        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if not self.value:
@@ -812,7 +811,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             options.append(miru.SelectOption(label=policy_strings[key]["name"], value=key))
 
         self.select_screen(OptionsSelect(options=options, placeholder="Select a policy..."), parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if not self.value:
@@ -1003,7 +1002,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             buttons.append(OptionButton(label="Help", custom_id="show_help", emoji="❓"))
 
         self.add_buttons(buttons, parent="Auto-Moderation")
-        await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if not self.value:
@@ -1063,7 +1062,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed = hikari.Embed(
                 title="Select state...", description="Select a new state for this policy...", color=const.EMBED_BLUE
             )
-            await self.last_ctx.edit_response(embed=embed, components=self.build(), flags=self.flags)
+            await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
             await self.wait_for_input()
 
             if not self.value:
@@ -1306,7 +1305,7 @@ async def ask_settings(
     if not invalid_select:
         view.clear_items()
         view.add_item(OptionsSelect(placeholder=placeholder, options=options))
-        await ctx.edit_response(content=content, embeds=embeds, components=view.build(), flags=flags)
+        await ctx.edit_response(content=content, embeds=embeds, components=view, flags=flags)
         await view.wait_for_input()
 
         if view.value:

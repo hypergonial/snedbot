@@ -7,9 +7,11 @@ import hikari
 import miru
 
 from models.db import DatabaseModel
-from models.events import RoleButtonCreateEvent
-from models.events import RoleButtonDeleteEvent
-from models.events import RoleButtonUpdateEvent
+from models.events import (
+    RoleButtonCreateEvent,
+    RoleButtonDeleteEvent,
+    RoleButtonUpdateEvent,
+)
 
 
 class RoleButtonMode(enum.IntEnum):
@@ -208,7 +210,7 @@ class RoleButton(DatabaseModel):
 
         view = miru.View.from_message(message)
         view.add_item(button)
-        message = await message.edit(components=view.build())
+        message = await message.edit(components=view)
 
         await cls._db.execute(
             """
@@ -271,7 +273,7 @@ class RoleButton(DatabaseModel):
         button.custom_id = f"RB:{self.id}:{self.role_id}"
         self._custom_id = button.custom_id
 
-        message = await message.edit(components=view.build())
+        message = await message.edit(components=view)
 
         await self._db.execute(
             """
@@ -315,7 +317,7 @@ class RoleButton(DatabaseModel):
             for item in view.children:
                 if item.custom_id == f"RB:{self.id}:{self.role_id}":
                     view.remove_item(item)
-            message = await message.edit(components=view.build())
+            message = await message.edit(components=view)
 
         await self._db.execute(
             """DELETE FROM button_roles WHERE guild_id = $1 AND entry_id = $2""",

@@ -12,9 +12,8 @@ import lightbulb
 import miru
 from miru.ext import nav
 
-from etc import constants as const
-from models import AuthorOnlyNavigator
-from models import SnedPrefixContext
+from etc import const
+from models import AuthorOnlyNavigator, SnedPrefixContext
 from models.bot import SnedBot
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyView
@@ -84,9 +83,9 @@ async def send_paginated(
         if channel_id:
             view = TrashView(ctx, timeout=300)
             message = await ctx.app.rest.create_message(
-                channel_id, f"{prefix}{format_output(text)}{suffix}", components=view.build()
+                channel_id, f"{prefix}{format_output(text)}{suffix}", components=view
             )
-            return view.start(message)
+            return await view.start(message)
         else:
             assert isinstance(messageable, (hikari.TextableChannel, hikari.User))
             await messageable.send(f"{prefix}{format_output(text)}{suffix}")

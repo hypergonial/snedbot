@@ -5,7 +5,7 @@ import lightbulb
 import yarl
 
 from config import Config
-from etc import constants as const
+from etc import const
 from models.bot import SnedBot
 from models.context import SnedSlashContext
 from models.plugin import SnedPlugin

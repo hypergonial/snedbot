@@ -4,8 +4,7 @@ import logging
 import hikari
 import lightbulb
 
-from etc import constants as const
-from etc import get_perm_str
+from etc import const, get_perm_str
 from models import SnedSlashContext
 from models.bot import SnedBot
 from models.plugin import SnedPlugin

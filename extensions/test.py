@@ -7,7 +7,7 @@ import lightbulb
 import miru
 from miru.ext import nav
 
-from etc import constants as const
+from etc import const
 from models import SnedSlashContext
 from models.bot import SnedBot
 from models.plugin import SnedPlugin
@@ -20,7 +20,7 @@ test = SnedPlugin("Test")
 
 @test.listener(hikari.StartedEvent)
 async def start_views(event: hikari.StartedEvent) -> None:
-    PersistentThing().start_listener()
+    await PersistentThing().start()
 
 
 class PersistentThing(miru.View):
@@ -82,7 +82,7 @@ class BasicModal(miru.Modal):
 @lightbulb.command("mirupersistent", "Test miru persistent unbound")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def miru_persistent(ctx: SnedSlashContext) -> None:
-    await ctx.respond("Beep Boop!", components=PersistentThing().build())
+    await ctx.respond("Beep Boop!", components=PersistentThing())
 
 
 @test.listener(hikari.GuildMessageCreateEvent)
@@ -96,8 +96,8 @@ async def nonce_printer(event: hikari.GuildMessageCreateEvent) -> None:
 async def viewtest(ctx: SnedSlashContext) -> None:
     view = BasicView()
     view.add_item(miru.Button(label="Settings!", url="discord://-/settings/advanced"))
-    resp = await ctx.respond("foo", components=view.build())
-    view.start(await resp.message())
+    resp = await ctx.respond("foo", components=view)
+    await view.start(await resp.message())
 
 
 @test.command

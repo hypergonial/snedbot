@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import typing as t
 
 import hikari
 import miru
+
+if t.TYPE_CHECKING:
+    from extensions.settings import SettingsView
 
 
 class BooleanButton(miru.Button):
@@ -47,14 +52,13 @@ class OptionButton(miru.Button):
 class OptionsModal(miru.Modal):
     def __init__(
         self,
-        view: miru.View,
+        view: SettingsView,
         title: str,
         *,
         custom_id: t.Optional[str] = None,
         timeout: t.Optional[float] = 300,
-        autodefer: bool = False,
     ) -> None:
-        super().__init__(title, custom_id=custom_id, timeout=timeout, autodefer=autodefer)
+        super().__init__(title, custom_id=custom_id, timeout=timeout)
         self.view = view
 
     async def callback(self, context: miru.ModalContext) -> None:
@@ -77,9 +81,8 @@ class PerspectiveBoundsModal(miru.Modal):
         *,
         custom_id: t.Optional[str] = None,
         timeout: t.Optional[float] = 300,
-        autodefer: bool = False,
     ) -> None:
-        super().__init__(title, custom_id=custom_id, timeout=timeout, autodefer=autodefer)
+        super().__init__(title, custom_id=custom_id, timeout=timeout)
         self.add_item(
             miru.TextInput(
                 label="Toxicity",

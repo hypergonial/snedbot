@@ -7,10 +7,8 @@ import hikari
 import lightbulb
 import miru
 
-from etc import constants as const
-from models import AuthorOnlyNavigator
-from models import SnedSlashContext
-from models import Tag
+from etc import const
+from models import AuthorOnlyNavigator, SnedSlashContext, Tag
 from models.bot import SnedBot
 from models.plugin import SnedPlugin
 from utils import helpers
@@ -28,7 +26,7 @@ class TagEditorModal(miru.Modal):
         if content:
             title = f"Editing tag {name}"
 
-        super().__init__(title, timeout=600, autodefer=False)
+        super().__init__(title, timeout=600)
 
         if not content:
             self.add_item(
@@ -119,10 +117,10 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     modal = TagEditorModal()
     await modal.send(ctx.interaction)
     await modal.wait()
-    if not modal.values:
+    if not modal.last_context:
         return
 
-    mctx = modal.get_response_context()
+    mctx = modal.last_context
 
     tag = await Tag.fetch(modal.tag_name.casefold(), ctx.guild_id)
     if tag:
@@ -463,10 +461,10 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
     modal = TagEditorModal(name=tag.name, content=tag.content)
     await modal.send(ctx.interaction)
     await modal.wait()
-    if not modal.values:
+    if not modal.last_context:
         return
 
-    mctx = modal.get_response_context()
+    mctx = modal.last_context
 
     tag.content = modal.tag_content
 

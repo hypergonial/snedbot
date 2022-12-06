@@ -1,13 +1,11 @@
-from typing import List
-from typing import Optional
-from typing import Union
+from typing import List, Optional, Union
 
 import hikari
 import lightbulb
 import miru
 from miru.ext import nav
 
-from etc import constants as const
+from etc import const
 
 
 class StopSelect(miru.Select):

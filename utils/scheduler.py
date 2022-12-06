@@ -13,8 +13,7 @@ import hikari
 import Levenshtein as lev
 
 from models.events import TimerCompleteEvent
-from models.timer import Timer
-from models.timer import TimerEvent
+from models.timer import Timer, TimerEvent
 from utils.tasks import IntervalLoop
 
 logger = logging.getLogger(__name__)

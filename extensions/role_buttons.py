@@ -7,16 +7,12 @@ import lightbulb
 import miru
 
 import models
-from etc import constants as const
-from models import SnedBot
-from models import SnedSlashContext
-from models.checks import has_permissions
+from etc import const
+from models import SnedBot, SnedSlashContext
 from models.plugin import SnedPlugin
-from models.rolebutton import RoleButton
-from models.rolebutton import RoleButtonMode
+from models.rolebutton import RoleButton, RoleButtonMode
 from utils import helpers
-from utils.ratelimiter import BucketType
-from utils.ratelimiter import RateLimiter
+from utils.ratelimiter import BucketType, RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +44,7 @@ class RoleButtonConfirmModal(miru.Modal):
     """A modal to handle editing of confirmation prompts for rolebuttons."""
 
     def __init__(self, role_button: RoleButton, type: RoleButtonConfirmType) -> None:
-        super().__init__(f"Add rolebutton confirmation for button #{role_button.id}", timeout=600, autodefer=False)
+        super().__init__(f"Add rolebutton confirmation for button #{role_button.id}", timeout=600)
         self.add_item(
             miru.TextInput(
                 label="Title",

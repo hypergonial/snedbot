@@ -10,9 +10,8 @@ import kosu
 import lightbulb
 
 import utils
-from etc import constants as const
-from etc.settings_static import default_automod_policies
-from etc.settings_static import notices
+from etc import const
+from etc.settings_static import default_automod_policies, notices
 from models.bot import SnedBot
 from models.events import AutoModMessageFlagEvent
 from models.plugin import SnedPlugin

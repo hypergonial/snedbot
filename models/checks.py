@@ -4,11 +4,8 @@ import operator
 import hikari
 import lightbulb
 
-from models.context import SnedApplicationContext
-from models.context import SnedContext
-from models.context import SnedSlashContext
-from models.errors import BotRoleHierarchyError
-from models.errors import RoleHierarchyError
+from models.context import SnedApplicationContext, SnedContext, SnedSlashContext
+from models.errors import BotRoleHierarchyError, RoleHierarchyError
 from utils import helpers
 
 
