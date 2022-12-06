@@ -100,7 +100,7 @@ class SnedBot(lightbulb.BotApp):
         self._session: t.Optional[aiohttp.ClientSession] = None
         self._db_cache = cache.DatabaseCache(self)
         self._mod = ModActions(self)
-        miru.load(self)
+        miru.install(self)
 
         # Some global variables
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
