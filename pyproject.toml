@@ -32,7 +32,7 @@ hikari-miru = "==2.0.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.12"
-isort = "^5.10.1"
+isort = "^5.11.2"
 nox = "==2022.11.21"
 
 [build-system]
