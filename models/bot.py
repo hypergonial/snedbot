@@ -72,6 +72,7 @@ class SnedBot(lightbulb.BotApp):
             | hikari.Intents.GUILD_INVITES
             | hikari.Intents.ALL_MESSAGE_REACTIONS
             | hikari.Intents.ALL_MESSAGES
+            | hikari.Intents.MESSAGE_CONTENT
         )
 
         self.dev_mode: bool = config.DEV_MODE
