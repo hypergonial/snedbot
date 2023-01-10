@@ -420,7 +420,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, l
 
     await asyncio.sleep(10.0)
 
-    def draw_text(text: str) -> BytesIO:
+    def draw_text() -> BytesIO:
         font = Path(ctx.app.base_dir, "etc", "fonts", "roboto-slab.ttf")
         display_text = fill(text, 60)
 
