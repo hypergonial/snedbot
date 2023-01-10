@@ -752,14 +752,14 @@ speedups = ["aiohttp[speedups] (>=3.8,<4.0)", "ciso8601 (>=2.2,<3.0)"]
 
 [[package]]
 name = "hikari-lightbulb"
-version = "2.3.0"
+version = "2.3.1"
 description = "A simple to use command handler for Hikari"
 category = "main"
 optional = false
 python-versions = ">=3.8.0,<3.12"
 files = [
-    {file = "hikari-lightbulb-2.3.0.tar.gz", hash = "sha256:94a40902f1a02d4e96f1463c338e054a2f423a6a6831ca574065f032ca7738ae"},
-    {file = "hikari_lightbulb-2.3.0-py3-none-any.whl", hash = "sha256:d87998fecef7bbd5d4fc8082535862dccc77c2856efc7166db62fcda20f3e630"},
+    {file = "hikari-lightbulb-2.3.1.tar.gz", hash = "sha256:59aab951c21c6f3d4eb808db5a6cafadf7b33320906c70987ad252e79c5c190b"},
+    {file = "hikari_lightbulb-2.3.1-py3-none-any.whl", hash = "sha256:c7e84181694eda33c66d2e227f73cdf618306d4e33ca248da901a5234d0bb393"},
 ]
 
 [package.dependencies]
@@ -1761,4 +1761,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11"
-content-hash = "fc40cc45f7f880acd2aea6734bb5908aa161e538b900c71810a54dde24ccebe5"
+content-hash = "b3d54121bd1feef66d2b40dfcab899139e2aa262ebb328ca6d62c245cabc9098"
