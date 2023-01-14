@@ -26,10 +26,12 @@ class SnedGuildEvent(SnedEvent):
     """
 
     app: SnedBot
+    """The currently running application."""
     _guild_id: hikari.Snowflakeish
 
     @property
     def guild_id(self) -> hikari.Snowflake:
+        """The guild this event belongs to."""
         return hikari.Snowflake(self._guild_id)
 
     async def fetch_guild(self) -> hikari.RESTGuild:
@@ -76,6 +78,7 @@ class TimerCompleteEvent(SnedGuildEvent):
 
     app: SnedBot
     timer: Timer
+    """The timer that was dispatched."""
     _guild_id: hikari.Snowflakeish
 
 
@@ -88,10 +91,15 @@ class MassBanEvent(SnedGuildEvent):
     app: SnedBot
     _guild_id: hikari.Snowflakeish
     moderator: hikari.Member
+    """The moderator responsible for the massban."""
     total: int
+    """The total number of users that were attempted to be banned."""
     successful: int
-    users_file: hikari.Resourceish
+    """The actual amount of users that have been banned."""
+    logfile: hikari.Resourceish
+    """The massban session logfile."""
     reason: t.Optional[str] = None
+    """The reason for the massban."""
 
 
 @attr.define()
@@ -103,9 +111,13 @@ class WarnEvent(SnedGuildEvent):
     app: SnedBot
     _guild_id: hikari.Snowflakeish
     member: hikari.Member
+    """The member that was warned."""
     moderator: hikari.Member
+    """The moderator that warned the member."""
     warn_count: int
+    """The amount of warnings the member has."""
     reason: t.Optional[str] = None
+    """The reason for the warning."""
 
 
 @attr.define()
@@ -143,9 +155,12 @@ class AutoModMessageFlagEvent(SnedGuildEvent):
 
     app: SnedBot
     message: hikari.PartialMessage
+    """The message that was flagged."""
     user: hikari.PartialUser
+    """The user that sent the message."""
     _guild_id: hikari.Snowflakeish
     reason: t.Optional[str] = None
+    """The reason for the flag."""
 
 
 @attr.define()
@@ -157,7 +172,9 @@ class RoleButtonEvent(SnedGuildEvent):
     app: SnedBot
     _guild_id: hikari.Snowflakeish
     rolebutton: RoleButton
+    """The rolebutton that was altered."""
     moderator: t.Optional[hikari.PartialUser] = None
+    """The moderator that altered the rolebutton."""
 
 
 @attr.define()

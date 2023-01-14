@@ -22,6 +22,7 @@ from models.events import (
     WarnRemoveEvent,
     WarnsClearEvent,
 )
+from models.journal import JournalEntry, JournalEntryType
 from models.plugin import SnedPlugin
 from utils import helpers
 
@@ -40,7 +41,7 @@ userlog.d.queue = {}
 # Queue iter task
 userlog.d._task = None
 
-userlog.d.valid_log_events = [
+userlog.d.valid_log_events = (
     "ban",
     "kick",
     "timeout",
@@ -56,7 +57,7 @@ userlog.d.valid_log_events = [
     "nickname",
     "guild_settings",
     "warn",
-]
+)
 
 # List of guilds where logging is temporarily suspended
 userlog.d.frozen_guilds = []
@@ -121,6 +122,17 @@ userlog.d.actions["set_log_channel"] = set_log_channel
 async def is_color_enabled(guild_id: int) -> bool:
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
     return records[0]["color"] if records else True
+
+
+def parse_user(arg: t.Union[str, hikari.PartialUser, None]) -> t.Optional[hikari.PartialUser]:
+    """
+    Attempt to convert a string to a User object.
+    """
+    if isinstance(arg, str):
+        users = userlog.app.cache.get_users_view()
+        return lightbulb.utils.find(users.values(), lambda u: u.username == arg or str(u) == arg)
+    else:
+        return arg
 
 
 userlog.d.actions["is_color_enabled"] = is_color_enabled
@@ -419,7 +431,11 @@ def strip_bot_reason(reason: t.Optional[str]) -> t.Tuple[t.Optional[str], t.Opti
     return match.group("reason"), match.group("name")
 
 
-# Event Listeners start below
+###############################
+#                             #
+# Event Listeners start below #
+#                             #
+###############################
 
 
 @userlog.listener(hikari.GuildMessageDeleteEvent, bind=True)
@@ -726,7 +742,16 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
         color=const.EMBED_GREEN,
     )
     await log("ban", embed, event.guild_id)
-    await plugin.app.mod.add_note(event.user, event.guild_id, f"🔨 **Unbanned by {moderator}:** {reason}")
+
+    moderator = parse_user(moderator)
+    await JournalEntry(
+        user_id=event.user.id,
+        guild_id=event.guild_id,
+        entry_type=JournalEntryType.UNBAN,
+        content=reason,
+        author_id=hikari.Snowflake(moderator) if moderator else None,
+        created_at=helpers.utcnow(),
+    ).update()
 
 
 @userlog.listener(hikari.BanCreateEvent, bind=True)
@@ -751,7 +776,16 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
         color=const.ERROR_COLOR,
     )
     await log("ban", embed, event.guild_id)
-    await plugin.app.mod.add_note(event.user, event.guild_id, f"🔨 **Banned by {moderator}:** {reason}")
+
+    moderator = parse_user(moderator)
+    await JournalEntry(
+        user_id=event.user.id,
+        guild_id=event.guild_id,
+        entry_type=JournalEntryType.BAN,
+        content=reason,
+        author_id=hikari.Snowflake(moderator) if moderator else None,
+        created_at=helpers.utcnow(),
+    ).update()
 
 
 @userlog.listener(hikari.MemberDeleteEvent, bind=True)
@@ -777,31 +811,42 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
             color=const.ERROR_COLOR,
         )
         await log("kick", embed, event.guild_id)
-        await plugin.app.mod.add_note(event.user, event.guild_id, f"🚪👈 **Kicked by {moderator}:** {reason}")
+
+        moderator = parse_user(moderator)
+        await JournalEntry(
+            user_id=event.user.id,
+            guild_id=event.guild_id,
+            entry_type=JournalEntryType.KICK,
+            content=reason,
+            author_id=hikari.Snowflake(moderator) if moderator else None,
+            created_at=helpers.utcnow(),
+        ).update()
         return
 
     embed = hikari.Embed(
         title=f"🚪 User left",
         description=f"**User:** `{event.user} ({event.user.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
         color=const.ERROR_COLOR,
-    )
+    ).set_thumbnail(event.user.display_avatar_url)
     await log("member_leave", embed, event.guild_id)
 
 
 @userlog.listener(hikari.MemberCreateEvent, bind=True)
 async def member_create(plugin: SnedPlugin, event: hikari.MemberCreateEvent) -> None:
 
-    embed = hikari.Embed(
-        title=f"🚪 User joined",
-        description=f"**User:** `{event.member} ({event.member.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
-        color=const.EMBED_GREEN,
+    embed = (
+        hikari.Embed(
+            title=f"🚪 User joined",
+            description=f"**User:** `{event.member} ({event.member.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
+            color=const.EMBED_GREEN,
+        )
+        .add_field(
+            name="Account created",
+            value=f"{helpers.format_dt(event.member.created_at)} ({helpers.format_dt(event.member.created_at, style='R')})",
+            inline=False,
+        )
+        .set_thumbnail(event.member.display_avatar_url)
     )
-    embed.add_field(
-        name="Account created",
-        value=f"{helpers.format_dt(event.member.created_at)} ({helpers.format_dt(event.member.created_at, style='R')})",
-        inline=False,
-    )
-    embed.set_thumbnail(event.member.display_avatar_url)
     await log("member_join", embed, event.guild_id)
 
 
@@ -841,24 +886,36 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
                 description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
                 color=const.EMBED_GREEN,
             )
-            await plugin.app.mod.add_note(event.user, event.guild_id, f"🔉 **Timeout removed by {moderator}:** {reason}")
+            moderator = parse_user(moderator)
+            await JournalEntry(
+                user_id=event.user.id,
+                guild_id=event.guild_id,
+                entry_type=JournalEntryType.TIMEOUT_REMOVE,
+                content=reason,
+                author_id=hikari.Snowflake(moderator) if moderator else None,
+                created_at=helpers.utcnow(),
+            ).update()
+            return
 
-        else:
-            assert comms_disabled_until is not None
+        assert comms_disabled_until is not None
 
-            embed = hikari.Embed(
-                title=f"🔇 User timed out",
-                description=f"""**User:** `{member} ({member.id})`
+        embed = hikari.Embed(
+            title=f"🔇 User timed out",
+            description=f"""**User:** `{member} ({member.id})`
 **Moderator:** `{moderator}` 
 **Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style='R')})
 **Reason:** ```{reason}```""",
-                color=const.ERROR_COLOR,
-            )
-            await plugin.app.mod.add_note(
-                event.user,
-                event.guild_id,
-                f"🔇 **Timed out by {moderator} until {helpers.format_dt(comms_disabled_until)}:** {reason}",
-            )
+            color=const.ERROR_COLOR,
+        )
+        moderator = parse_user(moderator)
+        await JournalEntry(
+            user_id=event.user.id,
+            guild_id=event.guild_id,
+            entry_type=JournalEntryType.TIMEOUT,
+            content=reason,
+            author_id=hikari.Snowflake(moderator) if moderator else None,
+            created_at=helpers.utcnow(),
+        ).update()
 
         await log("timeout", embed, event.guild_id)
 
@@ -929,9 +986,14 @@ async def warn_create(plugin: SnedPlugin, event: WarnCreateEvent) -> None:
 
     await log("warn", embed, event.guild_id)
 
-    await plugin.app.mod.add_note(
-        event.member, event.member.guild_id, f"⚠️ **Warned by {event.moderator}:** {event.reason}"
-    )
+    await JournalEntry(
+        user_id=event.member.id,
+        guild_id=event.guild_id,
+        entry_type=JournalEntryType.WARN,
+        content=event.reason,
+        author_id=hikari.Snowflake(event.moderator),
+        created_at=helpers.utcnow(),
+    ).update()
 
 
 @userlog.listener(WarnRemoveEvent, bind=True)
@@ -945,9 +1007,14 @@ async def warn_remove(plugin: SnedPlugin, event: WarnRemoveEvent) -> None:
 
     await log("warn", embed, event.guild_id)
 
-    await plugin.app.mod.add_note(
-        event.member, event.member.guild_id, f"⚠️ **1 Warning removed by {event.moderator}:** {event.reason}"
-    )
+    await JournalEntry(
+        user_id=event.member.id,
+        guild_id=event.guild_id,
+        entry_type=JournalEntryType.WARN_REMOVE,
+        content=event.reason,
+        author_id=hikari.Snowflake(event.moderator),
+        created_at=helpers.utcnow(),
+    ).update()
 
 
 @userlog.listener(WarnsClearEvent, bind=True)
@@ -961,9 +1028,14 @@ async def warns_clear(plugin: SnedPlugin, event: WarnsClearEvent) -> None:
 
     await log("warn", embed, event.guild_id)
 
-    await plugin.app.mod.add_note(
-        event.member, event.member.guild_id, f"⚠️ **Warnings cleared for {event.moderator}:** {event.reason}"
-    )
+    await JournalEntry(
+        user_id=event.member.id,
+        guild_id=event.guild_id,
+        entry_type=JournalEntryType.WARN_CLEAR,
+        content=event.reason,
+        author_id=hikari.Snowflake(event.moderator),
+        created_at=helpers.utcnow(),
+    ).update()
 
 
 @userlog.listener(AutoModMessageFlagEvent, bind=True)
@@ -998,7 +1070,7 @@ async def massban_execute(event: MassBanEvent) -> None:
         description=f"Banned **{event.successful}/{event.total}** users.\n**Moderator:** `{event.moderator} ({event.moderator.id})`\n**Reason:** ```{event.reason}```",
         color=const.ERROR_COLOR,
     )
-    await log("ban", log_embed, event.guild_id, file=event.users_file, bypass=True)
+    await log("ban", log_embed, event.guild_id, file=event.logfile, bypass=True)
 
 
 @userlog.listener(RoleButtonCreateEvent)

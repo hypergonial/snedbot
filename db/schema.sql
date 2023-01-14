@@ -28,7 +28,7 @@ DO
 $do$
 DECLARE _schema_version integer;
 BEGIN
-    SELECT 6 INTO _schema_version; -- The current schema version, change this when creating new migrations
+    SELECT 7 INTO _schema_version; -- The current schema version, change this when creating new migrations
 
 	IF NOT EXISTS (SELECT schema_version FROM schema_info) THEN
 		INSERT INTO schema_info (schema_version) 
@@ -49,8 +49,22 @@ CREATE TABLE IF NOT EXISTS users
     guild_id bigint NOT NULL,
     flags json,
     warns integer NOT NULL DEFAULT 0,
-    notes text[],
     PRIMARY KEY (user_id, guild_id),
+    FOREIGN KEY (guild_id)
+        REFERENCES global_config (guild_id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS journal
+(
+    id serial NOT NULL,
+    user_id bigint NOT NULL,
+    guild_id bigint NOT NULL,
+    entry_type smallint NOT NULL,
+    content text,
+    author_id bigint,
+    created_at bigint NOT NULL,
+    PRIMARY KEY (id),
     FOREIGN KEY (guild_id)
         REFERENCES global_config (guild_id)
         ON DELETE CASCADE

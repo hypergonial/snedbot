@@ -20,6 +20,7 @@ from models.events import (
     WarnRemoveEvent,
     WarnsClearEvent,
 )
+from models.journal import JournalEntry
 from models.timer import TimerEvent
 from models.views import AuthorOnlyNavigator
 from utils import helpers
@@ -192,10 +193,10 @@ class ModActions:
             await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
         if action == "JOURNAL":
-            notes = await self.get_notes(user_id, event.guild_id)
+            journal = await JournalEntry.fetch_journal(user_id, event.guild_id)
 
-            if notes:
-                navigator = AuthorOnlyNavigator(event.context, pages=helpers.build_note_pages(notes))  # type: ignore
+            if journal:
+                navigator = AuthorOnlyNavigator(event.context, pages=helpers.build_journal_pages(journal))  # type: ignore
                 await navigator.send(event.interaction, ephemeral=True)
 
             else:
@@ -355,69 +356,6 @@ class ModActions:
             await guild.unban(event.timer.user_id, reason="User unbanned: Tempban expired.")
         except Exception as e:
             logger.info(f"Failed unbanning {event.timer.user_id} from {event.timer.guild_id}: {e.__class__}: {e}")
-
-    async def get_notes(
-        self, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild]
-    ) -> t.Optional[t.List[str]]:
-        """Returns a list of strings corresponding to a user's journal.
-
-        Parameters
-        ----------
-        user : hikari.SnowflakeishOr[hikari.PartialUser]
-            The user whose journal should be retrieved.
-        guild : hikari.SnowflakeishOr[hikari.Guild]
-            The guild the user belongs to.
-
-        Returns
-        -------
-        t.Optional[t.List[str]]
-            A list of strings corresponding to the user's journal, if found.
-        """
-
-        db_user = await DatabaseUser.fetch(hikari.Snowflake(user), hikari.Snowflake(guild))
-        return db_user.notes
-
-    async def add_note(
-        self, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild], note: str
-    ) -> None:
-        """Add a new journal entry to this user.
-
-        Parameters
-        ----------
-        user : hikari.SnowflakeishOr[hikari.PartialUser]
-            The user whose journal should be updated.
-        guild : hikari.SnowflakeishOr[hikari.Guild]
-            The guild the user belongs to.
-        note : str
-            The contents of the new journal entry.
-        """
-
-        note = helpers.format_reason(note, max_length=256)
-
-        db_user = await DatabaseUser.fetch(hikari.Snowflake(user), hikari.Snowflake(guild))
-
-        notes = db_user.notes if db_user.notes else []
-        notes.append(f"{helpers.format_dt(helpers.utcnow(), style='d')}: {note}")
-        db_user.notes = notes
-
-        await db_user.update()
-
-    async def clear_notes(
-        self, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.Guild]
-    ) -> None:
-        """Clear all journal entries a user has.
-
-        Parameters
-        ----------
-        user : hikari.SnowflakeishOr[hikari.PartialUser]
-            The user whose journal should be cleared.
-        guild : hikari.SnowflakeishOr[hikari.Guild]
-            The guild the user belongs to.
-        """
-
-        db_user = await DatabaseUser.fetch(hikari.Snowflake(user), hikari.Snowflake(guild))
-        db_user.notes = []
-        await db_user.update()
 
     async def warn(
         self, member: hikari.Member, moderator: hikari.Member, reason: t.Optional[str] = None

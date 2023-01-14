@@ -13,6 +13,7 @@ from models import errors
 from models.components import *
 from models.context import SnedApplicationContext, SnedContext
 from models.db_user import DatabaseUser
+from models.journal import JournalEntry
 
 MESSAGE_LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)channels[\/][0-9]{1,}[\/][0-9]{1,}[\/][0-9]{1,}"
@@ -96,6 +97,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
         raise RuntimeError("Cannot use get_userinfo outside of a guild.")
 
     db_user = await DatabaseUser.fetch(user.id, ctx.guild_id)
+    journal = await db_user.fetch_journal()
 
     member = ctx.app.cache.get_member(ctx.guild_id, user)
 
@@ -116,7 +118,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Badges:** {"   ".join(get_badges(member)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** {f"Until: {format_dt(comms_disabled_until)}" if comms_disabled_until is not None else "`-`"}
-**• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}` 
+**• Journal:** `{f"{len(journal)} entries" if journal else "No entries"}` 
 **• Roles:** {roles}""",
             color=get_color(member),
         )
@@ -137,7 +139,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Badges:** {"   ".join(get_badges(user)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** `-`
-**• Journal:** `{f"{len(db_user.notes)} entries" if db_user.notes else "No entries"}`
+**• Journal:** `{f"{len(journal)} entries" if journal else "No entries"}`
 **• Roles:** `-`
 *Note: This user is not a member of this server*""",
             color=const.EMBED_BLUE,
@@ -390,11 +392,11 @@ def format_reason(
     return reason
 
 
-def build_note_pages(notes: t.List[str]) -> t.List[hikari.Embed]:
+def build_journal_pages(entries: t.List[JournalEntry]) -> t.List[hikari.Embed]:
     """Build a list of embeds to send to a user containing journal entries, with pagination."""
 
     paginator = lightbulb.utils.StringPaginator(max_chars=1500)
-    [paginator.add_line(f"`#{i}` {note}") for i, note in enumerate(notes)]
+    [paginator.add_line(f"`#{entry.id}` {entry.display_content}") for entry in entries]
 
     embeds = [
         hikari.Embed(

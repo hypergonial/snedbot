@@ -333,10 +333,10 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
 
-    if not os.path.isdir(os.path.join(ctx.app.base_dir, "db", "backup")):
-        os.mkdir(os.path.join(ctx.app.base_dir, "db", "backup"))
+    if not os.path.isdir(os.path.join(ctx.app.base_dir, "db", "backups")):
+        os.mkdir(os.path.join(ctx.app.base_dir, "db", "backups"))
 
-    path = os.path.join(ctx.app.base_dir, "db", "backup", "dev_pg_restore_snapshot.pgdmp")
+    path = os.path.join(ctx.app.base_dir, "db", "backups", "dev_pg_restore_snapshot.pgdmp")
     with open(path, "wb") as file:
         file.write((await ctx.attachments[0].read()))
     try:
@@ -371,10 +371,9 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
 
     else:
         await ctx.app.db.update_schema()
+        await ctx.app.db_cache.start()
+        ctx.app.scheduler.restart()
         await ctx.respond("📥 Restored database from backup file.")
-
-    await ctx.app.db_cache.start()
-    ctx.app.scheduler.restart()
 
 
 @dev.command
@@ -400,6 +399,7 @@ async def blacklist_cmd(ctx: SnedPrefixContext, mode: str, user: hikari.User) ->
         await ctx.app.db_cache.refresh(table="blacklist", user_id=user.id)
         await ctx.event.message.add_reaction("✅")
         await ctx.respond("✅ User added to blacklist")
+
     elif mode.casefold() in ["del", "delete", "remove"]:
         if not records:
             await ctx.event.message.add_reaction("❌")

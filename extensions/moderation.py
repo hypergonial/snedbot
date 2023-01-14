@@ -20,6 +20,7 @@ from models.checks import (
 from models.context import SnedSlashContext, SnedUserContext
 from models.db_user import DatabaseUser
 from models.events import MassBanEvent
+from models.journal import JournalEntry, JournalEntryType
 from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
 from utils import helpers
@@ -52,7 +53,7 @@ async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
 @lightbulb.app_command_permissions(hikari.Permissions.MANAGE_ROLES, dm_enabled=False)
 @lightbulb.command("role", "Manage roles using commands.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommandGroup)
-async def role_group(ctx: SnedSlashContext) -> None:
+async def role_group(_: SnedSlashContext) -> None:
     pass
 
 
@@ -267,7 +268,7 @@ async def purge(ctx: SnedSlashContext) -> None:
         except hikari.BulkDeleteError as error:
             embed = hikari.Embed(
                 title="🗑️ Messages purged",
-                description=f"Only **{len(error.messages_deleted)}/{len(messages)}** messages have been deleted due to an error.",
+                description=f"Only **{len(error.deleted_messages)}/{len(messages)}** messages have been deleted due to an error.",
                 color=const.WARN_COLOR,
             )
             raise error
@@ -329,7 +330,7 @@ async def deobfuscate_nick(ctx: SnedSlashContext, user: hikari.Member, strict: b
 @lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
 @lightbulb.command("journal", "Access and manage the moderation journal.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
-async def journal(ctx: SnedSlashContext) -> None:
+async def journal(_: SnedSlashContext) -> None:
     pass
 
 
@@ -338,12 +339,11 @@ async def journal(ctx: SnedSlashContext) -> None:
 @lightbulb.command("get", "Retrieve the journal for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
-
     assert ctx.guild_id is not None
-    notes = await ctx.app.mod.get_notes(user, ctx.guild_id)
+    journal = await JournalEntry.fetch_journal(user, ctx.guild_id)
 
-    if notes:
-        navigator = models.AuthorOnlyNavigator(ctx, pages=helpers.build_note_pages(notes))  # type: ignore
+    if journal:
+        navigator = models.AuthorOnlyNavigator(ctx, pages=helpers.build_journal_pages(journal))  # type: ignore
         ephemeral = bool((await ctx.app.mod.get_settings(ctx.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
         await navigator.send(ctx.interaction, ephemeral=ephemeral)
 
@@ -363,10 +363,16 @@ async def journal_get(ctx: SnedSlashContext, user: hikari.User) -> None:
 @lightbulb.command("add", "Add a new journal entry for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> None:
-
     assert ctx.guild_id is not None
+    await JournalEntry(
+        user_id=user.id,
+        guild_id=ctx.guild_id,
+        entry_type=JournalEntryType.NOTE,
+        content=note,
+        author_id=ctx.author.id,
+        created_at=helpers.utcnow(),
+    ).update()
 
-    await ctx.app.mod.add_note(user, ctx.guild_id, f"💬 **Note by {ctx.author}:** {note}")
     await ctx.mod_respond(
         embed=hikari.Embed(
             title="✅ Journal entry added!",
@@ -404,7 +410,7 @@ async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optiona
 @lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
 @lightbulb.command("warns", "Manage warnings.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
-async def warns(ctx: SnedSlashContext) -> None:
+async def warns(_: SnedSlashContext) -> None:
     pass
 
 
@@ -534,7 +540,7 @@ async def timeout_cmd(
 @lightbulb.app_command_permissions(hikari.Permissions.MODERATE_MEMBERS, dm_enabled=False)
 @lightbulb.command("timeouts", "Manage timeouts.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
-async def timeouts(ctx: SnedSlashContext) -> None:
+async def timeouts(_: SnedSlashContext) -> None:
     pass
 
 
@@ -671,10 +677,10 @@ async def ban_cmd(
 )
 @lightbulb.option(
     "days_to_delete",
-    "The number of days of messages to delete. If not set, defaults to 0.",
-    choices=["0", "1", "2", "3", "4", "5", "6", "7"],
+    "The number of days of messages to delete. If not set, defaults to 1.",
+    choices=["1", "2", "3", "4", "5", "6", "7"],
     required=False,
-    default=0,
+    default=1,
 )
 @lightbulb.option("reason", "The reason why this softban was performed", required=False)
 @lightbulb.option("user", "The user to be softbanned", type=hikari.Member)
@@ -695,10 +701,21 @@ async def softban_cmd(
         user,
         ctx.member,
         soft=True,
-        days_to_delete=int(days_to_delete) if days_to_delete else 0,
+        days_to_delete=int(days_to_delete) if days_to_delete else 1,
         reason=reason,
     )
-    await ctx.mod_respond(embed=embed)
+    await ctx.mod_respond(
+        embed=embed,
+        components=(
+            miru.View().add_item(
+                miru.Button(
+                    label="View Journal",
+                    custom_id=f"JOURNAL:{user.id}:{ctx.member.id}",
+                    style=hikari.ButtonStyle.SECONDARY,
+                )
+            )
+        ),
+    )
 
 
 @mod.command
@@ -780,7 +797,7 @@ async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
 @mod.command
 @lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
-@lightbulb.add_cooldown(60.0, 1, bucket=lightbulb.GuildBucket)
+@lightbulb.add_cooldown(180.0, 1, bucket=lightbulb.GuildBucket)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
 )
@@ -816,23 +833,18 @@ async def massban(ctx: SnedSlashContext) -> None:
     if ctx.options["joined-after"]:
         helpers.is_member(ctx.options["joined-after"])
 
-    predicates = [
-        lambda member: not member.is_bot,
-        lambda member: member.id != ctx.author.id,
-        lambda member: member.discriminator != "0000",  # Deleted users
-    ]
-
     guild = ctx.get_guild()
     assert guild is not None
 
     me = guild.get_member(ctx.app.user_id)
     assert me is not None
 
-    def is_above_member(member: hikari.Member, me: hikari.Member = me) -> bool:
-        # Check if the bot's role is above the member's or not to reduce invalid requests.
-        return helpers.is_above(me, member)
-
-    predicates.append(is_above_member)
+    predicates = [
+        lambda m: not m.is_bot,
+        lambda m: m.id != ctx.author.id,
+        lambda m: m.discriminator != "0000",  # Deleted users
+        lambda m: helpers.is_above(me, m),  # Only ban users below bot
+    ]
 
     if ctx.options.regex:
         try:
@@ -851,13 +863,6 @@ async def massban(ctx: SnedSlashContext) -> None:
             return
         else:
             predicates.append(lambda member, regex=regex: regex.match(member.username))
-
-    await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-
-    # Ensure the specified guild is explicitly chunked
-    await ctx.app.request_guild_members(guild, include_presences=False)
-
-    members = list(guild.get_members().values())
 
     if ctx.options["no-avatar"]:
         predicates.append(lambda member: member.avatar_url is None)
@@ -896,6 +901,25 @@ async def massban(ctx: SnedSlashContext) -> None:
             return member.joined_at and joined_before.joined_at and member.joined_at < joined_before.joined_at
 
         predicates.append(joined_before)
+
+    if len(predicates) == 4:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ No criteria specified",
+                description=f"You must specify at least one criteria to match against.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        assert ctx.invoked is not None and ctx.invoked.cooldown_manager is not None
+        await ctx.invoked.cooldown_manager.reset_cooldown(ctx)
+        return
+
+    await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+    # Ensure the specified guild is explicitly chunked
+    await ctx.app.request_guild_members(guild, include_presences=False)
+
+    members = list(guild.get_members().values())
 
     to_ban = [member for member in members if all(predicate(member) for predicate in predicates)][:5000]
 

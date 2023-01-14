@@ -8,6 +8,7 @@ import attr
 import hikari
 
 from models.db import DatabaseModel
+from models.journal import JournalEntry
 
 
 class DatabaseUserFlag(enum.Flag):
@@ -34,9 +35,6 @@ class DatabaseUser(DatabaseModel):
     flags: DatabaseUserFlag
     """A set of flags stored for this user."""
 
-    notes: t.Optional[t.List[str]]
-    """A list of journal entries stored for this user."""
-
     warns: int = 0
     """The count of warnings stored for this user."""
 
@@ -48,15 +46,14 @@ class DatabaseUser(DatabaseModel):
 
         await self._db.execute(
             """
-            INSERT INTO users (user_id, guild_id, flags, warns, notes, data) 
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO users (user_id, guild_id, flags, warns,data) 
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (user_id, guild_id) DO
-            UPDATE SET flags = $3, warns = $4, notes = $5, data = $6""",
+            UPDATE SET flags = $3, warns = $4, data = $5""",
             self.id,
             self.guild_id,
             self.flags.value,
             self.warns,
-            self.notes,
             json.dumps(self.data),
         )
 
@@ -86,16 +83,13 @@ class DatabaseUser(DatabaseModel):
         )
 
         if not record:
-            return cls(
-                hikari.Snowflake(user), hikari.Snowflake(guild), flags=DatabaseUserFlag.NONE, notes=None, warns=0
-            )
+            return cls(hikari.Snowflake(user), hikari.Snowflake(guild), flags=DatabaseUserFlag.NONE, warns=0)
 
         return cls(
             id=hikari.Snowflake(record.get("user_id")),
             guild_id=hikari.Snowflake(record.get("guild_id")),
             flags=DatabaseUserFlag(record.get("flags")),
             warns=record.get("warns"),
-            notes=record.get("notes"),
             data=json.loads(record.get("data")) if record.get("data") else {},
         )
 
@@ -125,11 +119,20 @@ class DatabaseUser(DatabaseModel):
                 guild_id=hikari.Snowflake(record.get("guild_id")),
                 flags=DatabaseUserFlag(record.get("flags")),
                 warns=record.get("warns"),
-                notes=record.get("notes"),
                 data=json.loads(record.get("data")) if record.get("data") else {},
             )
             for record in records
         ]
+
+    async def fetch_journal(self) -> t.List[JournalEntry]:
+        """Fetch all journal entries for this user.
+
+        Returns
+        -------
+        List[JournalEntry]
+            A list of journal entries for this user.
+        """
+        return await JournalEntry.fetch_journal(self.id, self.guild_id)
 
 
 # Copyright (C) 2022-present HyperGH
