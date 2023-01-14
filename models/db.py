@@ -261,11 +261,10 @@ class Database:
 
     async def _increment_schema_version(self) -> None:
         """Increment the schema version."""
-        if not self._schema_version:
-            raise DatabaseStateConflictError("The schema version is not known, cannot increment it.")
-
-        await self.execute("""UPDATE schema_info SET schema_version = schema_version + 1""")
-        self._schema_version += 1
+        record = await self.fetchrow(
+            """UPDATE schema_info SET schema_version = schema_version + 1 RETURNING schema_version"""
+        )
+        self._schema_version = record["schema_version"]
 
     async def _do_sql_migration(self, filename: str) -> None:
         """Apply an SQL file as a migration to the database."""

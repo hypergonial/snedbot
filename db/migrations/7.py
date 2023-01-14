@@ -34,10 +34,11 @@ ENTRY_TYPES = {
 logger = logging.getLogger(__name__)
 
 
-def _parse_note(db: Database, user_id: int, guild_id: int, note: str) -> JournalEntry:
+def _parse_note(db: Database, user_id: int, guild_id: int, note: str) -> t.Optional[JournalEntry]:
     match = NOTE_REGEX.match(note)
     if not match:
-        raise ValueError(f"Invalid note format:\n{note}")
+        logger.warning(f"Invalid note format:\n{note}")
+        return
 
     users = db.app.cache.get_users_view()
     user: t.Optional[hikari.User] = (
@@ -79,7 +80,11 @@ async def _migrate_notes(db: Database) -> None:
             continue
         for note in notes:
             entry = _parse_note(db, user_id, guild_id, note)
-            await entry.update()
+            if entry:
+                try:
+                    await entry.update()
+                except Exception as exc:
+                    logger.error(f"Failed to migrate journal entry:\n{note}\n{exc}")
 
     await db.execute("ALTER TABLE users DROP COLUMN notes")
     logger.info("Journal entries migrated!")
