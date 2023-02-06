@@ -255,17 +255,20 @@ async def unfreeze_logging(guild_id: int) -> None:
 
 userlog.d.actions["unfreeze_logging"] = unfreeze_logging
 
-
+# TODO: refactor this to better take advantage of the new audit log cache
 async def find_auditlog_data(
-    event: hikari.Event, *, event_type: hikari.AuditLogEventType, user_id: t.Optional[int] = None
+    guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+    *,
+    event_type: hikari.AuditLogEventType,
+    user_id: t.Optional[int] = None,
 ) -> t.Optional[hikari.AuditLogEntry]:
     """Find a recently sent audit log entry that matches criteria.
 
     Parameters
     ----------
-    event : hikari.GuildEvent
+    event : hikari.Event
         The event that triggered this search.
-    type : hikari.AuditLogEventType
+    event_type : hikari.AuditLogEventType
         The type of audit log entry to look for.
     user_id : Optional[int], optional
         The user affected by this audit log, if any. By default hikari.UNDEFINED
@@ -284,41 +287,12 @@ async def find_auditlog_data(
     # Stuff that is observed to just take too goddamn long to appear in AuditLogs
     takes_an_obscene_amount_of_time = [hikari.AuditLogEventType.MESSAGE_BULK_DELETE]
 
-    guild = userlog.app.cache.get_guild(event.guild_id)  # type: ignore
-    sleep_time = 15.0 if event_type not in takes_an_obscene_amount_of_time else 30.0
-    await asyncio.sleep(sleep_time)  # Wait for auditlog to hopefully fill in
+    sleep_time = 5.0 if event_type not in takes_an_obscene_amount_of_time else 30.0
+    await asyncio.sleep(sleep_time)  # Wait for auditlog event to hopefully arrive
 
-    if not guild:
-        raise ValueError("Cannot find guild to parse auditlogs for.")
-
-    me = userlog.app.cache.get_member(guild, userlog.app.user_id)
-
-    if me is None:
-        return
-
-    perms = lightbulb.utils.permissions_for(me)
-    if not (perms & hikari.Permissions.VIEW_AUDIT_LOG):
-        # Do not attempt to fetch audit log if bot has no perms
-        return
-
-    try:
-        count = 0
-        async for log in userlog.app.rest.fetch_audit_log(guild, event_type=event_type):
-            for entry in log.entries.values():
-                # We do not want to return entries older than 15 seconds
-                if (helpers.utcnow() - entry.id.created_at).total_seconds() > 30 or count > 5:
-                    return
-
-                if user_id and user_id == entry.target_id:
-                    return entry
-                elif user_id:
-                    count += 1
-                    continue
-                else:
-                    return entry
-
-    except (hikari.ForbiddenError, hikari.HTTPError, asyncio.TimeoutError):
-        return
+    return userlog.app.audit_log_cache.get_first_by(
+        guild, event_type, lambda e: e.target_id == user_id if user_id else True
+    )
 
 
 async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> t.Optional[str]:
@@ -446,7 +420,7 @@ async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEve
     contents = create_log_content(event.old_message)
 
     entry = await find_auditlog_data(
-        event, event_type=hikari.AuditLogEventType.MESSAGE_DELETE, user_id=event.old_message.author.id
+        event.guild_id, event_type=hikari.AuditLogEventType.MESSAGE_DELETE, user_id=event.old_message.author.id
     )
 
     if entry:
@@ -505,7 +479,7 @@ async def message_update(plugin: SnedPlugin, event: hikari.GuildMessageUpdateEve
 async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessageDeleteEvent) -> None:
 
     moderator = "Discord"
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MESSAGE_BULK_DELETE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.MESSAGE_BULK_DELETE)
     if entry:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
@@ -525,7 +499,7 @@ async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessage
 @userlog.listener(hikari.RoleDeleteEvent, bind=True)
 async def role_delete(plugin: SnedPlugin, event: hikari.RoleDeleteEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_DELETE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.ROLE_DELETE)
     if entry and event.old_role:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
@@ -540,7 +514,7 @@ async def role_delete(plugin: SnedPlugin, event: hikari.RoleDeleteEvent) -> None
 @userlog.listener(hikari.RoleCreateEvent, bind=True)
 async def role_create(plugin: SnedPlugin, event: hikari.RoleCreateEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_CREATE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.ROLE_CREATE)
     if entry and event.role:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
@@ -555,7 +529,7 @@ async def role_create(plugin: SnedPlugin, event: hikari.RoleCreateEvent) -> None
 @userlog.listener(hikari.RoleUpdateEvent, bind=True)
 async def role_update(plugin: SnedPlugin, event: hikari.RoleUpdateEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.ROLE_UPDATE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.ROLE_UPDATE)
     if entry and event.old_role:
         assert entry.user_id
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
@@ -586,7 +560,7 @@ async def role_update(plugin: SnedPlugin, event: hikari.RoleUpdateEvent) -> None
 @userlog.listener(hikari.GuildChannelDeleteEvent, bind=True)
 async def channel_delete(plugin: SnedPlugin, event: hikari.GuildChannelDeleteEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_DELETE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.CHANNEL_DELETE)
     if entry and event.channel:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
@@ -601,7 +575,7 @@ async def channel_delete(plugin: SnedPlugin, event: hikari.GuildChannelDeleteEve
 @userlog.listener(hikari.GuildChannelCreateEvent, bind=True)
 async def channel_create(plugin: SnedPlugin, event: hikari.GuildChannelCreateEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_CREATE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.CHANNEL_CREATE)
     if entry and event.channel:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
@@ -616,7 +590,7 @@ async def channel_create(plugin: SnedPlugin, event: hikari.GuildChannelCreateEve
 @userlog.listener(hikari.GuildChannelUpdateEvent, bind=True)
 async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.CHANNEL_UPDATE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.CHANNEL_UPDATE)
 
     if entry and event.old_channel:
         assert entry.user_id is not None
@@ -663,7 +637,7 @@ async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEve
 @userlog.listener(hikari.GuildUpdateEvent, bind=True)
 async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.GUILD_UPDATE)
+    entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.GUILD_UPDATE)
 
     if event.old_guild:
         if entry:
@@ -722,7 +696,7 @@ async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> No
 async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) -> None:
 
     entry = await find_auditlog_data(
-        event, event_type=hikari.AuditLogEventType.MEMBER_BAN_REMOVE, user_id=event.user.id
+        event.guild_id, event_type=hikari.AuditLogEventType.MEMBER_BAN_REMOVE, user_id=event.user.id
     )
     if entry:
         assert entry.user_id is not None
@@ -757,7 +731,9 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
 @userlog.listener(hikari.BanCreateEvent, bind=True)
 async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> None:
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MEMBER_BAN_ADD, user_id=event.user.id)
+    entry = await find_auditlog_data(
+        event.guild_id, event_type=hikari.AuditLogEventType.MEMBER_BAN_ADD, user_id=event.user.id
+    )
     if entry:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
@@ -794,7 +770,9 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
     if event.user_id == plugin.app.user_id:
         return  # RIP
 
-    entry = await find_auditlog_data(event, event_type=hikari.AuditLogEventType.MEMBER_KICK, user_id=event.user.id)
+    entry = await find_auditlog_data(
+        event.guild_id, event_type=hikari.AuditLogEventType.MEMBER_KICK, user_id=event.user.id
+    )
 
     if entry:  # This is a kick
         assert entry.user_id is not None
@@ -864,7 +842,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
         comms_disabled_until = member.communication_disabled_until()
 
         entry = await find_auditlog_data(
-            event, event_type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id
+            event.guild_id, event_type=hikari.AuditLogEventType.MEMBER_UPDATE, user_id=event.user.id
         )
         if not entry:
             return
@@ -943,10 +921,13 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
             return
 
         entry = await find_auditlog_data(
-            event, event_type=hikari.AuditLogEventType.MEMBER_ROLE_UPDATE, user_id=event.user.id
+            event.guild_id, event_type=hikari.AuditLogEventType.MEMBER_ROLE_UPDATE, user_id=event.user.id
         )
 
-        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry and entry.user_id else "Unknown"
+        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry and entry.user_id else None
+
+        if moderator is None:
+            return
 
         if entry and entry.user_id == plugin.app.user_id:
             # Attempt to find the moderator in reason if sent by us

@@ -12,6 +12,7 @@ import miru
 
 import utils.db_backup as db_backup
 from config import Config
+from models.audit_log import AuditLogCache
 from models.db import Database
 from models.errors import UserBlacklistedError
 from models.mod_actions import ModActions
@@ -110,6 +111,7 @@ class SnedBot(lightbulb.BotApp):
         self._user_id: t.Optional[hikari.Snowflake] = None
         self._perspective: t.Optional[kosu.Client] = None
         self._scheduler = scheduler.Scheduler(self)
+        self._audit_log_cache: AuditLogCache = AuditLogCache(self)
         self._initial_guilds: t.List[hikari.Snowflake] = []
 
         self.check(is_not_blacklisted)
@@ -177,6 +179,11 @@ class SnedBot(lightbulb.BotApp):
         return self._mod
 
     @property
+    def audit_log_cache(self) -> AuditLogCache:
+        """The audit log cache instance of the bot."""
+        return self._audit_log_cache
+
+    @property
     def is_started(self) -> bool:
         """Boolean indicating if the bot has started up or not."""
         return self._is_started
@@ -242,6 +249,7 @@ class SnedBot(lightbulb.BotApp):
         # Start scheduler, DB cache
         await self.db_cache.start()
         self.scheduler.start()
+        await self._audit_log_cache.start()
 
         if perspective_api_key := os.getenv("PERSPECTIVE_API_KEY"):
             self._perspective = kosu.Client(perspective_api_key, do_not_store=True)
