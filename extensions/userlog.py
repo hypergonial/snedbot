@@ -437,7 +437,7 @@ async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEve
             description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
 **Moderator:** `{moderator} ({moderator.id})`
 **Channel:** <#{event.channel_id}>
-**Message content:** ```{contents}```""",
+**Message content:** ```{contents.replace("`", "´")}```""",
             color=const.ERROR_COLOR,
         )
         await log("message_delete_mod", embed, event.guild_id)
@@ -447,7 +447,7 @@ async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEve
             title=f"🗑️ Message deleted",
             description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
 **Channel:** <#{event.channel_id}>
-**Message content:** ```{contents}```""",
+**Message content:** ```{contents.replace("`", "´")}```""",
             color=const.ERROR_COLOR,
         )
         await log("message_delete", embed, event.guild_id)
@@ -477,7 +477,7 @@ async def message_update(plugin: SnedPlugin, event: hikari.GuildMessageUpdateEve
         title=f"🖊️ Message edited",
         description=f"""**Message author:** `{event.author} ({event.author_id})`
 **Channel:** <#{event.channel_id}>
-**Before:** ```{old_content}``` \n**After:** ```{new_content}```
+**Before:** ```{old_content.replace("`", "´")}``` \n**After:** ```{new_content.replace("`", "´")}```
 [Jump!]({event.message.make_link(event.guild_id)})""",
         color=const.EMBED_BLUE,
     )
