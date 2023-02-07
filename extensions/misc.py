@@ -297,7 +297,6 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 **• Partner:** `{"Yes" if "PARTNERED" in guild.features else "No"}`
 **• Verified:** `{"Yes" if "VERIFIED" in guild.features else "No"}`
 **• Discoverable:** `{"Yes" if "DISCOVERABLE" in guild.features else "No"}`
-**• Monetization enabled:** `{"Yes" if "MONETIZATION_ENABLED" in guild.features else "No"}`
 {f"**• Vanity URL:** {guild.vanity_url_code}" if guild.vanity_url_code else ""}
 """,
             color=const.EMBED_BLUE,

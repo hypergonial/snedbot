@@ -168,11 +168,11 @@ class SnedContext(lightbulb.Context):
 
     @property
     def app(self) -> SnedBot:
-        return super().app  # type: ignore
+        return t.cast(super().app, SnedBot)
 
     @property
     def bot(self) -> SnedBot:
-        return super().bot  # type: ignore
+        return t.cast(super().bot, SnedBot)
 
 
 class SnedApplicationContext(SnedContext, lightbulb.ApplicationContext):
