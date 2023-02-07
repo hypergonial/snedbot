@@ -166,7 +166,6 @@ class Scheduler:
                 raise ValueError("Failed time conversion. (relative)")
 
         if not conversion_mode or conversion_mode == ConversionMode.ABSOLUTE:
-
             timezone = "UTC"
             if user_id:
                 records = await self.bot.db_cache.get(table="preferences", user_id=user_id, limit=1)
@@ -242,7 +241,6 @@ class Scheduler:
         """
         try:
             while self.bot.is_ready and self._is_started:
-
                 timer = await self.get_latest_timer(days=30)
                 self._current_timer = timer
 

@@ -64,7 +64,6 @@ userlog.d.frozen_guilds = []
 
 
 async def get_log_channel_id(log_event: str, guild_id: int) -> t.Optional[int]:
-
     if log_event not in userlog.d.valid_log_events:
         raise ValueError("Invalid log_event passed.")
 
@@ -255,6 +254,7 @@ async def unfreeze_logging(guild_id: int) -> None:
 
 userlog.d.actions["unfreeze_logging"] = unfreeze_logging
 
+
 # TODO: refactor this to better take advantage of the new audit log cache
 async def find_auditlog_data(
     guild: hikari.SnowflakeishOr[hikari.PartialGuild],
@@ -287,11 +287,15 @@ async def find_auditlog_data(
     # Stuff that is observed to just take too goddamn long to appear in AuditLogs
     takes_an_obscene_amount_of_time = [hikari.AuditLogEventType.MESSAGE_BULK_DELETE]
 
-    sleep_time = 5.0 if event_type not in takes_an_obscene_amount_of_time else 30.0
+    sleep_time = 5.0 if event_type not in takes_an_obscene_amount_of_time else 10.0
     await asyncio.sleep(sleep_time)  # Wait for auditlog event to hopefully arrive
 
     return userlog.app.audit_log_cache.get_first_by(
-        guild, event_type, lambda e: e.target_id == user_id if user_id else True
+        guild,
+        event_type,
+        lambda e: e.target_id == user_id
+        if user_id
+        else True and e.id.created_at > helpers.utcnow() - datetime.timedelta(seconds=15),
     )
 
 
@@ -451,7 +455,12 @@ async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEve
 
 @userlog.listener(hikari.GuildMessageUpdateEvent, bind=True)
 async def message_update(plugin: SnedPlugin, event: hikari.GuildMessageUpdateEvent) -> None:
-    if not event.old_message or not event.old_message.author or event.old_message.author.is_bot:
+    if (
+        not event.old_message
+        or event.old_message.author is hikari.UNDEFINED
+        or event.message.author is hikari.UNDEFINED
+        or event.old_message.author.is_bot
+    ):
         return
 
     if (event.old_message.flags and not hikari.MessageFlag.CROSSPOSTED & event.old_message.flags) and (
@@ -477,7 +486,6 @@ async def message_update(plugin: SnedPlugin, event: hikari.GuildMessageUpdateEve
 
 @userlog.listener(hikari.GuildBulkMessageDeleteEvent, bind=True)
 async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessageDeleteEvent) -> None:
-
     moderator = "Discord"
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.MESSAGE_BULK_DELETE)
     if entry:
@@ -490,7 +498,7 @@ async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessage
         title=f"🗑️ Bulk message deletion",
         description=f"""**Channel:** {channel.mention if channel else 'Unknown'}
 **Moderator:** `{moderator}`
-```Multiple messages have been purged.```""",
+```{len(event.message_ids)} messages have been purged.```""",
         color=const.ERROR_COLOR,
     )
     await log("bulk_delete", embed, event.guild_id)
@@ -498,7 +506,6 @@ async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessage
 
 @userlog.listener(hikari.RoleDeleteEvent, bind=True)
 async def role_delete(plugin: SnedPlugin, event: hikari.RoleDeleteEvent) -> None:
-
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.ROLE_DELETE)
     if entry and event.old_role:
         assert entry.user_id is not None
@@ -513,7 +520,6 @@ async def role_delete(plugin: SnedPlugin, event: hikari.RoleDeleteEvent) -> None
 
 @userlog.listener(hikari.RoleCreateEvent, bind=True)
 async def role_create(plugin: SnedPlugin, event: hikari.RoleCreateEvent) -> None:
-
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.ROLE_CREATE)
     if entry and event.role:
         assert entry.user_id is not None
@@ -528,7 +534,6 @@ async def role_create(plugin: SnedPlugin, event: hikari.RoleCreateEvent) -> None
 
 @userlog.listener(hikari.RoleUpdateEvent, bind=True)
 async def role_update(plugin: SnedPlugin, event: hikari.RoleUpdateEvent) -> None:
-
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.ROLE_UPDATE)
     if entry and event.old_role:
         assert entry.user_id
@@ -559,7 +564,6 @@ async def role_update(plugin: SnedPlugin, event: hikari.RoleUpdateEvent) -> None
 
 @userlog.listener(hikari.GuildChannelDeleteEvent, bind=True)
 async def channel_delete(plugin: SnedPlugin, event: hikari.GuildChannelDeleteEvent) -> None:
-
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.CHANNEL_DELETE)
     if entry and event.channel:
         assert entry.user_id is not None
@@ -574,7 +578,6 @@ async def channel_delete(plugin: SnedPlugin, event: hikari.GuildChannelDeleteEve
 
 @userlog.listener(hikari.GuildChannelCreateEvent, bind=True)
 async def channel_create(plugin: SnedPlugin, event: hikari.GuildChannelCreateEvent) -> None:
-
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.CHANNEL_CREATE)
     if entry and event.channel:
         assert entry.user_id is not None
@@ -589,7 +592,6 @@ async def channel_create(plugin: SnedPlugin, event: hikari.GuildChannelCreateEve
 
 @userlog.listener(hikari.GuildChannelUpdateEvent, bind=True)
 async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEvent) -> None:
-
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.CHANNEL_UPDATE)
 
     if entry and event.old_channel:
@@ -636,7 +638,6 @@ async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEve
 
 @userlog.listener(hikari.GuildUpdateEvent, bind=True)
 async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> None:
-
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.GUILD_UPDATE)
 
     if event.old_guild:
@@ -694,7 +695,6 @@ async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> No
 
 @userlog.listener(hikari.BanDeleteEvent, bind=True)
 async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) -> None:
-
     entry = await find_auditlog_data(
         event.guild_id, event_type=hikari.AuditLogEventType.MEMBER_BAN_REMOVE, user_id=event.user.id
     )
@@ -730,7 +730,6 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
 
 @userlog.listener(hikari.BanCreateEvent, bind=True)
 async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> None:
-
     entry = await find_auditlog_data(
         event.guild_id, event_type=hikari.AuditLogEventType.MEMBER_BAN_ADD, user_id=event.user.id
     )
@@ -766,7 +765,6 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
 
 @userlog.listener(hikari.MemberDeleteEvent, bind=True)
 async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> None:
-
     if event.user_id == plugin.app.user_id:
         return  # RIP
 
@@ -811,7 +809,6 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
 
 @userlog.listener(hikari.MemberCreateEvent, bind=True)
 async def member_create(plugin: SnedPlugin, event: hikari.MemberCreateEvent) -> None:
-
     embed = (
         hikari.Embed(
             title=f"🚪 User joined",
@@ -830,7 +827,6 @@ async def member_create(plugin: SnedPlugin, event: hikari.MemberCreateEvent) -> 
 
 @userlog.listener(hikari.MemberUpdateEvent, bind=True)
 async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> None:
-
     if not event.old_member:
         return
 
@@ -958,7 +954,6 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 
 @userlog.listener(WarnCreateEvent, bind=True)
 async def warn_create(plugin: SnedPlugin, event: WarnCreateEvent) -> None:
-
     embed = hikari.Embed(
         title="⚠️ Warning issued",
         description=f"**{event.member}** has been warned by **{event.moderator}**.\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
@@ -979,7 +974,6 @@ async def warn_create(plugin: SnedPlugin, event: WarnCreateEvent) -> None:
 
 @userlog.listener(WarnRemoveEvent, bind=True)
 async def warn_remove(plugin: SnedPlugin, event: WarnRemoveEvent) -> None:
-
     embed = hikari.Embed(
         title="⚠️ Warning removed",
         description=f"A warning was removed from **{event.member}** by **{event.moderator}**.\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
@@ -1000,7 +994,6 @@ async def warn_remove(plugin: SnedPlugin, event: WarnRemoveEvent) -> None:
 
 @userlog.listener(WarnsClearEvent, bind=True)
 async def warns_clear(plugin: SnedPlugin, event: WarnsClearEvent) -> None:
-
     embed = hikari.Embed(
         title="⚠️ Warnings cleared",
         description=f"Warnings cleared for **{event.member}** by **{event.moderator}**.\n**Reason:** ```{event.reason}```",
@@ -1021,7 +1014,6 @@ async def warns_clear(plugin: SnedPlugin, event: WarnsClearEvent) -> None:
 
 @userlog.listener(AutoModMessageFlagEvent, bind=True)
 async def flag_message(plugin: SnedPlugin, event: AutoModMessageFlagEvent) -> None:
-
     user_id = hikari.Snowflake(event.user)
 
     reason = helpers.format_reason(event.reason, max_length=1500)
@@ -1045,7 +1037,6 @@ async def flag_message(plugin: SnedPlugin, event: AutoModMessageFlagEvent) -> No
 
 @userlog.listener(MassBanEvent)
 async def massban_execute(event: MassBanEvent) -> None:
-
     log_embed = hikari.Embed(
         title="🔨 Smartban concluded",
         description=f"Banned **{event.successful}/{event.total}** users.\n**Moderator:** `{event.moderator} ({event.moderator.id})`\n**Reason:** ```{event.reason}```",

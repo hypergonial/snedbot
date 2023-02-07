@@ -258,7 +258,6 @@ class SnedBot(lightbulb.BotApp):
         self.load_extensions_from(os.path.join(self.base_dir, "extensions"), must_exist=True)
 
     async def on_started(self, event: hikari.StartedEvent) -> None:
-
         self._db_backup_loop.start()
 
         user = self.get_me()
@@ -272,7 +271,6 @@ class SnedBot(lightbulb.BotApp):
             logging.warning("Developer mode is enabled!")
 
     async def on_lightbulb_started(self, event: lightbulb.LightbulbStartedEvent) -> None:
-
         # Insert all guilds the bot is member of into the db global config on startup
         async with self.db.acquire() as con:
             for guild_id in self._initial_guilds:

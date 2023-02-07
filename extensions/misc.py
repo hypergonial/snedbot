@@ -216,7 +216,6 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
 @lightbulb.command("invite", "Invite the bot to your server!")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def invite(ctx: SnedSlashContext) -> None:
-
     if not ctx.app.dev_mode:
         invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.user_id}&permissions=1494984682710&scope=applications.commands%20bot"
         await ctx.respond(
@@ -346,7 +345,6 @@ async def echo(ctx: SnedSlashContext, text: str) -> None:
 @lightbulb.command("edit", "Edit a message that was sent by the bot.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def edit(ctx: SnedSlashContext, message_link: str) -> None:
-
     message = await helpers.parse_message_link(ctx, message_link)
     if not message:
         return

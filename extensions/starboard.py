@@ -202,7 +202,6 @@ async def on_reaction(
         return
 
     if channel := plugin.app.cache.get_guild_channel(settings["channel_id"]):
-
         perms = lightbulb.utils.permissions_in(channel, me)
         if not helpers.includes_permissions(
             perms,
@@ -256,7 +255,6 @@ async def star(ctx: SnedSlashContext) -> None:
 @lightbulb.command("show", "Show a starboard entry.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def star_show(ctx: SnedSlashContext, id: str) -> None:
-
     assert ctx.guild_id is not None
 
     try:

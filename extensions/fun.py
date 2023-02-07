@@ -127,7 +127,6 @@ class TicTacToeButton(miru.Button):
         winner = view.check_winner()
 
         if winner is not None:
-
             if winner == WinState.PLAYER_X:
                 embed = hikari.Embed(
                     title="Tic Tac Toe!",
@@ -742,7 +741,6 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
 @lightbulb.command("animal", "Shows a random picture of the selected animal.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def animal(ctx: SnedSlashContext, animal: str) -> None:
-
     await animal_ratelimiter.acquire(ctx)
     if animal_ratelimiter.is_rate_limited(ctx):
         await ctx.respond(

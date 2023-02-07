@@ -88,7 +88,6 @@ async def report_perms_error(ctx: SnedApplicationContext) -> None:
 async def report(
     ctx: SnedApplicationContext, member: hikari.Member, message: t.Optional[hikari.Message] = None
 ) -> None:
-
     assert ctx.member is not None and ctx.guild_id is not None
 
     if member.id == ctx.member.id or member.is_bot:

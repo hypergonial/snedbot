@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing as t
 
 import hikari
@@ -29,18 +31,16 @@ class AuditLogCache:
 
     async def start(self) -> None:
         """Start the audit log cache listener."""
-        self._bot.event_manager.subscribe(hikari.Event, self._listen)
+        self._bot.event_manager.subscribe(hikari.AuditLogEntryCreateEvent, self._listen)
 
     async def stop(self) -> None:
         """Stop the audit log cache listener."""
-        self._bot.event_manager.unsubscribe(hikari.Event, self._listen)
+        self._bot.event_manager.unsubscribe(hikari.AuditLogEntryCreateEvent, self._listen)
         self._cache = {}
 
-    async def _listen(self, event: hikari.Event) -> None:
+    async def _listen(self, event: hikari.AuditLogEntryCreateEvent) -> None:
         """Listen for audit log events."""
-        raise NotImplementedError("AuditLogCache listener not implemented!")
-        # TODO: do impl:
-        # self.add(event.guild_id, event.entry)
+        self.add(event.guild_id, event.entry)
 
     def get(
         self, guild: hikari.SnowflakeishOr[hikari.PartialGuild], action_type: hikari.AuditLogEventType
@@ -83,7 +83,7 @@ class AuditLogCache:
         Optional[hikari.AuditLogEntry]
             The first audit log entry that matches the predicate, or None if no entry matches.
         """
-        for entry in self.get(guild, action_type):
+        for entry in reversed(self.get(guild, action_type)):
             if predicate(entry):
                 return entry
 

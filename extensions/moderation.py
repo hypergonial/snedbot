@@ -11,12 +11,7 @@ import models
 from etc import const
 from models import errors
 from models.bot import SnedBot
-from models.checks import (
-    bot_has_permissions,
-    has_permissions,
-    is_above_target,
-    is_invoker_above_target,
-)
+from models.checks import bot_has_permissions, is_above_target, is_invoker_above_target
 from models.context import SnedSlashContext, SnedUserContext
 from models.db_user import DatabaseUser
 from models.events import MassBanEvent
@@ -187,7 +182,6 @@ async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
 @lightbulb.command("purge", "Purge multiple messages in this channel.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def purge(ctx: SnedSlashContext) -> None:
-
     channel = ctx.get_channel() or await ctx.app.rest.fetch_channel(ctx.channel_id)
     assert isinstance(channel, hikari.TextableGuildChannel)
 
@@ -620,7 +614,6 @@ async def ban_cmd(
     duration: t.Optional[str] = None,
     days_to_delete: t.Optional[str] = None,
 ) -> None:
-
     assert ctx.member is not None
 
     if duration:
@@ -730,7 +723,6 @@ async def softban_cmd(
 @lightbulb.command("unban", "Unban a user who was previously banned.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional[str] = None) -> None:
-
     assert ctx.member is not None
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
@@ -757,7 +749,6 @@ async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional
 @lightbulb.command("kick", "Kick a user from this server.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
-
     helpers.is_member(user)
     assert ctx.member is not None
 
@@ -827,7 +818,6 @@ async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
 @lightbulb.command("massban", "Ban a large number of users based on a set of criteria. Useful for handling raids")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def massban(ctx: SnedSlashContext) -> None:
-
     if ctx.options["joined-before"]:
         helpers.is_member(ctx.options["joined-before"])
     if ctx.options["joined-after"]:

@@ -111,7 +111,6 @@ async def tag_group(ctx: SnedSlashContext) -> None:
 @lightbulb.command("create", "Create a new tag. Opens a modal to specify the details.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_create(ctx: SnedSlashContext) -> None:
-
     assert ctx.guild_id is not None and ctx.member is not None
 
     modal = TagEditorModal()
@@ -277,7 +276,6 @@ async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
     if tag and tag.owner_id == ctx.author.id:
-
         if tag.aliases and alias.casefold() in tag.aliases:
             tag.aliases.remove(alias.casefold())
 
@@ -339,7 +337,6 @@ async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if tag and tag.owner_id == ctx.author.id:
-
         tag.owner_id = receiver.id
         await tag.update()
 
@@ -381,7 +378,6 @@ async def tag_transfer_name_ac(
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
-
     assert ctx.guild_id is not None and ctx.member is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
@@ -442,7 +438,6 @@ async def tag_claim_name_ac(
 @lightbulb.command("edit", "Edit the content of a tag you own.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
-
     assert ctx.member is not None and ctx.guild_id is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
@@ -493,7 +488,6 @@ async def tag_edit_name_ac(
 @lightbulb.command("delete", "Delete a tag you own.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
-
     assert ctx.member is not None and ctx.guild_id is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
@@ -502,7 +496,6 @@ async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
         (tag.owner_id == ctx.author.id)
         or helpers.includes_permissions(lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES)
     ):
-
         await tag.delete()
 
         await ctx.respond(
@@ -575,7 +568,6 @@ async def tag_list(ctx: SnedSlashContext, owner: t.Optional[hikari.User] = None)
 @lightbulb.command("search", "Search for a tag name or alias.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def tag_search(ctx: SnedSlashContext, query: str) -> None:
-
     assert ctx.member is not None and ctx.guild_id is not None
 
     tags = await Tag.fetch_all(ctx.guild_id)

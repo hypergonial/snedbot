@@ -159,7 +159,6 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
             return
 
         if role.id in event.context.member.role_ids:
-
             if role_button.mode in [RoleButtonMode.TOGGLE, RoleButtonMode.REMOVE_ONLY]:
                 await event.context.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
                 embed = hikari.Embed(
@@ -175,7 +174,6 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
                 ).set_footer("This button is set to only add roles, not remove them.")
 
         else:
-
             if role_button.mode in [RoleButtonMode.TOGGLE, RoleButtonMode.ADD_ONLY]:
                 await event.context.member.add_role(role, reason=f"Granted by role-button (ID: {entry_id})")
                 embed = hikari.Embed(
@@ -217,7 +215,6 @@ async def rolebutton(ctx: SnedSlashContext) -> None:
 @lightbulb.command("list", "List all registered rolebuttons on this server.")
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_list(ctx: SnedSlashContext) -> None:
-
     assert ctx.guild_id is not None
 
     buttons = await RoleButton.fetch_all(ctx.guild_id)
@@ -449,7 +446,6 @@ async def rolebutton_add(
     label: t.Optional[str] = None,
     mode: t.Optional[str] = None,
 ) -> None:
-
     assert ctx.guild_id is not None and ctx.member is not None
 
     style = style or "Grey"
@@ -560,7 +556,6 @@ async def rolebutton_add(
 )
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def rolebutton_setprompt(ctx: SnedSlashContext, button_id: int, prompt_type: str) -> None:
-
     button = await RoleButton.fetch(button_id)
     if not button or button.guild_id != ctx.guild_id:
         await ctx.respond(

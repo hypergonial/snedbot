@@ -158,7 +158,6 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
             return
 
         if isinstance(error, lightbulb.CommandInvocationError):
-
             if isinstance(error.original, asyncio.TimeoutError):
                 await ctx.respond(
                     embed=hikari.Embed(

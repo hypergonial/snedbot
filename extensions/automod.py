@@ -96,7 +96,6 @@ async def punish(
     offender: t.Optional[hikari.Member] = None,
     original_action: t.Optional[AutomodActionType] = None,
 ) -> None:
-
     required_perms = (
         hikari.Permissions.BAN_MEMBERS
         | hikari.Permissions.MODERATE_MEMBERS
@@ -235,7 +234,6 @@ async def punish(
                 )
 
     elif state == AutoModState.TIMEOUT.value:
-
         embed = await automod.app.mod.timeout(
             offender,
             me,

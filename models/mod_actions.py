@@ -245,7 +245,6 @@ class ModActions:
                 return
 
             if expiry - helpers.utcnow().timestamp() > MAX_TIMEOUT_SECONDS:
-
                 await event.app.scheduler.create_timer(
                     helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
                     TimerEvent.TIMEOUT_EXTEND,

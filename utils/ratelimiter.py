@@ -106,7 +106,6 @@ class RateLimiter:
 
             # Set events while not ratelimited
             while not self.is_rate_limited(ctx) and self._queue:
-
                 key = self._get_key(ctx)
 
                 if bucket_item := self._bucket_data.get(key):

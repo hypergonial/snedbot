@@ -92,7 +92,6 @@ class SnoozeView(miru.View):
 
 @reminders.listener(miru.ComponentInteractionCreateEvent, bind=True)
 async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentInteractionCreateEvent) -> None:
-
     if not event.context.custom_id.startswith(("RMSS:", "RMAR:")):
         return
 
@@ -170,7 +169,6 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
         notes: t.Dict[str, t.Any] = json.loads(timer.notes)
 
         if event.context.user.id not in notes["additional_recipients"]:
-
             if len(notes["additional_recipients"]) > 50:
                 await event.context.respond(
                     embed=hikari.Embed(
@@ -224,7 +222,6 @@ async def reminder(ctx: SnedSlashContext) -> None:
 @lightbulb.command("create", "Create a new reminder.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[str] = None) -> None:
-
     assert ctx.guild_id is not None
 
     if message and len(message) >= 1000:
@@ -308,7 +305,6 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
 @lightbulb.command("delete", "Delete a currently pending reminder.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
-
     assert ctx.guild_id is not None
 
     try:

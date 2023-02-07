@@ -92,7 +92,6 @@ def get_badges(user: hikari.User) -> List[str]:
 
 
 async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
-
     if not ctx.guild_id:
         raise RuntimeError("Cannot use get_userinfo outside of a guild.")
 

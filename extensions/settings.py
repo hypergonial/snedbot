@@ -300,7 +300,6 @@ Click one of the buttons below to get started!""",
         assert self.last_item and self.last_item.custom_id
 
         if self.last_item.custom_id == "add_r":
-
             embed = hikari.Embed(
                 title="Reports Settings",
                 description="Select a role to add to the list of roles that will be mentioned when a new report is made.",
@@ -334,7 +333,6 @@ Click one of the buttons below to get started!""",
                 return await self.error_screen(embed, parent="Reports")
 
         elif self.last_item.custom_id == "del_r":
-
             embed = hikari.Embed(
                 title="Reports Settings",
                 description="Remove a role from the list of roles that is mentioned when a new report is made.",
@@ -433,7 +431,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         await self.settings_mod()
 
     async def settings_starboard(self) -> None:
-
         assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
 
         records = await self.app.db_cache.get(table="starboard", guild_id=self.last_ctx.guild_id, limit=1)
@@ -602,7 +599,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         assert self.last_item is not None
         if self.last_item.custom_id == "add_excluded":
-
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description="Select a new channel to be added to the list of excluded channels. Users will not be able to star messages from these channels.",
@@ -636,7 +632,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 return await self.error_screen(embed, parent="Starboard")
 
         elif self.last_item.custom_id == "del_excluded":
-
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description="Remove a channel from the list of excluded channels.",
@@ -1044,7 +1039,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         action = [key for key in actions if opt in actions[key]][0]
 
         if opt == "state":  # State changing is a special case, ignore action
-
             options = [
                 miru.SelectOption(
                     value=state,
@@ -1141,7 +1135,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             policies[policy][opt] = value
 
         elif action == "ask":
-
             if opt in ["add_channel", "add_role", "del_channel", "del_role"]:
                 match opt:
                     case "add_channel":
