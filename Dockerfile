@@ -14,7 +14,7 @@ RUN apt-get install -y postgresql-client-${postgres_version}
 COPY pyproject.toml poetry.lock ./
 
 RUN poetry config virtualenvs.create false
-RUN poetry install -n --no-dev
+RUN poetry install -n --only main
 
 COPY . ./
 CMD ["python3.10", "-O", "main.py"]
