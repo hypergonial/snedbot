@@ -28,7 +28,7 @@ Brotli = "~=1.0"
 ciso8601 = "~=2.3"
 kosu = {git = "https://github.com/HyperGH/kosu.git", branch="main"}
 hikari-lightbulb = "==2.3.1"
-hikari-miru = "==2.0.4"
+hikari-miru = "==3.0.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.12"
