@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import copy
 import json
@@ -7,29 +9,19 @@ import typing as t
 import hikari
 import lightbulb
 import miru
-from lightbulb.utils.parser import CONVERTER_TYPE_MAPPING
+from miru.abc import ViewItem
 
 import models
 from etc import const
 from etc.settings_static import *
 from models.bot import SnedBot
-from models.checks import bot_has_permissions, has_permissions
+from models.checks import bot_has_permissions
 from models.components import *
 from models.context import SnedSlashContext
 from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
-from utils import helpers
-
-logger = logging.getLogger(__name__)
 
 settings = SnedPlugin("Settings")
-
-
-def get_key(dictionary: dict, value: t.Any) -> t.Any:
-    """
-    Get key from value in dict, too lazy to copy this garbage
-    """
-    return list(dictionary.keys())[list(dictionary.values()).index(value)]
 
 
 class SettingsView(models.AuthorOnlyView):
@@ -45,21 +37,22 @@ class SettingsView(models.AuthorOnlyView):
     ) -> None:
         super().__init__(lctx, timeout=timeout, autodefer=autodefer)
 
-        # Last received context object
-        self.last_ctx: t.Optional[miru.Context] = None
-        # Last component interacted with
-        self.last_item: t.Optional[miru.Item] = None
+        self.last_item: t.Optional[ViewItem] = None
+        """Last component that was interacted with."""
 
-        # Last value received as input
-        self.value: t.Optional[str] = None
-        # If True, provides the menu ephemerally
+        self.value: SettingValue = SettingValue()
+        """Last value received as input wrapped in a monadic type for type safety."""
+
         self.ephemeral: bool = ephemeral
+        """If True, provides the menu ephemerally."""
 
         self.flags = hikari.MessageFlag.EPHEMERAL if self.ephemeral else hikari.MessageFlag.NONE
-        self.input_event: asyncio.Event = asyncio.Event()
+        """Flags to pass with every message edit."""
 
-        # Mapping of custom_id/label, menu action
-        self.menu_actions = {
+        self._done_event: asyncio.Event = asyncio.Event()
+        """Event that is set and cleared when a DoneButton or BackButton is pressed, or the view stops."""
+
+        self.menu_actions: t.Dict[str, t.Callable[..., t.Awaitable[None]]] = {
             "Main": self.settings_main,
             "Reports": self.settings_report,
             "Moderation": self.settings_mod,
@@ -69,6 +62,12 @@ class SettingsView(models.AuthorOnlyView):
             "Starboard": self.settings_starboard,
             "Quit": self.quit_settings,
         }
+        """Mapping of custom_id/label, menu action"""
+
+    async def wait_until_done(self) -> None:
+        """Wait until a DoneButton is pressed.
+        Check `self.value.is_done` to ensure this did not unblock due to the view stopping or some other reason."""
+        await self._done_event.wait()
 
     # Transitions
     def add_buttons(self, buttons: t.Sequence[miru.Button], parent: t.Optional[str] = None, **kwargs) -> None:
@@ -83,72 +82,63 @@ class SettingsView(models.AuthorOnlyView):
         for button in buttons:
             self.add_item(button)
 
-    def select_screen(self, select: OptionsSelect, parent: t.Optional[str] = None, **kwargs) -> None:
+    def select_screen(
+        self, select: miru.SelectBase, parent: t.Optional[str] = None, with_done: bool = False, **kwargs
+    ) -> None:
         """Set view to a new select screen, clearing previous components."""
         self.clear_items()
-
-        if not isinstance(select, OptionsSelect):
-            logging.warning("Stop being an idiot, pass an OptionSelect, thx c:")
 
         self.add_item(select)
 
         if parent:
-            self.add_item(BackButton(parent))
+            self.add_item(BackButton(parent, **kwargs))
         else:
             self.add_item(QuitButton())
+
+        if with_done and parent:
+            self.add_item(DoneButton(parent, **kwargs))
 
     async def error_screen(self, embed: hikari.Embed, parent: str, **kwargs) -> None:
         """
         Show an error screen with only a back button, and wait for input on it.
         """
-        assert self.last_ctx is not None
+        assert self.last_context
         self.clear_items()
         self.add_item(BackButton(parent=parent, **kwargs))
-        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
     async def on_timeout(self) -> None:
         """Stop waiting for input events after the view times out."""
-        self.value = None
-        self.input_event.set()
+        self.value = SettingValue()
+        self._done_event.set()
 
-        if not self.last_ctx:
+        if not self.last_context:
             return
 
         for item in self.children:
-            assert isinstance(item, (miru.Button, miru.Select))
             item.disabled = True
 
         try:
-            await self.last_ctx.edit_response(components=self, flags=self.flags)
+            await self.last_context.edit_response(components=self, flags=self.flags)
         except hikari.NotFoundError:
             pass
-
-    """ async def wait_for_input(self) -> None:
-        Wait until a user input is given, then reset the event.
-        Other functions should check if view.value is None and return if so after waiting for this event.
-        self.input_event.clear()
-        await self.input_event.wait()
-
-        if self._stopped.is_set():
-            raise asyncio.CancelledError """
 
     async def quit_settings(self) -> None:
         """Exit settings menu."""
 
-        assert self.last_ctx is not None
+        assert self.last_context
         for item in self.children:
-            assert isinstance(item, (miru.Button, miru.Select))
             item.disabled = True
 
         try:
-            await self.last_ctx.edit_response(components=self, flags=self.flags)
+            await self.last_context.edit_response(components=self, flags=self.flags)
         except hikari.NotFoundError:
             pass
 
-        self.value = None
+        self.value = SettingValue()
+        self._done_event.set()
         self.stop()
-        self.input_event.set()
 
     async def start_settings(self) -> None:
         await self.settings_main(initial=True)
@@ -180,24 +170,29 @@ Click one of the buttons below to get started!""",
             message = await resp.message()
             await self.start(message)
         else:
-            assert self.last_ctx is not None
-            await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+            assert self.last_context is not None
+            await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
 
         await self.wait_for_input()
-        if self.value is None:
+        if self.value.text is hikari.UNDEFINED:
             return
 
-        await self.menu_actions[self.value]()
+        await self.menu_actions[self.value.text]()
 
     async def settings_report(self) -> None:
         """The reports menu."""
-        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+        assert isinstance(self.app, SnedBot) and self.last_context and self.last_context.guild_id
 
-        records = await self.app.db_cache.get(table="reports", guild_id=self.last_ctx.guild_id, limit=1)
+        records = await self.app.db_cache.get(table="reports", guild_id=self.last_context.guild_id, limit=1)
 
         if not records:
             records = [
-                {"guild_id": self.last_ctx.guild_id, "is_enabled": False, "channel_id": None, "pinged_role_ids": None}
+                {
+                    "guild_id": self.last_context.guild_id,
+                    "is_enabled": False,
+                    "channel_id": None,
+                    "pinged_role_ids": None,
+                }
             ]
 
         pinged_roles = (
@@ -205,12 +200,12 @@ Click one of the buttons below to get started!""",
             if records[0]["pinged_role_ids"]
             else []
         )
-        all_roles = [
+        """ all_roles = [
             role
-            for role in list(self.app.cache.get_roles_view_for_guild(self.last_ctx.guild_id).values())
-            if role.id != self.last_ctx.guild_id
+            for role in list(self.app.cache.get_roles_view_for_guild(self.last_context.guild_id).values())
+            if role.id != self.last_context.guild_id
         ]
-        unadded_roles = list(set(all_roles) - set(pinged_roles))
+        unadded_roles = list(set(all_roles) - set(pinged_roles)) """
 
         channel = self.app.cache.get_guild_channel(records[0]["channel_id"]) if records[0]["channel_id"] else None
 
@@ -228,164 +223,88 @@ Click one of the buttons below to get started!""",
         buttons = [
             BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enable", disabled=not channel),
             OptionButton(label="Set Channel", emoji=const.EMOJI_CHANNEL, style=hikari.ButtonStyle.SECONDARY),
-            OptionButton(
-                label="Role", disabled=not unadded_roles, custom_id="add_r", emoji="➕", style=hikari.ButtonStyle.SUCCESS
-            ),
-            OptionButton(
-                label="Role", disabled=not pinged_roles, custom_id="del_r", emoji="➖", style=hikari.ButtonStyle.DANGER
-            ),
+            OptionButton(label="Change Roles", emoji="➕", style=hikari.ButtonStyle.SECONDARY),
         ]
         self.add_buttons(buttons, parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if not self.value:
             return
 
-        if isinstance(self.value, tuple) and self.value[0] == "Enable":
+        if self.value.boolean is not hikari.UNDEFINED:
             await self.app.db.execute(
                 """INSERT INTO reports (is_enabled, guild_id)
                 VALUES ($1, $2)
                 ON CONFLICT (guild_id) DO
                 UPDATE SET is_enabled = $1""",
-                self.value[1],
-                self.last_ctx.guild_id,
+                self.value.boolean,
+                self.last_context.guild_id,
             )
-            await self.app.db_cache.refresh(table="reports", guild_id=self.last_ctx.guild_id)
-            return await self.settings_report()
+            await self.app.db_cache.refresh(table="reports", guild_id=self.last_context.guild_id)
 
-        if self.value == "Set Channel":
+        elif self.value.text == "Set Channel":
             embed = hikari.Embed(
                 title="Reports Settings",
                 description=f"Please select a channel where reports will be sent.",
                 color=const.EMBED_BLUE,
             )
 
-            options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)  # type: ignore
-                for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
-                if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
-            ]
+            select = OptionsChannelSelect(
+                channel_types=(hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS),
+                placeholder="Select a channel...",
+            )
+            self.select_screen(select, parent="Reports")
+            await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
+            await self.wait_for_input()
 
-            try:
-                channel = await ask_settings(
-                    self,
-                    self.last_ctx,
-                    options=options,
-                    return_type=hikari.TextableGuildChannel,
-                    embed_or_content=embed,
-                    placeholder="Select a channel...",
-                    ephemeral=self.ephemeral,
-                )
-            except TypeError:
-                embed = hikari.Embed(
-                    title="❌ Channel not found.",
-                    description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=const.ERROR_COLOR,
-                )
-                return await self.error_screen(embed, parent="Reports")
+            if not self.value.channels:
+                return
 
-            else:
-                await self.app.db.execute(
-                    """INSERT INTO reports (channel_id, guild_id)
-                    VALUES ($1, $2)
-                    ON CONFLICT (guild_id) DO
-                    UPDATE SET channel_id = $1""",
-                    channel.id,
-                    self.last_ctx.guild_id,
-                )
-            await self.app.db_cache.refresh(table="reports", guild_id=self.last_ctx.guild_id)
-            return await self.settings_report()
+            await self.app.db.execute(
+                """INSERT INTO reports (channel_id, guild_id)
+                VALUES ($1, $2)
+                ON CONFLICT (guild_id) DO
+                UPDATE SET channel_id = $1""",
+                self.value.channels[0].id,
+                self.last_context.guild_id,
+            )
+            await self.app.db_cache.refresh(table="reports", guild_id=self.last_context.guild_id)
 
-        assert self.last_item and self.last_item.custom_id
-
-        if self.last_item.custom_id == "add_r":
+        elif self.value.text == "Change Roles":
             embed = hikari.Embed(
                 title="Reports Settings",
-                description="Select a role to add to the list of roles that will be mentioned when a new report is made.",
+                description="Select the roles that will be mentioned when a new report is made.\nTo remove all roles, hit 'Done' without selecting anything.",
                 color=const.EMBED_BLUE,
             )
 
-            options = [
-                miru.SelectOption(label=role.name, value=str(role.id), emoji=const.EMOJI_MENTION)
-                for role in unadded_roles
-            ]
+            select = OptionsRoleSelect(placeholder="Select roles...", min_values=0, max_values=10, with_done=True)
+            self.select_screen(select, parent="Reports", with_done=True)
+            await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
+            await self.wait_until_done()
 
-            try:
-                role = await ask_settings(
-                    self,
-                    self.last_ctx,
-                    options=options,
-                    return_type=hikari.Role,
-                    embed_or_content=embed,
-                    placeholder="Select a role...",
-                    ephemeral=self.ephemeral,
-                )
-                assert isinstance(role, hikari.Role)
-                if role not in pinged_roles:
-                    pinged_roles.append(role)
-            except TypeError:
-                embed = hikari.Embed(
-                    title="❌ Role not found.",
-                    description="Unable to locate role. Please type a role mention or ID.",
-                    color=const.ERROR_COLOR,
-                )
-                return await self.error_screen(embed, parent="Reports")
+            if not self.value.is_done:
+                return
 
-        elif self.last_item.custom_id == "del_r":
-            embed = hikari.Embed(
-                title="Reports Settings",
-                description="Remove a role from the list of roles that is mentioned when a new report is made.",
-                color=const.EMBED_BLUE,
+            await self.app.db.execute(
+                """INSERT INTO reports (pinged_role_ids, guild_id)
+                VALUES ($1, $2)
+                ON CONFLICT (guild_id) DO
+                UPDATE SET pinged_role_ids = $1""",
+                [role.id for role in self.value.roles] if self.value.roles else None,
+                self.last_context.guild_id,
             )
+            await self.app.db_cache.refresh(table="reports", guild_id=self.last_context.guild_id)
 
-            options = [
-                miru.SelectOption(label=role.name, value=str(role.id), emoji=const.EMOJI_MENTION)
-                for role in pinged_roles
-                if role is not None
-            ]
-
-            try:
-                role = await ask_settings(
-                    self,
-                    self.last_ctx,
-                    options=options,
-                    return_type=hikari.Role,
-                    embed_or_content=embed,
-                    placeholder="Select a role...",
-                    ephemeral=self.ephemeral,
-                )
-                if role in pinged_roles:
-                    assert isinstance(role, hikari.Role)
-                    pinged_roles.remove(role)
-                else:
-                    raise TypeError
-
-            except TypeError:
-                embed = hikari.Embed(
-                    title="❌ Role not found.",
-                    description="Unable to locate role. Please type a role mention or ID.",
-                    color=const.ERROR_COLOR,
-                )
-                return await self.error_screen(embed, parent="Reports")
-
-        await self.app.db.execute(
-            """INSERT INTO reports (pinged_role_ids, guild_id)
-            VALUES ($1, $2)
-            ON CONFLICT (guild_id) DO
-            UPDATE SET pinged_role_ids = $1""",
-            [role.id for role in pinged_roles if role is not None],
-            self.last_ctx.guild_id,
-        )
-
-        await self.app.db_cache.refresh(table="reports", guild_id=self.last_ctx.guild_id)
         await self.settings_report()
 
     async def settings_mod(self) -> None:
         """Show and handle Moderation menu."""
-        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+        assert (
+            isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
+        )
 
-        mod_settings = await self.app.mod.get_settings(self.last_ctx.guild_id)
+        mod_settings = await self.app.mod.get_settings(self.last_context.guild_id)
 
         embed = hikari.Embed(
             title="Moderation Settings",
@@ -408,7 +327,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             embed.add_field(name=mod_flags_strings[flag], value=str(value), inline=True)
 
         self.add_buttons(buttons, parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if not self.value:
@@ -423,17 +342,19 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             VALUES ($1, $2)
             ON CONFLICT (guild_id) DO
             UPDATE SET flags = $2""",
-            self.last_ctx.guild_id,
+            self.last_context.guild_id,
             (mod_settings.flags & ~flag).value if flag & mod_settings.flags else (mod_settings.flags | flag).value,
         )
-        await self.app.db_cache.refresh(table="mod_config", guild_id=self.last_ctx.guild_id)
+        await self.app.db_cache.refresh(table="mod_config", guild_id=self.last_context.guild_id)
 
         await self.settings_mod()
 
     async def settings_starboard(self) -> None:
-        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+        assert (
+            isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
+        )
 
-        records = await self.app.db_cache.get(table="starboard", guild_id=self.last_ctx.guild_id, limit=1)
+        records = await self.app.db_cache.get(table="starboard", guild_id=self.last_context.guild_id, limit=1)
         settings = (
             records[0]
             if records
@@ -448,12 +369,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             if settings["excluded_channels"]
             else []
         )
-        all_channels = [
-            channel
-            for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
-            if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
-        ]
-        included_channels = list(set(all_channels) - set(excluded_channels))  # type: ignore
 
         embed = hikari.Embed(
             title="Starboard Settings",
@@ -464,22 +379,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             BooleanButton(state=is_enabled, label="Enable", disabled=not starboard_channel),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Set Channel", emoji=const.EMOJI_CHANNEL),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Limit", emoji="⭐"),
-            OptionButton(
-                style=hikari.ButtonStyle.SUCCESS,
-                label="Excluded",
-                emoji="➕",
-                row=1,
-                custom_id="add_excluded",
-                disabled=not included_channels,
-            ),
-            OptionButton(
-                style=hikari.ButtonStyle.DANGER,
-                label="Excluded",
-                emoji="➖",
-                row=1,
-                custom_id="del_excluded",
-                disabled=not excluded_channels,
-            ),
+            OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Exclusions"),
         ]
         embed.add_field(
             "Starboard Channel", starboard_channel.mention if starboard_channel else "*Not set*", inline=True
@@ -493,25 +393,25 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             inline=True,
         )
         self.add_buttons(buttons, parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
         if self.value is None:
             return
 
-        if isinstance(self.value, tuple) and self.value[0] == "Enable":
+        if self.value.boolean is not hikari.UNDEFINED and self.value.text == "Enable":
             await self.app.db.execute(
                 """INSERT INTO starboard (is_enabled, guild_id)
                 VALUES ($1, $2)
                 ON CONFLICT (guild_id) DO
                 UPDATE SET is_enabled = $1""",
-                self.value[1],
-                self.last_ctx.guild_id,
+                self.value.boolean,
+                self.last_context.guild_id,
             )
-            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
+            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_context.guild_id)
             return await self.settings_starboard()
 
-        if self.value == "Limit":
+        elif self.value == "Limit":
             modal = OptionsModal(self, title="Changing star limit...")
             modal.add_item(
                 miru.TextInput(
@@ -522,8 +422,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     placeholder="Enter a positive integer to be set as the minimum required amount of stars...",
                 )
             )
-            assert isinstance(self.last_ctx, miru.ViewContext)
-            await self.last_ctx.respond_with_modal(modal)
+            assert isinstance(self.last_context, miru.ViewContext)
+            await self.last_context.respond_with_modal(modal)
             await self.wait_for_input()
 
             if not self.value:
@@ -551,153 +451,90 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 ON CONFLICT (guild_id) DO
                 UPDATE SET star_limit = $1""",
                 limit,
-                self.last_ctx.guild_id,
+                self.last_context.guild_id,
             )
-            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
-            return await self.settings_starboard()
+            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_context.guild_id)
 
-        if self.value == "Set Channel":
+        elif self.value.text == "Set Channel":
             embed = hikari.Embed(
                 title="Starboard Settings",
                 description=f"Please select a channel where starred messages will be sent.",
                 color=const.EMBED_BLUE,
             )
 
-            options = [
-                miru.SelectOption(label=str(channel.name), value=str(channel.id), emoji=const.EMOJI_CHANNEL)
-                for channel in all_channels
-            ]
+            select = OptionsChannelSelect(
+                channel_types=(hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS),
+                placeholder="Select a channel...",
+            )
+            self.select_screen(select, parent="Starboard")
+            await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
+            await self.wait_for_input()
 
-            try:
-                channel = await ask_settings(
-                    self,
-                    self.last_ctx,
-                    options=options,
-                    return_type=hikari.TextableGuildChannel,
-                    embed_or_content=embed,
-                    placeholder="Select a channel...",
-                    ephemeral=self.ephemeral,
-                )
-            except TypeError:
-                embed = hikari.Embed(
-                    title="❌ Channel not found.",
-                    description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=const.ERROR_COLOR,
-                )
-                return await self.error_screen(embed, parent="Starboard")
-            else:
-                await self.app.db.execute(
-                    """INSERT INTO starboard (channel_id, guild_id)
-                    VALUES ($1, $2)
-                    ON CONFLICT (guild_id) DO
-                    UPDATE SET channel_id = $1""",
-                    channel.id if channel else None,
-                    self.last_ctx.guild_id,
-                )
-            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
-            return await self.settings_starboard()
+            if not self.value.channels:
+                return
 
-        assert self.last_item is not None
-        if self.last_item.custom_id == "add_excluded":
+            await self.app.db.execute(
+                """INSERT INTO starboard (channel_id, guild_id)
+                VALUES ($1, $2)
+                ON CONFLICT (guild_id) DO
+                UPDATE SET channel_id = $1""",
+                self.value.channels[0].id,
+                self.last_context.guild_id,
+            )
+
+        elif self.value.text == "Exclusions":
             embed = hikari.Embed(
                 title="Starboard Settings",
-                description="Select a new channel to be added to the list of excluded channels. Users will not be able to star messages from these channels.",
+                description="Select channels to be excluded. Users will not be able to star messages from these channels.\n\nTo remove all exclusions, click `Done` without a selection.",
                 color=const.EMBED_BLUE,
             )
 
-            options = [
-                miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
-                for channel in included_channels
-            ]
+            select = OptionsChannelSelect(
+                channel_types=(hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS),
+                placeholder="Select channels...",
+                min_values=0,
+                max_values=25,
+                with_done=True,
+            )
+            self.select_screen(select, parent="Starboard", with_done=True)
+            await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
+            await self.wait_until_done()
 
-            try:
-                channel = await ask_settings(
-                    self,
-                    self.last_ctx,
-                    options=options,
-                    return_type=hikari.TextableGuildChannel,
-                    embed_or_content=embed,
-                    placeholder="Select a channel...",
-                    ephemeral=self.ephemeral,
-                )
-                assert isinstance(channel, hikari.TextableGuildChannel)
-                if channel and channel not in excluded_channels:
-                    excluded_channels.append(channel)
-            except TypeError:
-                embed = hikari.Embed(
-                    title="❌ Channel not found.",
-                    description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=const.ERROR_COLOR,
-                )
-                return await self.error_screen(embed, parent="Starboard")
+            if not self.value.is_done:
+                return
 
-        elif self.last_item.custom_id == "del_excluded":
-            embed = hikari.Embed(
-                title="Starboard Settings",
-                description="Remove a channel from the list of excluded channels.",
-                color=const.EMBED_BLUE,
+            await self.app.db.execute(
+                """INSERT INTO starboard (excluded_channels, guild_id)
+                VALUES ($1, $2)
+                ON CONFLICT (guild_id) DO
+                UPDATE SET excluded_channels = $1""",
+                [channel.id for channel in self.value.channels] if self.value.channels else None,
+                self.last_context.guild_id,
             )
 
-            options = [
-                miru.SelectOption(label=str(channel.name), value=str(channel.id), emoji=const.EMOJI_CHANNEL)
-                for channel in excluded_channels
-                if channel
-            ]
-
-            try:
-                channel = await ask_settings(
-                    self,
-                    self.last_ctx,
-                    options=options,
-                    return_type=hikari.TextableGuildChannel,
-                    embed_or_content=embed,
-                    placeholder="Select a channel...",
-                    ephemeral=self.ephemeral,
-                )
-                if channel and channel in excluded_channels:
-                    assert isinstance(channel, hikari.TextableGuildChannel)
-                    excluded_channels.remove(channel)
-                else:
-                    raise TypeError
-
-            except TypeError:
-                embed = hikari.Embed(
-                    title="❌ Channel not found.",
-                    description="Unable to locate channel. Please type a channel mention or ID.",
-                    color=const.ERROR_COLOR,
-                )
-                return await self.error_screen(embed, parent="Starboard")
-
-        await self.app.db.execute(
-            """INSERT INTO starboard (excluded_channels, guild_id)
-            VALUES ($1, $2)
-            ON CONFLICT (guild_id) DO
-            UPDATE SET excluded_channels = $1""",
-            [channel.id for channel in excluded_channels if channel],
-            self.last_ctx.guild_id,
-        )
-
-        await self.app.db_cache.refresh(table="starboard", guild_id=self.last_ctx.guild_id)
+        await self.app.db_cache.refresh(table="starboard", guild_id=self.last_context.guild_id)
         await self.settings_starboard()
 
     async def settings_logging(self) -> None:
         """Show and handle Logging menu."""
 
-        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+        assert (
+            isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
+        )
 
         userlog = self.app.get_plugin("Logging")
         assert userlog is not None
 
-        log_channels = await userlog.d.actions.get_log_channel_ids_view(self.last_ctx.guild_id)
+        log_channels = await userlog.d.actions.get_log_channel_ids_view(self.last_context.guild_id)
 
         embed = hikari.Embed(
             title="Logging Settings",
-            description="Below you can see a list of logging events and channels associated with them. To change where a certain event's logs should be sent, click on the corresponding button.",
+            description="Below you can see a list of logging events and channels associated with them. To change where a certain event's logs should be sent, select it below.",
             color=const.EMBED_BLUE,
         )
 
-        assert self.last_ctx.app_permissions is not None
-        if not (self.last_ctx.app_permissions & hikari.Permissions.VIEW_AUDIT_LOG):
+        assert self.last_context.app_permissions is not None
+        if not (self.last_context.app_permissions & hikari.Permissions.VIEW_AUDIT_LOG):
             embed.add_field(
                 name="⚠️ Warning!",
                 value=f"The bot currently has no permissions to view the audit logs! This will severely limit logging capabilities. Please consider enabling `View Audit Log` for the bot in your server's settings!",
@@ -715,80 +552,77 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             )
             options.append(miru.SelectOption(label=log_event_strings[log_category], value=log_category))
 
-        self.select_screen(OptionsSelect(options=options, placeholder="Select a category..."), parent="Main")
-        is_color = await userlog.d.actions.is_color_enabled(self.last_ctx.guild_id)
+        self.select_screen(OptionsTextSelect(options=options, placeholder="Select a category..."), parent="Main")
+        is_color = await userlog.d.actions.is_color_enabled(self.last_context.guild_id)
         self.add_item(BooleanButton(state=is_color, label="Color logs"))
 
-        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
-        if not self.value:
+        if not self.value.text:
             return
 
-        if isinstance(self.value, tuple) and self.value[0] == "Color logs":
+        if self.value.boolean is not hikari.UNDEFINED and self.value.text == "Color logs":
             await self.app.db.execute(
-                """INSERT INTO log_config (color, guild_id) 
+                """INSERT INTO log_config (color, guild_id)
                 VALUES ($1, $2)
                 ON CONFLICT (guild_id) DO
                 UPDATE SET color = $1""",
-                self.value[1],
-                self.last_ctx.guild_id,
+                self.value.boolean,
+                self.last_context.guild_id,
             )
-            await self.app.db_cache.refresh(table="log_config", guild_id=self.last_ctx.guild_id)
+            await self.app.db_cache.refresh(table="log_config", guild_id=self.last_context.guild_id)
             return await self.settings_logging()
 
-        log_event = self.value
+        log_event = self.value.text
 
         options = []
         options.append(miru.SelectOption(label="Disable", value="disable", description="Stop logging this event."))
         options += [
             miru.SelectOption(label=str(channel.name), value=str(channel.id), emoji=const.EMOJI_CHANNEL)
-            for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
+            for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_context.guild_id).values()
             if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
         ]
 
         embed = hikari.Embed(
             title="Logging Settings",
-            description=f"Please select a channel where the following event should be logged: `{log_event_strings[log_event]}`",
+            description=f"Please select a channel where the following event should be logged: `{log_event_strings[log_event]}`\n\nTo disable logging for this event, hit `Done` without selecting anything.",
             color=const.EMBED_BLUE,
         )
 
-        try:
-            channel = await ask_settings(
-                self,
-                self.last_ctx,
-                options=options,
-                return_type=hikari.TextableGuildChannel,
-                embed_or_content=embed,
-                placeholder="Select a channel...",
-                ignore=["disable"],
-                ephemeral=self.ephemeral,
-            )
-        except TypeError:
-            embed = hikari.Embed(
-                title="❌ Channel not found.",
-                description="Unable to locate channel. Please type a channel mention or ID.",
-                color=const.ERROR_COLOR,
-            )
-            return await self.error_screen(embed, parent="Logging")
-        else:
-            channel_id = channel.id if channel and channel != "disable" else None
-            userlog = self.app.get_plugin("Logging")
-            assert userlog is not None
-            await userlog.d.actions.set_log_channel(log_event, self.last_ctx.guild_id, channel_id)
+        select = OptionsChannelSelect(
+            channel_types=(hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS),
+            placeholder="Select a channel...",
+            with_done=True,
+            min_values=0,
+        )
+        self.select_screen(select, parent="Logging", with_done=True)
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
 
-            await self.settings_logging()
+        await self.wait_until_done()
+
+        if not self.value.is_done:
+            return
+
+        channel = self.value.channels[0] if self.value.channels else None
+        userlog = self.app.get_plugin("Logging")
+        assert userlog is not None
+        await userlog.d.actions.set_log_channel(log_event, self.last_context.guild_id, channel.id if channel else None)
+
+        await self.settings_logging()
 
     async def settings_automod(self) -> None:
         """Open and handle automoderation main menu"""
 
-        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+        assert (
+            isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
+        )
 
         automod = self.app.get_plugin("Auto-Moderation")
 
         assert automod is not None
 
-        policies = await automod.d.actions.get_policies(self.last_ctx.guild_id)
+        policies = await automod.d.actions.get_policies(self.last_context.guild_id)
         embed = hikari.Embed(
             title="Automoderation Settings",
             description="Below you can see a summary of the current automoderation settings. To see more details about a specific entry or change their settings, select it below!",
@@ -805,18 +639,20 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             # TODO: Add emojies maybe?
             options.append(miru.SelectOption(label=policy_strings[key]["name"], value=key))
 
-        self.select_screen(OptionsSelect(options=options, placeholder="Select a policy..."), parent="Main")
-        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+        self.select_screen(OptionsTextSelect(options=options, placeholder="Select a policy..."), parent="Main")
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
-        if not self.value:
+        if not self.value.text:
             return
-        await self.settings_automod_policy(self.value)
+        await self.settings_automod_policy(self.value.text)
 
     async def settings_automod_policy(self, policy: t.Optional[str] = None) -> None:
         """Settings for an automoderation policy"""
 
-        assert isinstance(self.app, SnedBot) and self.last_ctx is not None and self.last_ctx.guild_id is not None
+        assert (
+            isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
+        )
 
         if not policy:
             return await self.settings_automod()
@@ -825,7 +661,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         assert automod is not None
 
-        policies: t.Dict[str, t.Any] = await automod.d.actions.get_policies(self.last_ctx.guild_id)
+        policies: t.Dict[str, t.Any] = await automod.d.actions.get_policies(self.last_context.guild_id)
         policy_data = policies[policy]
         embed = hikari.Embed(
             title=f"Options for: {policy_strings[policy]['name']}",
@@ -853,7 +689,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         elif state in ["flag", "notice"]:
             userlog = self.app.get_plugin("Logging")
             assert userlog is not None
-            channel_id = await userlog.d.actions.get_log_channel_id("flags", self.last_ctx.guild_id)
+            channel_id = await userlog.d.actions.get_log_channel_id("flags", self.last_context.guild_id)
             if not channel_id:
                 embed.add_field(
                     name="⚠️ Warning:",
@@ -880,20 +716,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             excluded_roles = [self.app.cache.get_role(role_id) for role_id in policy_data["excluded_roles"]]
             excluded_channels = list(filter(None, excluded_channels))
             excluded_roles = list(filter(None, excluded_roles))
-
-            all_channels = [
-                channel
-                for channel in self.app.cache.get_guild_channels_view_for_guild(self.last_ctx.guild_id).values()
-                if isinstance(channel, (hikari.GuildTextChannel, hikari.GuildNewsChannel))
-            ]
-            included_channels = list(set(all_channels) - set(excluded_channels))  # type: ignore
-
-            all_roles = [
-                role
-                for role in self.app.cache.get_roles_view_for_guild(self.last_ctx.guild_id).values()
-                if role.id != self.last_ctx.guild_id
-            ]
-            included_roles = list(set(all_roles) - set(excluded_roles))
 
         if state != "disabled":
             for key in policy_data:
@@ -931,7 +753,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 )
 
             if policy_data.get("excluded_channels") is not None and policy_data.get("excluded_roles") is not None:
-                display_channels = ", ".join([channel.mention for channel in excluded_channels])  # type: ignore it's not unbound, trust me c:
+                display_channels = ", ".join([channel.mention for channel in excluded_channels])  # type: ignore
                 display_roles = ", ".join([role.mention for role in excluded_roles])  # type: ignore
 
                 if len(display_channels) > 512:
@@ -954,42 +776,18 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
                 buttons.append(
                     OptionButton(
-                        label="Channel",
-                        emoji="➕",
-                        custom_id="add_channel",
-                        style=hikari.ButtonStyle.SUCCESS,
+                        label="Excluded Channels",
+                        style=hikari.ButtonStyle.SECONDARY,
+                        custom_id="exclude_channels",
                         row=4,
-                        disabled=not included_channels,  # type: ignore
                     )
                 )
                 buttons.append(
                     OptionButton(
-                        label="Role",
-                        emoji="➕",
-                        custom_id="add_role",
-                        style=hikari.ButtonStyle.SUCCESS,
+                        label="Excluded Roles",
+                        style=hikari.ButtonStyle.SECONDARY,
+                        custom_id="exclude_roles",
                         row=4,
-                        disabled=not included_roles,  # type: ignore
-                    )
-                )
-                buttons.append(
-                    OptionButton(
-                        label="Channel",
-                        emoji="➖",
-                        custom_id="del_channel",
-                        style=hikari.ButtonStyle.DANGER,
-                        row=4,
-                        disabled=not excluded_channels,  # type: ignore
-                    )
-                )
-                buttons.append(
-                    OptionButton(
-                        label="Role",
-                        emoji="➖",
-                        custom_id="del_role",
-                        style=hikari.ButtonStyle.DANGER,
-                        row=4,
-                        disabled=not excluded_roles,  # type: ignore
                     )
                 )
 
@@ -997,10 +795,10 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             buttons.append(OptionButton(label="Help", custom_id="show_help", emoji="❓"))
 
         self.add_buttons(buttons, parent="Auto-Moderation")
-        await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+        await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
-        if not self.value:
+        if not self.value.text:
             return
 
         sql = """
@@ -1011,15 +809,14 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         # The option that is to be changed
         assert self.last_item is not None
-        opt = self.last_item.custom_id
+        opt: str = self.last_item.custom_id
 
         # Question types
         actions = {
             "show_help": ["show_help"],
             "boolean": ["delete"],
             "text_input": ["temp_dur", "words_list", "words_list_wildcard", "count", "persp_bounds"],
-            "ask": ["add_channel", "add_role", "del_channel", "del_role"],
-            "select": ["state"],
+            "select": ["state", "exclude_channels", "exclude_roles"],
         }
 
         # Values that should be converted from & to lists
@@ -1050,38 +847,39 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 if policy not in policy_states[state]["excludes"]
             ]
             self.select_screen(
-                OptionsSelect(options=options, placeholder="Select the state of this policy..."),
+                OptionsTextSelect(options=options, placeholder="Select the state of this policy..."),
                 parent="Auto-Moderation",
             )
             embed = hikari.Embed(
                 title="Select state...", description="Select a new state for this policy...", color=const.EMBED_BLUE
             )
-            await self.last_ctx.edit_response(embed=embed, components=self, flags=self.flags)
+            await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
             await self.wait_for_input()
 
-            if not self.value:
+            if not self.value.text:
                 return
 
-            policies[policy]["state"] = self.value
+            policies[policy]["state"] = self.value.text
 
         elif action == "boolean":
             policies[policy][opt] = not policies[policy][opt]
 
         elif opt == "persp_bounds":
             modal = PerspectiveBoundsModal(self, policy_data["persp_bounds"], title="Changing Perspective Bounds...")
-            assert isinstance(self.last_ctx, miru.ViewContext)
-            await self.last_ctx.respond_with_modal(modal)
+            assert isinstance(self.last_context, miru.ViewContext)
+            await self.last_context.respond_with_modal(modal)
             await self.wait_for_input()
 
-            if not self.value:
+            if not self.value.raw_perspective_bounds:
                 return
 
             try:
-                assert isinstance(self.value, dict)
-                for key, value in self.value.items():
-                    self.value[key] = float(value.replace(",", "."))
-                    if not (0.1 <= float(self.value[key]) <= 1.0):
+                perspective_bounds = {}
+                for key, value in self.value.raw_perspective_bounds.items():
+                    value = float(value.replace(",", "."))
+                    if not (0.1 <= value <= 1.0):
                         raise ValueError
+                    perspective_bounds[key] = value
             except (ValueError, TypeError):
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
@@ -1090,7 +888,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 )
                 return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
 
-            policies["perspective"]["persp_bounds"] = self.value
+            policies["perspective"]["persp_bounds"] = perspective_bounds
 
         elif action == "text_input":
             assert opt is not None
@@ -1103,15 +901,14 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 text_input.value = ", ".join(policies[policy][opt])
             modal.add_item(text_input)
 
-            assert isinstance(self.last_ctx, miru.ViewContext)
-            await self.last_ctx.respond_with_modal(modal)
+            assert isinstance(self.last_context, miru.ViewContext)
+            await self.last_context.respond_with_modal(modal)
             await self.wait_for_input()
 
-            if not self.value:
+            if not self.value.modal_values:
                 return
 
-            assert isinstance(self.value, dict)
-            value = list(self.value.values())[0]
+            value = list(self.value.modal_values.values())[0]
 
             if opt in list_inputs:
                 value = [list_item.strip().lower() for list_item in value.split(",")]
@@ -1134,211 +931,60 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
             policies[policy][opt] = value
 
-        elif action == "ask":
-            if opt in ["add_channel", "add_role", "del_channel", "del_role"]:
-                match opt:
-                    case "add_channel":
-                        options = [
-                            miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
-                            for channel in included_channels  # type: ignore
-                        ]
-                        embed = hikari.Embed(
-                            title="Auto-Moderation Settings",
-                            description="Choose a channel to add to excluded channels!",
-                            color=const.EMBED_BLUE,
-                        )
-                        return_type = hikari.TextableGuildChannel
-                    case "del_channel":
-                        options = [
-                            miru.SelectOption(label=channel.name, value=channel.id, emoji=const.EMOJI_CHANNEL)
-                            for channel in excluded_channels  # type: ignore
-                        ]
-                        embed = hikari.Embed(
-                            title="Auto-Moderation Settings",
-                            description="Choose a channel to remove from excluded channels!",
-                            color=const.EMBED_BLUE,
-                        )
-                        return_type = hikari.TextableGuildChannel
-                    case "add_role":
-                        options = [
-                            miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION)
-                            for role in included_roles  # type: ignore
-                        ]
-                        embed = hikari.Embed(
-                            title="Auto-Moderation Settings",
-                            description="Choose a role to add to excluded roles!",
-                            color=const.EMBED_BLUE,
-                        )
-                        return_type = hikari.Role
-                    case "del_role":
-                        options = [
-                            miru.SelectOption(label=role.name, value=role.id, emoji=const.EMOJI_MENTION)
-                            for role in excluded_roles  # type: ignore
-                        ]
-                        embed = hikari.Embed(
-                            title="Auto-Moderation Settings",
-                            description="Choose a role to remove from excluded roles!",
-                            color=const.EMBED_BLUE,
-                        )
-                        return_type = hikari.Role
+        elif action == "select":
+            if opt == "exclude_channels":
+                select = OptionsChannelSelect(
+                    channel_types=(hikari.ChannelType.GUILD_TEXT, hikari.ChannelType.GUILD_NEWS),
+                    placeholder="Select channels...",
+                    with_done=True,
+                    min_values=0,
+                    max_values=25,
+                )
+                self.select_screen(select, parent="Auto-Moderation Policies", with_done=True, policy=policy)
+                await self.last_context.edit_response(
+                    embed=hikari.Embed(
+                        title="Select channels to exclude...",
+                        description="Select channels to exclude from this policy...\n\nTo disable channel exclusions, hit `Done` without selecting any channels.",
+                    ),
+                    components=self,
+                    flags=self.flags,
+                )
 
-                try:
-                    value = await ask_settings(
-                        self,
-                        self.last_ctx,
-                        options=options,  # type: ignore
-                        embed_or_content=embed,
-                        return_type=return_type,  # type: ignore
-                        placeholder="Select a value...",
-                        ephemeral=self.ephemeral,
-                    )
-                    if not value:
-                        return await self.settings_automod_policy(policy)
-                    if opt.startswith("add_"):
-                        if value.id not in policies[policy][f"excluded_{opt.split('_')[1]}s"]:
-                            policies[policy][f"excluded_{opt.split('_')[1]}s"].append(value.id)
-                    elif opt.startswith("del_"):
-                        if value.id in policies[policy][f"excluded_{opt.split('_')[1]}s"]:
-                            policies[policy][f"excluded_{opt.split('_')[1]}s"].remove(value.id)
-                        else:
-                            raise ValueError("Value not excluded.")
+                await self.wait_until_done()
 
-                except (TypeError, ValueError):
-                    embed = hikari.Embed(
-                        title="❌ Invalid Type",
-                        description=f"Cannot find the channel/role specified or it is not in the excluded roles/channels.",
-                        color=const.ERROR_COLOR,
-                    )
-                    return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
+                if not self.value.is_done:
+                    return
+
+                policies[policy]["excluded_channels"] = (
+                    [channel.id for channel in self.value.channels] if self.value.channels else []
+                )
+
+            elif opt == "exclude_roles":
+                select = OptionsRoleSelect(placeholder="Select roles...", with_done=True, min_values=0, max_values=25)
+                self.select_screen(select, parent="Auto-Moderation Policies", with_done=True, policy=policy)
+                await self.last_context.edit_response(
+                    embed=hikari.Embed(
+                        title="Select roles to exclude...",
+                        description="Select roles to exclude from this policy...\n\nTo disable role exclusions, hit `Done` without selecting any roles.",
+                    ),
+                    components=self,
+                    flags=self.flags,
+                )
+
+                await self.wait_until_done()
+
+                if not self.value.is_done:
+                    return
+
+                policies[policy]["excluded_roles"] = [role.id for role in self.value.roles] if self.value.roles else []
 
         elif action == "show_help":
             embed = settings_help["policies"][policy]
             return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)
 
-        await self.app.db.execute(sql, json.dumps(policies), self.last_ctx.guild_id)
-        await self.app.db_cache.refresh(table="mod_config", guild_id=self.last_ctx.guild_id)
+        await self.app.db.execute(sql, json.dumps(policies), self.last_context.guild_id)
+        await self.app.db_cache.refresh(table="mod_config", guild_id=self.last_context.guild_id)
         return await self.settings_automod_policy(policy)
-
-
-T = t.TypeVar("T")
-
-
-async def ask_settings(
-    view: SettingsView,
-    ctx: miru.Context,
-    *,
-    options: t.List[miru.SelectOption],
-    return_type: T,
-    embed_or_content: t.Union[str, hikari.Embed],
-    placeholder: t.Optional[str] = None,
-    ignore: t.Optional[t.List[t.Any]] = None,
-    ephemeral: bool = False,
-) -> t.Union[T, t.Any]:
-    """Ask a question from the user, while taking into account the select menu limitations.
-
-    Parameters
-    ----------
-    view : SettingsView
-        The view to interact with and return interactions to.
-    ctx : miru.Context
-        The last context object seen by the view.
-    options : t.List[miru.SelectOption]
-        The list of options to present to the user.
-    return_type : T
-        The expected return type.
-    embed_or_content : t.Union[str, hikari.Embed]
-        The content or attached embed of the message to send.
-    placeholder : str, optional
-        The placeholder text on the select menu, by default None
-    ignore : t.Optional[t.List[t.Any]], optional
-        Values that will not be converted and returned directly, by default None
-    ephemeral : bool, optional
-        If the query should be done ephemerally, by default False
-
-    Returns
-    -------
-    t.Union[T, t.Any]
-        Returns T unless it is in ignore.
-
-    Raises
-    ------
-    TypeError
-        embed_or_content was not of type str or hikari.Embed
-    asyncio.TimeoutError
-        The query exceeded the given timeout.
-    """
-
-    if return_type not in CONVERTER_TYPE_MAPPING.keys():
-        return TypeError(
-            f"return_type must be of types: {' '.join(list(CONVERTER_TYPE_MAPPING.keys()))}, not {return_type}"  # type: ignore
-        )
-
-    # Get appropiate converter for return type
-    converter: lightbulb.BaseConverter = CONVERTER_TYPE_MAPPING[return_type](view.lctx)  # type: ignore
-    flags = hikari.MessageFlag.EPHEMERAL if ephemeral else hikari.MessageFlag.NONE
-
-    # If the select will result in a Bad Request or not
-    invalid_select: bool = False
-    if len(options) > 25:
-        invalid_select = True
-    else:
-        for option in options:
-            if len(option.label) > 100 or (option.description and len(option.description) > 100):
-                invalid_select = True
-
-    if isinstance(embed_or_content, str):
-        content = embed_or_content
-        embeds = []
-    elif isinstance(embed_or_content, hikari.Embed):
-        content = ""
-        embeds = [embed_or_content]
-    else:
-        raise TypeError(f"embed_or_content must be of type str or hikari.Embed, not {type(embed_or_content)}")
-
-    if not invalid_select:
-        view.clear_items()
-        view.add_item(OptionsSelect(placeholder=placeholder, options=options))
-        await ctx.edit_response(content=content, embeds=embeds, components=view, flags=flags)
-        await view.wait_for_input()
-
-        if view.value:
-            if ignore and view.value.casefold() in ignore:
-                return view.value.casefold()
-            return await converter.convert(view.value)
-
-        await view.quit_settings()
-
-    else:
-        await ctx.defer(flags=flags)
-        if embeds:
-            embeds[0].description = f"{embeds[0].description}\n\nPlease type your response below!"
-        elif content:
-            content = f"{content}\n\nPlease type your response below!"
-
-        await ctx.edit_response(content=content, embeds=embeds, components=[], flags=flags)
-
-        predicate = lambda e: e.author.id == ctx.user.id and e.channel_id == ctx.channel_id
-
-        assert isinstance(ctx.app, SnedBot) and ctx.guild_id is not None
-
-        try:
-            event = await ctx.app.wait_for(hikari.GuildMessageCreateEvent, timeout=300.0, predicate=predicate)
-        except asyncio.TimeoutError:
-            return await view.quit_settings()
-
-        me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-        channel = event.get_channel()
-        assert me is not None
-        if channel:  # Make reasonable attempt at perms
-            perms = lightbulb.utils.permissions_in(channel, me)
-
-            if helpers.includes_permissions(perms, hikari.Permissions.MANAGE_MESSAGES):
-                await helpers.maybe_delete(event.message)
-
-        if event.content:
-            if ignore and event.content.casefold() in ignore:
-                return event.content.casefold()
-            return await converter.convert(event.content)
 
 
 @settings.command

@@ -19,7 +19,7 @@ reminders = SnedPlugin(name="Reminders")
 logger = logging.getLogger(__name__)
 
 
-class SnoozeSelect(miru.Select):
+class SnoozeSelect(miru.TextSelect):
     def __init__(self) -> None:
         super().__init__(
             options=[

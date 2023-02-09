@@ -136,3 +136,6 @@ config.py
 
 # Dolphin directory meta files
 .directory
+
+# VS Code
+.vscode

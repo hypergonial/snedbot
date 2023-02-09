@@ -8,7 +8,7 @@ from miru.ext import nav
 from etc import const
 
 
-class StopSelect(miru.Select):
+class StopSelect(miru.TextSelect):
     """
     A select that stops the view after interaction.
     """

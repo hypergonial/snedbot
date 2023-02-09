@@ -303,7 +303,7 @@ class UrbanNavigator(AuthorOnlyNavigator):
         super().__init__(lctx, pages=pages)  # type: ignore
 
 
-class DictionarySelect(nav.NavSelect):
+class DictionarySelect(nav.NavTextSelect):
     def __init__(self, entries: t.List[DictionaryEntry]) -> None:
         options = [
             miru.SelectOption(
