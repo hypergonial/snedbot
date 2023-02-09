@@ -248,7 +248,6 @@ class DoneButton(miru.Button, SettingsItem):
         self.view.value.is_done = True  # Confirm that all values are final
         self.view._done_event.set()
         self.view._done_event.clear()
-        # await self.view.menu_actions[self.custom_id.split(':')[1]](**self.kwargs)
 
 
 class QuitButton(OptionButton):

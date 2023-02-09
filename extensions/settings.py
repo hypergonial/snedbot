@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
-import logging
 import typing as t
 
 import hikari
@@ -16,10 +15,10 @@ from etc import const
 from etc.settings_static import *
 from models.bot import SnedBot
 from models.checks import bot_has_permissions
-from models.components import *
 from models.context import SnedSlashContext
 from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
+from models.settings import *
 
 settings = SnedPlugin("Settings")
 

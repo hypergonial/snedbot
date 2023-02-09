@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import datetime
 import re
+import typing as t
 import unicodedata
-from typing import List, Optional, Sequence
 
 import hikari
 import lightbulb
 
 from etc import const
 from models import errors
-from models.components import *
 from models.context import SnedApplicationContext, SnedContext
 from models.db_user import DatabaseUser
 from models.journal import JournalEntry
@@ -38,7 +37,7 @@ BADGE_EMOJI_MAPPING = {
 }
 
 
-def format_dt(time: datetime.datetime, style: Optional[str] = None) -> str:
+def format_dt(time: datetime.datetime, style: t.Optional[str] = None) -> str:
     """
     Convert a datetime into a Discord timestamp.
     For styling see this link: https://discord.com/developers/docs/reference#message-formatting-timestamp-styles
@@ -81,12 +80,12 @@ def get_color(member: hikari.Member) -> t.Optional[hikari.Color]:
     return None
 
 
-def sort_roles(roles: Sequence[hikari.Role]) -> Sequence[hikari.Role]:
+def sort_roles(roles: t.Sequence[hikari.Role]) -> t.Sequence[hikari.Role]:
     """Sort a list of roles in a descending order based on position."""
     return sorted(roles, key=lambda r: r.position, reverse=True)
 
 
-def get_badges(user: hikari.User) -> List[str]:
+def get_badges(user: hikari.User) -> t.Sequence[str]:
     """Return a list of badge emojies that the user has."""
     return [emoji for flag, emoji in BADGE_EMOJI_MAPPING.items() if flag & user.flags]
 
@@ -270,7 +269,7 @@ def is_member(user: hikari.PartialUser) -> bool:  # Such useful
     raise errors.MemberExpectedError(f"Expected an instance of hikari.Member, not {user.__class__.__name__}!")
 
 
-async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> Optional[hikari.Message]:
+async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> t.Optional[hikari.Message]:
     """Parse a message_link string into a message object.
 
     Parameters
@@ -360,7 +359,7 @@ async def maybe_edit(message: hikari.PartialMessage, *args, **kwargs) -> None:
 
 
 def format_reason(
-    reason: t.Optional[str] = None, moderator: Optional[hikari.Member] = None, *, max_length: Optional[int] = 512
+    reason: t.Optional[str] = None, moderator: t.Optional[hikari.Member] = None, *, max_length: t.Optional[int] = 512
 ) -> str:
     """Format a reason for a moderation action.
 

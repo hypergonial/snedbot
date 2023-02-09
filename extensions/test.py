@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 import hikari
@@ -7,11 +6,9 @@ import lightbulb
 import miru
 from miru.ext import nav
 
-from etc import const
 from models import SnedSlashContext
 from models.bot import SnedBot
 from models.plugin import SnedPlugin
-from utils import helpers
 
 logger = logging.getLogger(__name__)
 
