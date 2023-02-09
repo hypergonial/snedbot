@@ -185,6 +185,7 @@ async def about(ctx: SnedSlashContext) -> None:
             title=f"ℹ️ About {me.username}",
             description=f"""**• Made by:** `Hyper#0001`
 **• Servers:** `{len(ctx.app.cache.get_guilds_view())}`
+**• Online since:** {helpers.format_dt(ctx.app.start_time, style='R')}
 **• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
 **• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
 **• Terms of Service:** [Click here!](https://github.com/HyperGH/snedbot_v2/blob/main/tos.md)

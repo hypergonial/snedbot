@@ -237,8 +237,27 @@ class Database:
         """
         return await self.pool.fetchval(query, *args, column=column, timeout=timeout)
 
+    async def register_guild(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
+        """Register a new guild in the database. If a guild is not registered, associated data cannot be created for it.
+        If the guild is already registered, this function will do nothing.
+
+        Parameters
+        ----------
+        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+            The guild to register.
+
+        Raises
+        ------
+        DatabaseStateConflictError
+            The application is not connected to the database server.
+        """
+        await self.execute(
+            """INSERT INTO global_config (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING""",
+            hikari.Snowflake(guild),
+        )
+
     async def wipe_guild(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild], *, keep_record: bool = True) -> None:
-        """Wipe a guild's data from the database.
+        """Wipe a guild's data from the database. This will remove all associated data to this guild.
 
         Parameters
         ----------

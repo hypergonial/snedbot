@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import os
 import pathlib
@@ -113,6 +114,7 @@ class SnedBot(lightbulb.BotApp):
         self._scheduler = scheduler.Scheduler(self)
         self._audit_log_cache: AuditLogCache = AuditLogCache(self)
         self._initial_guilds: t.List[hikari.Snowflake] = []
+        self._start_time: t.Optional[datetime.datetime] = None
 
         self.check(is_not_blacklisted)
 
@@ -188,6 +190,13 @@ class SnedBot(lightbulb.BotApp):
         """Boolean indicating if the bot has started up or not."""
         return self._is_started
 
+    @property
+    def start_time(self) -> datetime.datetime:
+        """The datetime when the bot started up."""
+        if not self.is_started or self._start_time is None:
+            raise hikari.ComponentStateConflictError("The bot is not started yet, 'start_time' cannot be retrieved.")
+        return self._start_time
+
     def start_listeners(self) -> None:
         """
         Start all listeners located in this class.
@@ -242,7 +251,7 @@ class SnedBot(lightbulb.BotApp):
             return
         self._initial_guilds.append(event.guild_id)
 
-    async def on_starting(self, event: hikari.StartingEvent) -> None:
+    async def on_starting(self, _: hikari.StartingEvent) -> None:
         # Connect to the database, update schema, apply pending migrations
         await self.db.connect()
         await self.db.update_schema()
@@ -257,7 +266,7 @@ class SnedBot(lightbulb.BotApp):
         # Load all extensions
         self.load_extensions_from(os.path.join(self.base_dir, "extensions"), must_exist=True)
 
-    async def on_started(self, event: hikari.StartedEvent) -> None:
+    async def on_started(self, _: hikari.StartedEvent) -> None:
         self._db_backup_loop.start()
 
         user = self.get_me()
@@ -270,7 +279,7 @@ class SnedBot(lightbulb.BotApp):
         if self.dev_mode:
             logging.warning("Developer mode is enabled!")
 
-    async def on_lightbulb_started(self, event: lightbulb.LightbulbStartedEvent) -> None:
+    async def on_lightbulb_started(self, _: lightbulb.LightbulbStartedEvent) -> None:
         # Insert all guilds the bot is member of into the db global config on startup
         async with self.db.acquire() as con:
             for guild_id in self._initial_guilds:
@@ -286,13 +295,14 @@ class SnedBot(lightbulb.BotApp):
         # Set this here so all guild_ids are in DB
         self._started.set()
         self._is_started = True
+        self._start_time = helpers.utcnow()
         self.unsubscribe(hikari.GuildAvailableEvent, self.on_guild_available)
 
-    async def on_stopping(self, event: hikari.StoppingEvent) -> None:
+    async def on_stopping(self, _: hikari.StoppingEvent) -> None:
         logging.info("Bot is shutting down...")
         self.scheduler.stop()
 
-    async def on_stop(self, event: hikari.StoppedEvent) -> None:
+    async def on_stop(self, _: hikari.StoppedEvent) -> None:
         await self.db.close()
         logging.info("Closed database connection.")
 
@@ -304,21 +314,19 @@ class SnedBot(lightbulb.BotApp):
             mentions = [f"<@{self.user_id}>", f"<@!{self.user_id}>"]
 
             if event.content in mentions:
-                user = self.get_me()
+                me = self.get_me()
                 await event.message.respond(
                     embed=hikari.Embed(
                         title="Beep Boop!",
                         description="Use `/` to access my commands and see what I can do!",
                         color=0xFEC01D,
-                    ).set_thumbnail(user.avatar_url if user else None)
+                    ).set_thumbnail(me.avatar_url if me else None)
                 )
                 return
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
         """Guild join behaviour"""
-        await self.db.execute(
-            "INSERT INTO global_config (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING", event.guild_id
-        )
+        await self.db.register_guild(event.guild_id)
 
         if event.guild.system_channel_id is None:
             return
@@ -327,10 +335,11 @@ class SnedBot(lightbulb.BotApp):
         channel = event.guild.get_channel(event.guild.system_channel_id)
 
         assert me is not None
-        assert isinstance(channel, hikari.TextableGuildChannel)
 
         if not channel or not (hikari.Permissions.SEND_MESSAGES & lightbulb.utils.permissions_in(channel, me)):
             return
+
+        assert isinstance(channel, hikari.TextableGuildChannel)
 
         try:
             await channel.send(
@@ -350,6 +359,7 @@ class SnedBot(lightbulb.BotApp):
         logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
 
     async def backup_db(self) -> None:
+        """Backs up the database to a file and, if configured, sends it to the specified channel."""
         if self.skip_first_db_backup:
             logging.info("Skipping database backup for this day...")
             self.skip_first_db_backup = False
@@ -364,7 +374,7 @@ class SnedBot(lightbulb.BotApp):
                 f"Database Backup: {helpers.format_dt(helpers.utcnow())}",
                 attachment=file,
             )
-            return logging.info("Database backup complete, database backed up to specified Discord channel.")
+            return logging.info("Database backup complete, database backed up and sent to specified Discord channel.")
 
         logging.info("Database backup complete.")
 
