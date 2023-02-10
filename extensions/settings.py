@@ -222,7 +222,7 @@ Click one of the buttons below to get started!""",
         buttons = [
             BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enable", disabled=not channel),
             OptionButton(label="Set Channel", emoji=const.EMOJI_CHANNEL, style=hikari.ButtonStyle.SECONDARY),
-            OptionButton(label="Change Roles", emoji="➕", style=hikari.ButtonStyle.SECONDARY),
+            OptionButton(label="Change Roles", emoji=const.EMOJI_MENTION, style=hikari.ButtonStyle.SECONDARY),
         ]
         self.add_buttons(buttons, parent="Main")
         await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
@@ -395,7 +395,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
         await self.wait_for_input()
 
-        if self.value is None:
+        if not self.value:
             return
 
         if self.value.boolean is not hikari.UNDEFINED and self.value.text == "Enable":
