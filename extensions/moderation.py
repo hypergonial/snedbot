@@ -11,7 +11,8 @@ import models
 from etc import const
 from models import errors
 from models.bot import SnedBot
-from models.checks import bot_has_permissions, is_above_target, is_invoker_above_target
+from models.checks import (bot_has_permissions, is_above_target,
+                           is_invoker_above_target)
 from models.context import SnedSlashContext, SnedUserContext
 from models.db_user import DatabaseUser
 from models.events import MassBanEvent
@@ -269,7 +270,7 @@ async def purge(ctx: SnedSlashContext) -> None:
     else:
         embed = hikari.Embed(
             title="🗑️ Not found",
-            description=f"No messages matched the specified criteria from the past two weeks!",
+            description="No messages matched the specified criteria from the past two weeks!",
             color=const.ERROR_COLOR,
         )
 
@@ -896,7 +897,7 @@ async def massban(ctx: SnedSlashContext) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ No criteria specified",
-                description=f"You must specify at least one criteria to match against.",
+                description="You must specify at least one criteria to match against.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -917,7 +918,7 @@ async def massban(ctx: SnedSlashContext) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ No members match criteria",
-                description=f"No members found that match all criteria.",
+                description="No members found that match all criteria.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -932,7 +933,7 @@ async def massban(ctx: SnedSlashContext) -> None:
     content = "\n".join(content)
     file = hikari.Bytes(content.encode("utf-8"), "members_to_ban.txt")
 
-    if ctx.options.show == True:
+    if ctx.options.show is True:
         await ctx.mod_respond(attachment=file)
         return
 

@@ -14,12 +14,8 @@ from miru.abc import ViewItem
 from etc import const
 from models.db_user import DatabaseUser, DatabaseUserFlag
 from models.errors import DMFailedError, RoleHierarchyError
-from models.events import (
-    TimerCompleteEvent,
-    WarnCreateEvent,
-    WarnRemoveEvent,
-    WarnsClearEvent,
-)
+from models.events import (TimerCompleteEvent, WarnCreateEvent,
+                           WarnRemoveEvent, WarnsClearEvent)
 from models.journal import JournalEntry
 from models.timer import TimerEvent
 from models.views import AuthorOnlyNavigator
@@ -458,7 +454,7 @@ class ModActions:
         if db_user.warns <= 0:
             return hikari.Embed(
                 title="❌ No Warnings",
-                description=f"This user has no warnings!",
+                description="This user has no warnings!",
                 color=const.ERROR_COLOR,
             )
 

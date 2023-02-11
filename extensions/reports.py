@@ -8,12 +8,8 @@ import miru
 from etc import const
 from models import SnedSlashContext
 from models.bot import SnedBot
-from models.context import (
-    SnedApplicationContext,
-    SnedContext,
-    SnedMessageContext,
-    SnedUserContext,
-)
+from models.context import (SnedApplicationContext, SnedContext,
+                            SnedMessageContext, SnedUserContext)
 from models.plugin import SnedPlugin
 from utils import helpers
 
@@ -78,7 +74,7 @@ async def report_perms_error(ctx: SnedApplicationContext) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title="❌ Oops!",
-            description=f"It looks like I do not have permissions to create a message in the reports channel. Please notify an administrator!",
+            description="It looks like I do not have permissions to create a message in the reports channel. Please notify an administrator!",
             color=const.ERROR_COLOR,
         ),
         flags=hikari.MessageFlag.EPHEMERAL,
@@ -94,7 +90,7 @@ async def report(
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Huh?",
-                description=f"I'm not sure how that would work...",
+                description="I'm not sure how that would work...",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,

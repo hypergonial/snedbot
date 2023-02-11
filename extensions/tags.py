@@ -209,7 +209,7 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Alias taken",
-                description=f"A tag or alias already exists with a same name. Try picking a different alias.",
+                description="A tag or alias already exists with a same name. Try picking a different alias.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,

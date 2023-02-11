@@ -83,7 +83,7 @@ class RoleButtonConfirmModal(miru.Modal):
 
         await context.respond(
             embed=hikari.Embed(
-                title=f"✅ Rolebutton confirmation prompt updated!",
+                title="✅ Rolebutton confirmation prompt updated!",
                 description=f"Confirmation prompt updated for button **#{self.role_button.id}**.",
                 color=0x77B255,
             )
@@ -401,7 +401,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Insufficient permissions",
-                description=f"The bot cannot edit the provided message due to insufficient permissions.",
+                description="The bot cannot edit the provided message due to insufficient permissions.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -523,7 +523,7 @@ async def rolebutton_add(
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Insufficient permissions",
-                description=f"The bot cannot edit the provided message due to insufficient permissions.",
+                description="The bot cannot edit the provided message due to insufficient permissions.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,

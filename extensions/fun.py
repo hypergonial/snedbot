@@ -24,12 +24,8 @@ from models.context import SnedContext, SnedUserContext
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator
 from utils import BucketType, RateLimiter, helpers
-from utils.dictionaryapi import (
-    DictionaryClient,
-    DictionaryEntry,
-    DictionaryException,
-    UrbanEntry,
-)
+from utils.dictionaryapi import (DictionaryClient, DictionaryEntry,
+                                 DictionaryException, UrbanEntry)
 
 ANIMAL_EMOJI_MAPPING: t.Dict[str, str] = {
     "dog": "🐶",
@@ -142,7 +138,7 @@ class TicTacToeButton(miru.Button):
                 ).set_thumbnail(view.player_o.display_avatar_url)
 
             else:
-                embed = hikari.Embed(title="Tic Tac Toe!", description=f"It's a tie!", color=0x77B255).set_thumbnail(
+                embed = hikari.Embed(title="Tic Tac Toe!", description="It's a tie!", color=0x77B255).set_thumbnail(
                     None
                 )
 
@@ -358,7 +354,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Invoking self",
-                description=f"I'm sorry, but how would that even work?",
+                description="I'm sorry, but how would that even work?",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -381,7 +377,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Invalid user",
-                description=f"Sorry, but you cannot play with a bot.. yet...",
+                description="Sorry, but you cannot play with a bot.. yet...",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -714,7 +710,7 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
             await event.context.respond(
                 embed=hikari.Embed(
                     title="❌ Cannot reroll",
-                    description=f"Only the user who rolled the dice can reroll it.",
+                    description="Only the user who rolled the dice can reroll it.",
                     color=const.ERROR_COLOR,
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,
@@ -746,7 +742,7 @@ async def animal(ctx: SnedSlashContext, animal: str) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Ratelimited",
-                description=f"Please wait a couple minutes before trying again.",
+                description="Please wait a couple minutes before trying again.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -760,7 +756,7 @@ async def animal(ctx: SnedSlashContext, animal: str) -> None:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Network Error",
-                    description=f"Could not access the API. Please try again later.",
+                    description="Could not access the API. Please try again later.",
                     color=const.ERROR_COLOR,
                 )
             )

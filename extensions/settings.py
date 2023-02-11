@@ -245,7 +245,7 @@ Click one of the buttons below to get started!""",
         elif self.value.text == "Set Channel":
             embed = hikari.Embed(
                 title="Reports Settings",
-                description=f"Please select a channel where reports will be sent.",
+                description="Please select a channel where reports will be sent.",
                 color=const.EMBED_BLUE,
             )
 
@@ -336,7 +336,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         flag = ModerationFlags(int(self.last_item.custom_id))
 
         await self.app.db.execute(
-            f"""
+            """
             INSERT INTO mod_config (guild_id, flags)
             VALUES ($1, $2)
             ON CONFLICT (guild_id) DO
@@ -439,7 +439,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             except (TypeError, ValueError):
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
-                    description=f"Expected a non-zero **number**.",
+                    description="Expected a non-zero **number**.",
                     color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Starboard")
@@ -457,7 +457,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         elif self.value.text == "Set Channel":
             embed = hikari.Embed(
                 title="Starboard Settings",
-                description=f"Please select a channel where starred messages will be sent.",
+                description="Please select a channel where starred messages will be sent.",
                 color=const.EMBED_BLUE,
             )
 
@@ -536,7 +536,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         if not (self.last_context.app_permissions & hikari.Permissions.VIEW_AUDIT_LOG):
             embed.add_field(
                 name="⚠️ Warning!",
-                value=f"The bot currently has no permissions to view the audit logs! This will severely limit logging capabilities. Please consider enabling `View Audit Log` for the bot in your server's settings!",
+                value="The bot currently has no permissions to view the audit logs! This will severely limit logging capabilities. Please consider enabling `View Audit Log` for the bot in your server's settings!",
                 inline=False,
             )
 
@@ -882,7 +882,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             except (ValueError, TypeError):
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
-                    description=f"One or more values were not floating-point numbers, or were not between `0.1`-`1.0`!",
+                    description="One or more values were not floating-point numbers, or were not between `0.1`-`1.0`!",
                     color=const.ERROR_COLOR,
                 )
                 return await self.error_screen(embed, parent="Auto-Moderation Policies", policy=policy)

@@ -12,16 +12,10 @@ import lightbulb
 
 from etc import const, get_perm_str
 from models import SnedBot
-from models.events import (
-    AutoModMessageFlagEvent,
-    MassBanEvent,
-    RoleButtonCreateEvent,
-    RoleButtonDeleteEvent,
-    RoleButtonUpdateEvent,
-    WarnCreateEvent,
-    WarnRemoveEvent,
-    WarnsClearEvent,
-)
+from models.events import (AutoModMessageFlagEvent, MassBanEvent,
+                           RoleButtonCreateEvent, RoleButtonDeleteEvent,
+                           RoleButtonUpdateEvent, WarnCreateEvent,
+                           WarnRemoveEvent, WarnsClearEvent)
 from models.journal import JournalEntry, JournalEntryType
 from models.plugin import SnedPlugin
 from utils import helpers
@@ -433,7 +427,7 @@ async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEve
         assert moderator is not None
 
         embed = hikari.Embed(
-            title=f"🗑️ Message deleted by Moderator",
+            title="🗑️ Message deleted by Moderator",
             description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
 **Moderator:** `{moderator} ({moderator.id})`
 **Channel:** <#{event.channel_id}>
@@ -444,7 +438,7 @@ async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEve
 
     else:
         embed = hikari.Embed(
-            title=f"🗑️ Message deleted",
+            title="🗑️ Message deleted",
             description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
 **Channel:** <#{event.channel_id}>
 **Message content:** ```{contents.replace("`", "´")}```""",
@@ -474,7 +468,7 @@ async def message_update(plugin: SnedPlugin, event: hikari.GuildMessageUpdateEve
     new_content = create_log_content(event.message, max_length=1800)
 
     embed = hikari.Embed(
-        title=f"🖊️ Message edited",
+        title="🖊️ Message edited",
         description=f"""**Message author:** `{event.author} ({event.author_id})`
 **Channel:** <#{event.channel_id}>
 **Before:** ```{old_content.replace("`", "´")}``` \n**After:** ```{new_content.replace("`", "´")}```
@@ -495,7 +489,7 @@ async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessage
     channel = event.get_channel()
 
     embed = hikari.Embed(
-        title=f"🗑️ Bulk message deletion",
+        title="🗑️ Bulk message deletion",
         description=f"""**Channel:** {channel.mention if channel else 'Unknown'}
 **Moderator:** `{moderator}`
 ```{len(event.message_ids)} messages have been purged.```""",
@@ -511,7 +505,7 @@ async def role_delete(plugin: SnedPlugin, event: hikari.RoleDeleteEvent) -> None
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
-            title=f"🗑️ Role deleted",
+            title="🗑️ Role deleted",
             description=f"**Role:** `{event.old_role}`\n**Moderator:** `{moderator}`",
             color=const.ERROR_COLOR,
         )
@@ -525,7 +519,7 @@ async def role_create(plugin: SnedPlugin, event: hikari.RoleCreateEvent) -> None
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
-            title=f"❇️ Role created",
+            title="❇️ Role created",
             description=f"**Role:** `{event.role}`\n**Moderator:** `{moderator}`",
             color=const.EMBED_GREEN,
         )
@@ -555,7 +549,7 @@ async def role_update(plugin: SnedPlugin, event: hikari.RoleUpdateEvent) -> None
 
         perms_str = f"\nPermissions:\n {perms_diff}" if perms_diff else ""
         embed = hikari.Embed(
-            title=f"🖊️ Role updated",
+            title="🖊️ Role updated",
             description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{moderator}`\n**Changes:**```ansi\n{diff}{perms_str}```""",
             color=const.EMBED_BLUE,
         )
@@ -569,7 +563,7 @@ async def channel_delete(plugin: SnedPlugin, event: hikari.GuildChannelDeleteEve
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
-            title=f"#️⃣ Channel deleted",
+            title="#️⃣ Channel deleted",
             description=f"**Channel:** `{event.channel.name}` `({event.channel.type.name})`\n**Moderator:** `{moderator}` {f'`({moderator.id})`' if moderator else ''}",  # type: ignore
             color=const.ERROR_COLOR,
         )
@@ -583,7 +577,7 @@ async def channel_create(plugin: SnedPlugin, event: hikari.GuildChannelCreateEve
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
-            title=f"#️⃣ Channel created",
+            title="#️⃣ Channel created",
             description=f"**Channel:** {event.channel.mention} `({event.channel.type.name})`\n**Moderator:** `{moderator}` {f'`({moderator.id})`' if moderator else ''}",  # type: ignore
             color=const.EMBED_GREEN,
         )
@@ -629,7 +623,7 @@ async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEve
         diff = diff or "Changes could not be resolved."
 
         embed = hikari.Embed(
-            title=f"#️⃣ Channel updated",
+            title="#️⃣ Channel updated",
             description=f"Channel {event.channel.mention} was updated by `{moderator}` {f'`({moderator.id})`' if moderator else ''}.\n**Changes:**\n```ansi\n{diff}```",
             color=const.EMBED_BLUE,
         )
@@ -686,7 +680,7 @@ async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> No
         diff = diff or "Changes could not be resolved."
 
         embed = hikari.Embed(
-            title=f"🖊️ Guild updated",
+            title="🖊️ Guild updated",
             description=f"Guild settings have been updated by `{moderator}`.\n**Changes:**\n```ansi\n{diff}```",
             color=const.EMBED_BLUE,
         )
@@ -711,7 +705,7 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
         moderator = moderator or plugin.app.get_me()
 
     embed = hikari.Embed(
-        title=f"🔨 User unbanned",
+        title="🔨 User unbanned",
         description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:** ```{reason}```",
         color=const.EMBED_GREEN,
     )
@@ -746,7 +740,7 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
         moderator = moderator or plugin.app.get_me()
 
     embed = hikari.Embed(
-        title=f"🔨 User banned",
+        title="🔨 User banned",
         description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:**```{reason}```",
         color=const.ERROR_COLOR,
     )
@@ -782,7 +776,7 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
             moderator = moderator or plugin.app.get_me()
 
         embed = hikari.Embed(
-            title=f"🚪👈 User was kicked",
+            title="🚪👈 User was kicked",
             description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:**```{reason}```",
             color=const.ERROR_COLOR,
         )
@@ -800,7 +794,7 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
         return
 
     embed = hikari.Embed(
-        title=f"🚪 User left",
+        title="🚪 User left",
         description=f"**User:** `{event.user} ({event.user.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
         color=const.ERROR_COLOR,
     ).set_thumbnail(event.user.display_avatar_url)
@@ -811,7 +805,7 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
 async def member_create(plugin: SnedPlugin, event: hikari.MemberCreateEvent) -> None:
     embed = (
         hikari.Embed(
-            title=f"🚪 User joined",
+            title="🚪 User joined",
             description=f"**User:** `{event.member} ({event.member.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
             color=const.EMBED_GREEN,
         )
@@ -856,7 +850,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 
         if comms_disabled_until is None:
             embed = hikari.Embed(
-                title=f"🔉 User timeout removed",
+                title="🔉 User timeout removed",
                 description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
                 color=const.EMBED_GREEN,
             )
@@ -874,7 +868,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
         assert comms_disabled_until is not None
 
         embed = hikari.Embed(
-            title=f"🔇 User timed out",
+            title="🔇 User timed out",
             description=f"""**User:** `{member} ({member.id})`
 **Moderator:** `{moderator}` 
 **Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style='R')})
@@ -896,7 +890,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
     elif old_member.nickname != member.nickname:
         """Nickname change handling"""
         embed = hikari.Embed(
-            title=f"🖊️ Nickname changed",
+            title="🖊️ Nickname changed",
             description=f"**User:** `{member} ({member.id})`\nNickname before: `{old_member.nickname}`\nNickname after: `{member.nickname}`",
             color=const.EMBED_BLUE,
         )
@@ -937,7 +931,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 
         if add_diff:
             embed = hikari.Embed(
-                title=f"🖊️ Member roles updated",
+                title="🖊️ Member roles updated",
                 description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role added:** <@&{add_diff[0]}>",
                 color=const.EMBED_BLUE,
             )
@@ -945,7 +939,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 
         elif rem_diff:
             embed = hikari.Embed(
-                title=f"🖊️ Member roles updated",
+                title="🖊️ Member roles updated",
                 description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role removed:** <@&{rem_diff[0]}>",
                 color=const.EMBED_BLUE,
             )

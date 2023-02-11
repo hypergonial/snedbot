@@ -10,7 +10,6 @@ import typing as t
 
 import dateparser
 import hikari
-import Levenshtein as lev
 
 from models.events import TimerCompleteEvent
 from models.timer import Timer, TimerEvent

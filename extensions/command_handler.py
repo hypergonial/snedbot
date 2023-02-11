@@ -14,13 +14,9 @@ from etc.perms_str import get_perm_str
 from models import SnedContext
 from models.bot import SnedBot
 from models.context import SnedPrefixContext, SnedSlashContext
-from models.errors import (
-    BotRoleHierarchyError,
-    InteractionTimeOutError,
-    MemberExpectedError,
-    RoleHierarchyError,
-    UserBlacklistedError,
-)
+from models.errors import (BotRoleHierarchyError, InteractionTimeOutError,
+                           MemberExpectedError, RoleHierarchyError,
+                           UserBlacklistedError)
 from models.plugin import SnedPlugin
 from utils import helpers
 
@@ -58,7 +54,7 @@ async def log_exc_to_channel(
             f"Ignoring exception in listener for {event.failed_event.__class__.__name__}, callback {event.failed_callback.__name__}:\n"
         )
     else:
-        paginator.add_line(f"Uncaught exception:")
+        paginator.add_line("Uncaught exception:")
 
     for line in error_lines:
         paginator.add_line(line)
@@ -128,7 +124,7 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Max Concurrency Reached",
-                    description=f"You have reached the maximum amount of running instances for this command. Please try again later.",
+                    description="You have reached the maximum amount of running instances for this command. Please try again later.",
                     color=const.ERROR_COLOR,
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,
@@ -162,7 +158,7 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
                 await ctx.respond(
                     embed=hikari.Embed(
                         title="❌ Action timed out",
-                        description=f"This command timed out.",
+                        description="This command timed out.",
                         color=const.ERROR_COLOR,
                     ),
                     flags=hikari.MessageFlag.EPHEMERAL,
@@ -195,7 +191,7 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
                 await ctx.respond(
                     embed=hikari.Embed(
                         title="❌ Role Hiearchy Error",
-                        description=f"This action failed due to trying to modify a user with a role higher or equal to your highest role.",
+                        description="This action failed due to trying to modify a user with a role higher or equal to your highest role.",
                         color=const.ERROR_COLOR,
                     ),
                     flags=hikari.MessageFlag.EPHEMERAL,
@@ -206,7 +202,7 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
                 await ctx.respond(
                     embed=hikari.Embed(
                         title="❌ Role Hiearchy Error",
-                        description=f"This action failed due to trying to modify a user with a role higher than the bot's highest role.",
+                        description="This action failed due to trying to modify a user with a role higher than the bot's highest role.",
                         color=const.ERROR_COLOR,
                     ),
                     flags=hikari.MessageFlag.EPHEMERAL,
@@ -217,7 +213,7 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
                 await ctx.respond(
                     embed=hikari.Embed(
                         title="❌ Member Expected",
-                        description=f"Expected a user who is a member of this server.",
+                        description="Expected a user who is a member of this server.",
                         color=const.ERROR_COLOR,
                     ),
                     flags=hikari.MessageFlag.EPHEMERAL,

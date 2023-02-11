@@ -198,7 +198,7 @@ async def eval_py(ctx: SnedPrefixContext, code: str) -> None:
         code_split[-1] = f"return {code_split[-1]}"
         code = "\n".join(code_split)
 
-    code_func = f"async def _container():\n" + textwrap.indent(code, "   ")
+    code_func = "async def _container():\n" + textwrap.indent(code, "   ")
 
     async with ctx.app.rest.trigger_typing(ctx.channel_id):
         try:
@@ -275,7 +275,7 @@ async def run_sql(ctx: SnedPrefixContext) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ No valid attachment",
-                description=f"Expected a singular `.sql` file as attachment with `UTF-8` encoding!",
+                description="Expected a singular `.sql` file as attachment with `UTF-8` encoding!",
                 color=const.ERROR_COLOR,
             )
         )
@@ -292,7 +292,7 @@ async def run_sql(ctx: SnedPrefixContext) -> None:
 @lightbulb.command("shutdown", "Shut down the bot.")
 @lightbulb.implements(lightbulb.PrefixCommand)
 async def shutdown_cmd(ctx: SnedPrefixContext) -> None:
-    confirm_payload = {"content": f"⚠️ Shutting down...", "components": []}
+    confirm_payload = {"content": "⚠️ Shutting down...", "components": []}
     cancel_payload = {"content": "❌ Shutdown cancelled", "components": []}
     confirmed = await ctx.confirm(
         "Are you sure you want to shut down the application?",
@@ -323,7 +323,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ No valid attachment",
-                description=f"Required dump-file attachment not found. Expected a `.pgdmp` file.",
+                description="Required dump-file attachment not found. Expected a `.pgdmp` file.",
                 color=const.ERROR_COLOR,
             )
         )
@@ -339,7 +339,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
         file.write((await ctx.attachments[0].read()))
     try:
         await ctx.event.message.delete()
-    except:
+    except hikari.HikariError:
         pass
 
     await ctx.app.db_cache.stop()

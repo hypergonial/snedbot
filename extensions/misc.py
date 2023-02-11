@@ -11,7 +11,7 @@ import pytz
 
 from etc import const
 from models import SnedBot
-from models.checks import bot_has_permissions, has_permissions
+from models.checks import bot_has_permissions
 from models.context import SnedMessageContext, SnedSlashContext
 from models.plugin import SnedPlugin
 from utils import helpers
@@ -88,7 +88,7 @@ async def embed(ctx: SnedSlashContext) -> None:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Invalid URL",
-                    description=f"Provided an invalid URL.",
+                    description="Provided an invalid URL.",
                     color=const.ERROR_COLOR,
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,
@@ -99,7 +99,7 @@ async def embed(ctx: SnedSlashContext) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Invalid Color",
-                description=f"Colors must be of format `RRR GGG BBB`, three values seperated by spaces.",
+                description="Colors must be of format `RRR GGG BBB`, three values seperated by spaces.",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -132,7 +132,7 @@ async def embed(ctx: SnedSlashContext) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Missing Permissions",
-                description=f"Sending embeds detached requires `Manage Messages` permissions!",
+                description="Sending embeds detached requires `Manage Messages` permissions!",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -230,7 +230,7 @@ async def invite(ctx: SnedSlashContext) -> None:
         await ctx.respond(
             embed=hikari.Embed(
                 title="🌟 Oops!",
-                description=f"It looks like this bot is in developer mode, and not intended to be invited!",
+                description="It looks like this bot is in developer mode, and not intended to be invited!",
                 color=const.MISC_COLOR,
             )
         )
@@ -283,7 +283,7 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
 
     embed = (
         hikari.Embed(
-            title=f"ℹ️ Server Information",
+            title="ℹ️ Server Information",
             description=f"""**• Name:** `{guild.name}`
 **• ID:** `{guild.id}`
 **• Owner:** `{ctx.app.cache.get_member(guild.id, guild.owner_id)}` (`{guild.owner_id}`)

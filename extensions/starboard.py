@@ -140,7 +140,7 @@ async def star_message(
 
     if not starboard_msg_id:
         record = await starboard.app.db.fetchrow(
-            f"""SELECT entry_msg_id FROM starboard_entries WHERE orig_msg_id = $1""", message.id
+            """SELECT entry_msg_id FROM starboard_entries WHERE orig_msg_id = $1""", message.id
         )
 
         if not record:
@@ -167,7 +167,7 @@ async def star_message(
         await starboard.app.rest.edit_message(star_channel_id, starboard_msg_id, **payload)
     except hikari.NotFoundError:
         # Delete entry, re-run logic to create a new starboard entry
-        await starboard.app.db.execute(f"""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
+        await starboard.app.db.execute("""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
         starboard_messages.pop(message.id, None)
         await star_message(message, guild, starboard_channel, stars)
 

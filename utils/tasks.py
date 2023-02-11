@@ -29,7 +29,7 @@ class IntervalLoop:
         self._stop_next: bool = False
 
         if not inspect.iscoroutinefunction(self._coro):
-            raise TypeError(f"Expected a coroutine function.")
+            raise TypeError("Expected a coroutine function.")
 
     async def _loopy_loop(self, *args, **kwargs) -> None:
         while not self._stop_next:

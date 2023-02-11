@@ -15,15 +15,17 @@ options.sessions = ["format_fix"]
 @nox.session()
 def format_fix(session: nox.Session):
     session.install("black")
-    session.install("isort")
+    session.install("ruff")
     session.run("python", "-m", "black", *SCRIPT_PATHS)
-    session.run("python", "-m", "isort", *SCRIPT_PATHS)
+    session.run("python", "-m", "ruff", *SCRIPT_PATHS, "--fix")
 
 
 @nox.session()
 def format(session: nox.Session):
     session.install("-U", "black")
+    session.install("-U", "ruff")
     session.run("python", "-m", "black", *SCRIPT_PATHS, "--check")
+    session.run("python", "-m", "ruff", *SCRIPT_PATHS)
 
 
 # Copyright (C) 2022-present HyperGH
