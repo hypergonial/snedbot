@@ -11,8 +11,7 @@ import models
 from etc import const
 from models import errors
 from models.bot import SnedBot
-from models.checks import (bot_has_permissions, is_above_target,
-                           is_invoker_above_target)
+from models.checks import bot_has_permissions, is_above_target, is_invoker_above_target
 from models.context import SnedSlashContext, SnedUserContext
 from models.db_user import DatabaseUser
 from models.events import MassBanEvent

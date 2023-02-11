@@ -24,8 +24,7 @@ from models.context import SnedContext, SnedUserContext
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator
 from utils import BucketType, RateLimiter, helpers
-from utils.dictionaryapi import (DictionaryClient, DictionaryEntry,
-                                 DictionaryException, UrbanEntry)
+from utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryException, UrbanEntry
 
 ANIMAL_EMOJI_MAPPING: t.Dict[str, str] = {
     "dog": "🐶",

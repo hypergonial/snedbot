@@ -12,10 +12,16 @@ import lightbulb
 
 from etc import const, get_perm_str
 from models import SnedBot
-from models.events import (AutoModMessageFlagEvent, MassBanEvent,
-                           RoleButtonCreateEvent, RoleButtonDeleteEvent,
-                           RoleButtonUpdateEvent, WarnCreateEvent,
-                           WarnRemoveEvent, WarnsClearEvent)
+from models.events import (
+    AutoModMessageFlagEvent,
+    MassBanEvent,
+    RoleButtonCreateEvent,
+    RoleButtonDeleteEvent,
+    RoleButtonUpdateEvent,
+    WarnCreateEvent,
+    WarnRemoveEvent,
+    WarnsClearEvent,
+)
 from models.journal import JournalEntry, JournalEntryType
 from models.plugin import SnedPlugin
 from utils import helpers

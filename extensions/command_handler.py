@@ -14,9 +14,13 @@ from etc.perms_str import get_perm_str
 from models import SnedContext
 from models.bot import SnedBot
 from models.context import SnedPrefixContext, SnedSlashContext
-from models.errors import (BotRoleHierarchyError, InteractionTimeOutError,
-                           MemberExpectedError, RoleHierarchyError,
-                           UserBlacklistedError)
+from models.errors import (
+    BotRoleHierarchyError,
+    InteractionTimeOutError,
+    MemberExpectedError,
+    RoleHierarchyError,
+    UserBlacklistedError,
+)
 from models.plugin import SnedPlugin
 from utils import helpers
 

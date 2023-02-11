@@ -8,8 +8,7 @@ import miru
 from etc import const
 from models import SnedSlashContext
 from models.bot import SnedBot
-from models.context import (SnedApplicationContext, SnedContext,
-                            SnedMessageContext, SnedUserContext)
+from models.context import SnedApplicationContext, SnedContext, SnedMessageContext, SnedUserContext
 from models.plugin import SnedPlugin
 from utils import helpers
 
