@@ -209,7 +209,7 @@ class ModActions:
                     flags=hikari.MessageFlag.EPHEMERAL,
                 )
 
-        if not event.message or event.message.flags & hikari.MessageFlag.EPHEMERAL:
+        if not event.message:
             return
 
         view = miru.View.from_message(event.message)
@@ -219,7 +219,10 @@ class ModActions:
             if item.custom_id == event.custom_id:
                 item.disabled = True
 
-        await event.message.edit(components=view)
+        try:
+            await event.message.edit(components=view)
+        except (hikari.ForbiddenError, hikari.NotFoundError):
+            pass
 
     async def timeout_extend(self, event: TimerCompleteEvent) -> None:
         """
