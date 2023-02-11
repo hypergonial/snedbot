@@ -1,8 +1,6 @@
 deploy:
 	git pull
-	docker compose build $1
-	docker compose down
-	docker compose up -d
+	docker compose up -d --build
 
 clean:
 	docker compose down
