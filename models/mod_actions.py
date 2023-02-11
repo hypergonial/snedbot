@@ -209,7 +209,7 @@ class ModActions:
                     flags=hikari.MessageFlag.EPHEMERAL,
                 )
 
-        if not event.message:
+        if not event.message or event.message.flags & hikari.MessageFlag.EPHEMERAL:
             return
 
         view = miru.View.from_message(event.message)
