@@ -71,7 +71,7 @@ class SnoozeSelect(miru.TextSelect):
                 color=const.EMBED_GREEN,
             ).set_footer(f"Reminder ID: {timer.id}"),
             components=miru.View().add_item(
-                miru.Select(placeholder="Reminder snoozed!", options=[miru.SelectOption("foo")], disabled=True)
+                miru.TextSelect(placeholder="Reminder snoozed!", options=[miru.SelectOption("amongus")], disabled=True)
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
         )
