@@ -397,9 +397,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         if self.value.boolean is not hikari.UNDEFINED and self.value.text == "Enable":
             settings.is_enabled = self.value.boolean
 
-        elif self.value == "Limit":
-            modal = OptionsModal(self, title="Changing star limit...")
-            modal.add_item(
+        elif self.value.text == "Limit":
+            modal = OptionsModal(self, title="Changing star limit...").add_item(
                 miru.TextInput(
                     label="Star Limit",
                     required=True,
@@ -412,14 +411,18 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             await self.last_context.respond_with_modal(modal)
             await self.wait_for_input()
 
-            if not self.value:
+            if not self.value.modal_values:
                 return
 
-            assert isinstance(self.value, dict)
-            limit = list(self.value.values())[0]
+            if modal.last_context is None:
+                return
+
+            self._last_context = modal.last_context  # type: ignore
+
+            limit_str: str = next(iter(self.value.modal_values.values()))
 
             try:
-                limit = abs(int(limit))
+                limit = abs(int(limit_str))
                 if limit == 0:
                     raise ValueError
 

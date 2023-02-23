@@ -9,11 +9,8 @@ from etc import const
 from models.bot import SnedBot
 from models.context import SnedApplicationContext, SnedMessageContext, SnedSlashContext
 from models.plugin import SnedPlugin
-from models.starboard import StarboardSettings
+from models.starboard import StarboardEntry, StarboardSettings
 from utils import helpers
-
-# Mapping of message_id: starboard_message_id
-starboard_messages = {}
 
 logger = logging.getLogger(__name__)
 
@@ -142,47 +139,39 @@ async def star_message(
     if not settings.channel_id or not settings.is_enabled:
         return
 
-    if stars < settings.star_limit and not force_starred:
+    def is_starrable():
+        return stars >= settings.star_limit or force_starred
+
+    entry = await StarboardEntry.fetch(message)
+
+    # If there is no entry yet, create a new one
+    if not entry:
+        if not is_starrable():
+            return
+        payload = create_starboard_payload(guild, message, stars=stars, force_starred=force_starred)
+        starboard_msg_id = (await starboard.app.rest.create_message(settings.channel_id, **payload)).id
+        entry = StarboardEntry(
+            guild_id=hikari.Snowflake(guild),
+            channel_id=message.channel_id,
+            original_message_id=message.id,
+            entry_message_id=starboard_msg_id,
+            force_starred=force_starred,
+        )
+        await entry.update()
         return
 
-    starboard_msg_id = starboard_messages.get(message.id)
+    force_starred = entry.force_starred or force_starred
+    starboard_msg_id = entry.entry_message_id
 
-    # If the message is not cached, check db
-    if not starboard_msg_id:
-        record = await starboard.app.db.fetchrow(
-            """SELECT entry_msg_id, forced_starred FROM starboard_entries WHERE orig_msg_id = $1""", message.id
-        )
-        force_starred = record["force_starred"] or force_starred
-
-        # If there is no entry yet, create a new one
-        if not record:
-            payload = create_starboard_payload(guild, message, stars=stars, force_starred=force_starred)
-            starboard_msg_id = (await starboard.app.rest.create_message(settings.channel_id, **payload)).id
-            starboard_messages[message.id] = starboard_msg_id
-
-            await starboard.app.db.execute(
-                """INSERT INTO starboard_entries 
-                (guild_id, channel_id, orig_msg_id, entry_msg_id, force_starred) 
-                VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, channel_id, orig_msg_id) DO NOTHING""",
-                hikari.Snowflake(guild),
-                message.channel_id,
-                message.id,
-                starboard_msg_id,
-                force_starred,
-            )
-            return
-
-        starboard_msg_id = record["entry_msg_id"]
-        starboard_messages[message.id] = starboard_msg_id
+    if not is_starrable():
+        return
 
     try:
         payload = create_starboard_payload(guild, message, stars=stars, force_starred=force_starred)
         await starboard.app.rest.edit_message(settings.channel_id, starboard_msg_id, **payload)
     # Starboard message was deleted or missing
     except hikari.NotFoundError:
-        # Delete entry, re-run logic to create a new starboard entry
-        await starboard.app.db.execute("""DELETE FROM starboard_entries WHERE entry_msg_id = $1""", starboard_msg_id)
-        starboard_messages.pop(message.id, None)
+        await entry.delete()
         await star_message(message, guild, settings, stars)
 
 
@@ -222,6 +211,7 @@ async def on_reaction(
             await con.execute("""UPDATE starboard SET channel_id = null WHERE guild_id = $1""", event.guild_id)
             await con.execute("""DELETE FROM starboard_entries WHERE guild_id = $1""", event.guild_id)
         await plugin.app.db_cache.refresh(table="starboard", guild_id=event.guild_id)
+        await plugin.app.db_cache.refresh(table="starboard_entries", guild_id=event.guild_id)
         return
 
     # Check perms if channel is cached
@@ -299,8 +289,28 @@ async def force_star(ctx: SnedApplicationContext, message: hikari.Message) -> No
         )
         return
 
+    entry = await StarboardEntry.fetch(message.id)
+
+    if entry and entry.force_starred:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Message already force starred",
+                description=f"Message `{message.id}` is already forced to the starboard!",
+                color=const.ERROR_COLOR,
+            )
+        )
+        return
+
     stars = next((reaction.count for reaction in message.reactions if str(reaction.emoji) == "⭐"), 0)
     await star_message(message, ctx.guild_id, settings, stars, force_starred=True)
+
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="✅ Message force starred",
+            description=f"Message `{message.id}` has been force starred!",
+            color=const.EMBED_GREEN,
+        )
+    )
 
 
 @starboard.command
@@ -312,7 +322,7 @@ async def star(_: SnedSlashContext) -> None:
 
 
 @star.child
-@lightbulb.option("id", "The ID of the starboard entry. You can find this in the footer.")
+@lightbulb.option("id", "The ID of the starboard entry. You can find this in the footer of the entry.")
 @lightbulb.command("show", "Show a starboard entry.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
 async def star_show(ctx: SnedSlashContext, id: str) -> None:
@@ -329,9 +339,9 @@ async def star_show(ctx: SnedSlashContext, id: str) -> None:
         await ctx.respond(embed=embed)
         return
 
-    records = await ctx.app.db_cache.get(table="starboard", guild_id=ctx.guild_id, limit=1)
+    settings = await StarboardSettings.fetch(ctx.guild_id)
 
-    if not records or not records[0]["is_enabled"]:
+    if not settings.is_enabled or not settings.channel_id:
         embed = hikari.Embed(
             title="❌ Starboard disabled",
             description="The starboard is not enabled on this server!",
@@ -340,20 +350,14 @@ async def star_show(ctx: SnedSlashContext, id: str) -> None:
         await ctx.respond(embed=embed)
         return
 
-    settings = records[0]
+    entry = await StarboardEntry.fetch(orig_id)
 
-    record = await ctx.app.db.fetchrow(
-        "SELECT entry_msg_id, channel_id FROM starboard_entries WHERE orig_msg_id = $1 AND guild_id = $2",
-        orig_id,
-        ctx.guild_id,
-    )
-
-    if not record:
+    if not entry:
         embed = hikari.Embed(title="❌ Not found", description="Starboard entry not found!", color=const.ERROR_COLOR)
         await ctx.respond(embed=embed)
         return
 
-    message = await ctx.app.rest.fetch_message(settings["channel_id"], record.get("entry_msg_id"))
+    message = await ctx.app.rest.fetch_message(settings.channel_id, entry.entry_message_id)
     await ctx.respond(
         f"Showing entry: `{orig_id}`\n[Jump to entry!]({message.make_link(ctx.guild_id)})", embed=message.embeds[0]
     )
@@ -361,10 +365,10 @@ async def star_show(ctx: SnedSlashContext, id: str) -> None:
 
 @star.child
 @lightbulb.option(
-    "link", 'The link to the message. You can get this by right-clicking the message and clicking "Copy Message Link".'
+    "link", 'The link to the message. You can get this by right-clicking and choosing "Copy Message Link".'
 )
 @lightbulb.command("force", "Force a message onto the starboard.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
+@lightbulb.implements(lightbulb.SlashSubCommand)
 async def star_force(ctx: SnedSlashContext, link: str) -> None:
     message = await helpers.parse_message_link(ctx, link)
     if not message:
