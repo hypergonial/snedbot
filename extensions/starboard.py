@@ -253,6 +253,16 @@ async def force_star(ctx: SnedApplicationContext, message: hikari.Message) -> No
         )
         return
 
+    if settings.excluded_channels and ctx.channel_id in settings.excluded_channels:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Channel excluded",
+                description="This channel is excluded from the starboard! You can change this in `/settings`!",
+                color=const.ERROR_COLOR,
+            )
+        )
+        return
+
     me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
 
     if not me:
