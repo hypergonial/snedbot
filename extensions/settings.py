@@ -19,6 +19,7 @@ from models.context import SnedSlashContext
 from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
 from models.settings import *
+from models.starboard import StarboardSettings
 
 settings = SnedPlugin("Settings")
 
@@ -353,19 +354,14 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
         )
 
-        records = await self.app.db_cache.get(table="starboard", guild_id=self.last_context.guild_id, limit=1)
-        settings = (
-            records[0]
-            if records
-            else {"is_enabled": False, "channel_id": None, "star_limit": 5, "excluded_channels": []}
-        )
+        settings = await StarboardSettings.fetch(self.last_context.guild_id)
 
-        starboard_channel = self.app.cache.get_guild_channel(settings["channel_id"]) if settings["channel_id"] else None
-        is_enabled = settings["is_enabled"] if settings["channel_id"] else False
+        starboard_channel = self.app.cache.get_guild_channel(settings.channel_id) if settings.channel_id else None
+        is_enabled = settings.is_enabled if settings.channel_id else False
 
         excluded_channels = (
-            [self.app.cache.get_guild_channel(channel_id) for channel_id in settings["excluded_channels"]]
-            if settings["excluded_channels"]
+            [self.app.cache.get_guild_channel(channel_id) for channel_id in settings.excluded_channels]
+            if settings.excluded_channels
             else []
         )
 
@@ -383,7 +379,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         embed.add_field(
             "Starboard Channel", starboard_channel.mention if starboard_channel else "*Not set*", inline=True
         )
-        embed.add_field("Star Limit", settings["star_limit"], inline=True)
+        embed.add_field("Star Limit", str(settings.star_limit), inline=True)
         embed.add_field(
             "Excluded Channels",
             " ".join([channel.mention for channel in excluded_channels if channel])[:512]
@@ -399,16 +395,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             return
 
         if self.value.boolean is not hikari.UNDEFINED and self.value.text == "Enable":
-            await self.app.db.execute(
-                """INSERT INTO starboard (is_enabled, guild_id)
-                VALUES ($1, $2)
-                ON CONFLICT (guild_id) DO
-                UPDATE SET is_enabled = $1""",
-                self.value.boolean,
-                self.last_context.guild_id,
-            )
-            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_context.guild_id)
-            return await self.settings_starboard()
+            settings.is_enabled = self.value.boolean
 
         elif self.value == "Limit":
             modal = OptionsModal(self, title="Changing star limit...")
@@ -417,7 +404,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     label="Star Limit",
                     required=True,
                     max_length=3,
-                    value=settings["star_limit"],
+                    value=str(settings.star_limit),
                     placeholder="Enter a positive integer to be set as the minimum required amount of stars...",
                 )
             )
@@ -444,15 +431,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 )
                 return await self.error_screen(embed, parent="Starboard")
 
-            await self.app.db.execute(
-                """INSERT INTO starboard (star_limit, guild_id)
-                VALUES ($1, $2)
-                ON CONFLICT (guild_id) DO
-                UPDATE SET star_limit = $1""",
-                limit,
-                self.last_context.guild_id,
-            )
-            await self.app.db_cache.refresh(table="starboard", guild_id=self.last_context.guild_id)
+            settings.star_limit = limit
 
         elif self.value.text == "Set Channel":
             embed = hikari.Embed(
@@ -472,14 +451,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             if not self.value.channels:
                 return
 
-            await self.app.db.execute(
-                """INSERT INTO starboard (channel_id, guild_id)
-                VALUES ($1, $2)
-                ON CONFLICT (guild_id) DO
-                UPDATE SET channel_id = $1""",
-                self.value.channels[0].id,
-                self.last_context.guild_id,
-            )
+            settings.channel_id = self.value.channels[0].id
 
         elif self.value.text == "Exclusions":
             embed = hikari.Embed(
@@ -502,16 +474,11 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             if not self.value.is_done:
                 return
 
-            await self.app.db.execute(
-                """INSERT INTO starboard (excluded_channels, guild_id)
-                VALUES ($1, $2)
-                ON CONFLICT (guild_id) DO
-                UPDATE SET excluded_channels = $1""",
-                [channel.id for channel in self.value.channels] if self.value.channels else None,
-                self.last_context.guild_id,
+            settings.excluded_channels = (
+                [channel.id for channel in self.value.channels] if self.value.channels else None
             )
 
-        await self.app.db_cache.refresh(table="starboard", guild_id=self.last_context.guild_id)
+        await settings.update()
         await self.settings_starboard()
 
     async def settings_logging(self) -> None:

@@ -28,7 +28,7 @@ DO
 $do$
 DECLARE _schema_version integer;
 BEGIN
-    SELECT 7 INTO _schema_version; -- The current schema version, change this when creating new migrations
+    SELECT 8 INTO _schema_version; -- The current schema version, change this when creating new migrations
 
 	IF NOT EXISTS (SELECT schema_version FROM schema_info) THEN
 		INSERT INTO schema_info (schema_version) 
@@ -188,6 +188,7 @@ CREATE TABLE IF NOT EXISTS starboard_entries
     channel_id bigint NOT NULL,
     orig_msg_id bigint NOT NULL,
     entry_msg_id bigint NOT NULL,
+    force_starred bool NOT NULL DEFAULT false,
     PRIMARY KEY (guild_id, channel_id, orig_msg_id),
     FOREIGN KEY (guild_id)
         REFERENCES global_config (guild_id)
