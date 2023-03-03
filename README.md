@@ -32,12 +32,12 @@ To get started with setting up the bot on a server you have `Manage Server` perm
 
 If you'd like to contribute to Sned, or host it locally, you need the following utilities:
 
-- `make`
-- `docker` and `docker compose`
-- `python` - 3.10 or higher
-- `poetry` - for managing python dependencies
+- [`make`](https://www.gnu.org/software/make/)
+- [`docker`](https://www.docker.com/get-started/)
+- [`python`](https://www.python.org/downloads/) - 3.10 or higher
+- [`poetry`](https://python-poetry.org/docs/) - for managing python dependencies
 
 To deploy the bot, create and fill out `.env`, you can see an example in `.env_example`, along with `config.py`, for which you can find an example in `config_example.py`.
 Then simply run `make deploy` to start the bot in the background along with it's database.
 
-If you'd like to contribute, please make sure to run `nox` in the project folder before submitting your changes. This should format all your code to match the project.
+If you'd like to contribute, please make sure to run [`nox`](https://nox.thea.codes/en/stable/index.html) in the project folder before submitting your changes. This should format all your code to match the project.
