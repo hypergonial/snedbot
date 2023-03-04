@@ -293,9 +293,8 @@ async def find_auditlog_data(
     return userlog.app.audit_log_cache.get_first_by(
         guild,
         event_type,
-        lambda e: e.target_id == user_id
-        if user_id
-        else True and e.id.created_at > helpers.utcnow() - datetime.timedelta(seconds=15),
+        lambda e: (e.target_id == user_id if user_id else True)
+        and e.id.created_at > helpers.utcnow() - datetime.timedelta(seconds=15),
     )
 
 
