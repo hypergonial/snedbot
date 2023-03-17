@@ -3,19 +3,23 @@
 import logging
 import os
 import platform
+import re
 
 from models import SnedBot
 
+DOTENV_REGEX = re.compile(r"^(?P<identifier>[A-Za-z_]+[A-Za-z0-9_]*)=(?P<value>[^#]+)(#.*)?$")
+
 if int(platform.python_version_tuple()[1]) < 10:
     logging.fatal("Python version must be 3.10 or greater! Exiting...")
-    raise RuntimeError("Python version is not 3.10 or greater.")
+    exit(1)
 
 try:
     with open(".env") as env:
         for line in env.readlines():
-            if not line.strip() or line.startswith("#"):
+            match = DOTENV_REGEX.match(line)
+            if not match:
                 continue
-            os.environ[line.split("=", maxsplit=1)[0]] = line.split("=", maxsplit=1)[1].split("#")[0].strip()
+            os.environ[match.group("identifier")] = match.group("value").strip()
 
 except FileNotFoundError:
     logging.info(".env file not found, using secrets from the environment instead.")
@@ -26,17 +30,17 @@ except ImportError:
     logging.fatal(
         "Failed loading configuration. Please make sure 'config.py' exists in the root directory of the project and contains valid data."
     )
-    exit()
+    exit(1)
 
 if os.name != "nt":  # Lol imagine using Windows
     try:
         import uvloop
+
+        uvloop.install()
     except ImportError:
         logging.warn(
             "Failed to import uvloop! Make sure to install it via 'pip install uvloop' for enhanced performance!"
         )
-    else:
-        uvloop.install()
 
 bot = SnedBot(Config())
 
