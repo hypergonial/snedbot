@@ -96,7 +96,8 @@ class OptionsModal(miru.Modal):
 
     async def callback(self, context: miru.ModalContext) -> None:
         self.last_item = None
-        self.view.value = SettingValue(modal_values=context.values)
+        self.view.value = SettingValue(modal_values=context.values, is_done=True)
+        self.view._last_context = context
         self.view._input_event.set()
         self.view._input_event.clear()
         self.view._done_event.set()

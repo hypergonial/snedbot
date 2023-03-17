@@ -872,16 +872,16 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
             assert isinstance(self.last_context, miru.ViewContext)
             await self.last_context.respond_with_modal(modal)
-            await self.wait_for_input()
+            await self.wait_until_done()
 
             if not self.value.modal_values:
                 return
 
-            value = list(self.value.modal_values.values())[0]
+            value = next(iter(self.value.modal_values.values()))
 
             if opt in list_inputs:
-                value = [list_item.strip().lower() for list_item in value.split(",")]
-                value = list(filter(None, value))  # Remove empty values
+                # Divide up and filter empty values
+                value = list(filter(None, (list_item.strip().lower() for list_item in value.split(","))))
 
             try:
                 value = expected_types[opt](value)
