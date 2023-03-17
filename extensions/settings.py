@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import datetime
 import json
 import typing as t
 
@@ -20,6 +21,7 @@ from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
 from models.settings import *
 from models.starboard import StarboardSettings
+from utils import helpers
 
 settings = SnedPlugin("Settings")
 
@@ -895,6 +897,23 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             if opt in list_inputs:
                 # Divide up and filter empty values
                 value = list(filter(None, (list_item.strip().lower() for list_item in value.split(","))))
+
+                if len(value) == 1 and value[0].casefold() == "sned":
+                    embed = hikari.Embed(
+                        title="I have a surprise for you!",
+                        description=f"Deploying surpise in {helpers.format_dt(helpers.utcnow() + datetime.timedelta(seconds=3), 'R')}",
+                        color=const.EMBED_GREEN,
+                    )
+                    await self.last_context.edit_response(embed=embed, components=[], flags=self.flags)
+                    await asyncio.sleep(2)
+                    self.add_buttons(
+                        [miru.Button(url="https://www.youtube.com/watch?v=dQw4w9WgXcQ", label="Surprise!")],
+                        parent="Auto-Moderation Policies",
+                        policy=policy,
+                    )
+                    embed.description = None
+                    await self.last_context.edit_response(embed=embed, components=self, flags=self.flags)
+                    return
 
             try:
                 value = expected_types[opt](value)
