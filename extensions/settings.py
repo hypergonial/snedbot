@@ -837,6 +837,13 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             modal = PerspectiveBoundsModal(self, policy_data["persp_bounds"], title="Changing Perspective Bounds...")
             assert isinstance(self.last_context, miru.ViewContext)
             await self.last_context.respond_with_modal(modal)
+
+            # Guard against button interactions failing if the modal is cancelled by the user
+            self.add_buttons([], parent="Auto-Moderation Policies", policy=policy)
+            await self.last_context.edit_response(
+                embed=hikari.Embed(title="Awaiting input...", color=const.EMBED_BLUE), components=self, flags=self.flags
+            )
+
             await self.wait_for_input()
 
             if not self.value.raw_perspective_bounds:
@@ -872,7 +879,13 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
             assert isinstance(self.last_context, miru.ViewContext)
             await self.last_context.respond_with_modal(modal)
-            await self.wait_until_done()
+
+            self.add_buttons([], parent="Auto-Moderation Policies", policy=policy)
+            await self.last_context.edit_response(
+                embed=hikari.Embed(title="Awaiting input...", color=const.EMBED_BLUE), components=self, flags=self.flags
+            )
+
+            await self.wait_for_input()
 
             if not self.value.modal_values:
                 return

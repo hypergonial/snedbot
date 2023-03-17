@@ -95,7 +95,6 @@ class OptionsModal(miru.Modal):
         self.view = view
 
     async def callback(self, context: miru.ModalContext) -> None:
-        self.last_item = None
         self.view.value = SettingValue(modal_values=context.values, is_done=True)
         self.view._last_context = context
         self.view._input_event.set()
@@ -175,8 +174,7 @@ class PerspectiveBoundsModal(miru.Modal):
         self.view = view
 
     async def callback(self, context: miru.ModalContext) -> None:
-        self.last_item = None
-        self._last_context = context
+        self.view._last_context = context
         self.view.value = SettingValue(raw_perspective_bounds={item.custom_id: value for item, value in context.values.items()})  # type: ignore
         self.view._input_event.set()
         self.view._input_event.clear()
