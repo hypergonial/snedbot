@@ -291,7 +291,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[
             title="✅ Reminder set",
             description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{message}",
             color=const.EMBED_GREEN,
-        ).set_footer(f"Reminder ID: {timer.id}"),
+        ).set_footer(f"Reminder ID: {timer.id} | If this looks wrong, please set your timezone using /timezone"),
         components=miru.View().add_item(miru.Button(label="Remind me too!", emoji="✉️", custom_id=f"RMAR:{timer.id}")),
     )
     reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
