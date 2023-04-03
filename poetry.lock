@@ -745,14 +745,14 @@ files = [
 
 [[package]]
 name = "hikari"
-version = "2.0.0.dev116"
+version = "2.0.0.dev118"
 description = "A sane Discord API for Python 3 built on asyncio and good intentions"
 category = "main"
 optional = false
 python-versions = ">=3.8.0,<3.12"
 files = [
-    {file = "hikari-2.0.0.dev116-py3-none-any.whl", hash = "sha256:0e1d0bdfe777a6c16cdda7807b49d93c0a0da39ab369683955491d3d10963c90"},
-    {file = "hikari-2.0.0.dev116.tar.gz", hash = "sha256:f78f5f828eff4c44484ca251555a19f0424366aa87a0092dbaceae9b039e0ab4"},
+    {file = "hikari-2.0.0.dev118-py3-none-any.whl", hash = "sha256:e221fb70f9166764255c5331457d5aef51e091e89eecc5c6d408d85a4d3590e8"},
+    {file = "hikari-2.0.0.dev118.tar.gz", hash = "sha256:56f442f73969eeaf7c1cddd96d4f0cd90d8e8100cd17b8f5f2758382d8a07442"},
 ]
 
 [package.dependencies]
@@ -785,19 +785,19 @@ crontrigger = ["croniter (>=1.3.8,<1.4.0)", "types-croniter (>=1.3.2,<1.4.0)"]
 
 [[package]]
 name = "hikari-miru"
-version = "3.0.2"
+version = "3.0.3"
 description = "An alternative component handler for hikari, inspired by discord.py's views."
 category = "main"
 optional = false
 python-versions = ">=3.8.0,<3.12"
 files = [
-    {file = "hikari-miru-3.0.2.tar.gz", hash = "sha256:f4c20c2d61748fe259cc4065bbd6cbd55c12069f7e75495cc7ff92ccf934d6e9"},
-    {file = "hikari_miru-3.0.2-py3-none-any.whl", hash = "sha256:302df30d37bc062db9fcfbfda869e71ddb41968ea6f43dda9f04d63351776ca1"},
+    {file = "hikari-miru-3.0.3.tar.gz", hash = "sha256:6afa21cea1977c96f02ecfa7bdb6386c52818d690ae45685b31a632db5f8a717"},
+    {file = "hikari_miru-3.0.3-py3-none-any.whl", hash = "sha256:0a7c165582ecc1e4f4fe685b41f7b8771824b4311d6bca78be56648bba2eb847"},
 ]
 
 [package.dependencies]
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
-hikari = ">=2.0.0.dev116"
+hikari = ">=2.0.0.dev118"
 
 [package.extras]
 docs = ["furo (>=2022.1.2,<2022.2.0)", "sphinx (==4.4.0)"]
@@ -1777,4 +1777,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11"
-content-hash = "c6b43081a1b4120d5eae0b5b37def712392f1708735e8797960ed72f7b200d9d"
+content-hash = "e9196a62a0f613a1a1e41a912832af4d732fd6b2ee53b0eb974686d14c0469a2"
