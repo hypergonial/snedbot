@@ -745,14 +745,14 @@ files = [
 
 [[package]]
 name = "hikari"
-version = "2.0.0.dev116"
+version = "2.0.0.dev118"
 description = "A sane Discord API for Python 3 built on asyncio and good intentions"
 category = "main"
 optional = false
 python-versions = ">=3.8.0,<3.12"
 files = [
-    {file = "hikari-2.0.0.dev116-py3-none-any.whl", hash = "sha256:0e1d0bdfe777a6c16cdda7807b49d93c0a0da39ab369683955491d3d10963c90"},
-    {file = "hikari-2.0.0.dev116.tar.gz", hash = "sha256:f78f5f828eff4c44484ca251555a19f0424366aa87a0092dbaceae9b039e0ab4"},
+    {file = "hikari-2.0.0.dev118-py3-none-any.whl", hash = "sha256:e221fb70f9166764255c5331457d5aef51e091e89eecc5c6d408d85a4d3590e8"},
+    {file = "hikari-2.0.0.dev118.tar.gz", hash = "sha256:56f442f73969eeaf7c1cddd96d4f0cd90d8e8100cd17b8f5f2758382d8a07442"},
 ]
 
 [package.dependencies]
@@ -767,21 +767,21 @@ speedups = ["aiohttp[speedups] (>=3.8,<4.0)", "ciso8601 (>=2.3,<3.0)", "orjson (
 
 [[package]]
 name = "hikari-lightbulb"
-version = "2.3.1"
+version = "2.3.3"
 description = "A simple to use command handler for Hikari"
 category = "main"
 optional = false
 python-versions = ">=3.8.0,<3.12"
 files = [
-    {file = "hikari-lightbulb-2.3.1.tar.gz", hash = "sha256:59aab951c21c6f3d4eb808db5a6cafadf7b33320906c70987ad252e79c5c190b"},
-    {file = "hikari_lightbulb-2.3.1-py3-none-any.whl", hash = "sha256:c7e84181694eda33c66d2e227f73cdf618306d4e33ca248da901a5234d0bb393"},
+    {file = "hikari-lightbulb-2.3.3.tar.gz", hash = "sha256:b621be2c9eb3af6152876b1020da7f2165c55134ef7fa0f7feafff8f95385da4"},
+    {file = "hikari_lightbulb-2.3.3-py3-none-any.whl", hash = "sha256:29ef2c77607bb7ab822906627b16329a8377bc894041aab53f5420a9e02cb73d"},
 ]
 
 [package.dependencies]
-hikari = ">=2.0.0.dev113,<2.1.0"
+hikari = ">=2.0.0.dev118,<2.1.0"
 
 [package.extras]
-crontrigger = ["croniter (>=1.3.8,<1.4.0)", "types-croniter (>=1.3.2,<1.4.0)"]
+crontrigger = ["croniter (>=1.3.14,<1.4.0)", "types-croniter (>=1.3.2,<1.4.0)"]
 
 [[package]]
 name = "hikari-miru"
@@ -1777,4 +1777,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11"
-content-hash = "c6b43081a1b4120d5eae0b5b37def712392f1708735e8797960ed72f7b200d9d"
+content-hash = "ebd0f575e5e4db03eaad5a694d6e2716d52b2786068dcecbee71bc499054bde6"
