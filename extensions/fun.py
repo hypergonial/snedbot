@@ -750,7 +750,7 @@ async def animal(ctx: SnedSlashContext, animal: str) -> None:
 
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    async with ctx.bot.session.get(f"https://some-random-api.ml/img/{animal}") as response:
+    async with ctx.bot.session.get(f"https://some-random-api.com/img/{animal}") as response:
         if response.status != 200:
             await ctx.respond(
                 embed=hikari.Embed(
