@@ -1,6 +1,6 @@
 [tool.black]
 line-length = 120
-target-version = ["py310"]
+target-version = ["py311"]
 include = ".*py$"
 
 [tool.ruff]
@@ -8,10 +8,10 @@ exclude = ["examples", "docs", "build"]
 select = ["E", "F", "I"]
 ignore = ["F405", "F403", "E501"]
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 
 [tool.poetry]
@@ -22,7 +22,7 @@ authors = ["HyperGH <46067571+HyperGH@users.noreply.github.com>"]
 license = "GNU GPL-v3"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.11"
+python = ">=3.11,<3.12"
 dateparser = "^1.1.6"
 psutil = "^5.9.4"
 Pillow = "^9.3.0"
@@ -30,7 +30,6 @@ asyncpg = "^0.27.0"
 Levenshtein = "^0.20.9"
 uvloop = {version = "==0.17.0", platform="linux"}
 aiodns = "~=3.0"
-cchardet = "~=2.1"
 Brotli = "~=1.0"
 ciso8601 = "~=2.3"
 kosu = {git = "https://github.com/HyperGH/kosu.git", branch="main"}

@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:3.11
 
 ARG postgres_version=14
 
@@ -17,4 +17,4 @@ RUN poetry config virtualenvs.create false
 RUN poetry install -n --only main
 
 COPY . ./
-CMD ["python3.10", "-O", "main.py"]
+CMD ["python3.11", "-O", "main.py"]

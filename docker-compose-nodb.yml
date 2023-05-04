@@ -6,5 +6,5 @@ services:
         dockerfile: Dockerfile
         args:
           postgres_version: ${POSTGRES_VERSION:-14}
-    command: ["python3.10", "-O", "main.py"]
+    command: ["python3.11", "-O", "main.py"]
     restart: always
