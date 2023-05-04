@@ -69,7 +69,7 @@ class SnedBot(lightbulb.BotApp):
         intents = (
             hikari.Intents.GUILDS
             | hikari.Intents.GUILD_MEMBERS
-            | hikari.Intents.GUILD_BANS
+            | hikari.Intents.GUILD_MODERATION
             | hikari.Intents.GUILD_EMOJIS
             | hikari.Intents.GUILD_INVITES
             | hikari.Intents.ALL_MESSAGE_REACTIONS
