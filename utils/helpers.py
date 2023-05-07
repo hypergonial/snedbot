@@ -100,8 +100,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
     member = ctx.app.cache.get_member(ctx.guild_id, user)
 
     if member:
-        roles = [role.mention for role in sort_roles(member.get_roles())]
-        roles.remove(f"<@&{ctx.guild_id}>")
+        roles = [role.mention for role in sort_roles(member.get_roles()) if role.id != ctx.guild_id]
         roles = ", ".join(roles) if roles else "`-`"
         comms_disabled_until = member.communication_disabled_until()
 
