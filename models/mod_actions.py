@@ -628,7 +628,9 @@ class ModActions:
             except DMFailedError:
                 embed.set_footer("Failed sending DM to user.")
 
-            await self.app.rest.ban_user(moderator.guild_id, user.id, delete_message_days=days_to_delete, reason=reason)
+            await self.app.rest.ban_user(
+                moderator.guild_id, user.id, delete_message_seconds=days_to_delete * 86400, reason=reason
+            )
 
             record = await self.app.db.fetchrow(
                 """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = $3""",
