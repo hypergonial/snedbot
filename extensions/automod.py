@@ -324,17 +324,6 @@ async def scan_messages(
     if not message.content:
         return
 
-    if policies["caps"]["state"] != AutoModState.DISABLED.value and len(message.content) > 15:
-        chars = [char for char in message.content if char.isalnum()]
-        uppers = [char for char in chars if char.isupper() and char.isalnum()]
-        if chars and len(uppers) / len(chars) > 0.6:
-            return await punish(
-                message,
-                policies,
-                AutomodActionType.CAPS,
-                reason="use of excessive caps",
-            )
-
     if policies["bad_words"]["state"] != AutoModState.DISABLED.value:
         for word in message.content.lower().split(" "):
             if word in policies["bad_words"]["words_list"]:
@@ -384,6 +373,17 @@ async def scan_messages(
                     policies,
                     AutomodActionType.LINK_SPAM,
                     reason="posting links too quickly",
+                )
+
+        if policies["caps"]["state"] != AutoModState.DISABLED.value and len(message.content) > 15:
+            chars = [char for char in message.content if char.isalnum()]
+            uppers = [char for char in chars if char.isupper() and char.isalnum()]
+            if chars and len(uppers) / len(chars) > 0.6:
+                return await punish(
+                    message,
+                    policies,
+                    AutomodActionType.CAPS,
+                    reason="use of excessive caps",
                 )
 
     if policies["perspective"]["state"] != AutoModState.DISABLED.value:
