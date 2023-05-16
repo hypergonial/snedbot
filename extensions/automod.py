@@ -293,7 +293,7 @@ async def scan_messages(
     if not message.member or message.member.is_bot:
         return
 
-    policies = await get_policies(guild=message.guild_id)
+    policies = await get_policies(message.guild_id)
 
     if policies["mass_mentions"]["state"] != AutoModState.DISABLED.value and message.user_mentions:
         assert message.author
