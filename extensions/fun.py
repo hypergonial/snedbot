@@ -121,15 +121,18 @@ class EvalBufButton(miru.Button):
         except InvalidExpressionError as e:
             await ctx.edit_response(content=f"```ERR: {e}```")
         else:
-            await ctx.edit_response(content=f"```{''.join(self.view._buf)}={str(result).rstrip('.0')}```")
+            if not self.view._keep_frac:
+                result = str(float(result)).rstrip(".0")
+            await ctx.edit_response(content=f"```{''.join(self.view._buf)}={result}```")
         self.view._clear_next = True
 
 
 class CalculatorView(AuthorOnlyView):
-    def __init__(self, ctx: lightbulb.Context) -> None:
+    def __init__(self, ctx: lightbulb.Context, keep_frac=True) -> None:
         super().__init__(ctx, timeout=300)
         self._buf = []
         self._clear_next = True
+        self._keep_frac = keep_frac
         buttons = [
             AddBufButton("(", style=hikari.ButtonStyle.PRIMARY, row=0),
             AddBufButton(")", style=hikari.ButtonStyle.PRIMARY, row=0),
@@ -447,6 +450,9 @@ class DictionaryNavigator(AuthorOnlyNavigator):
 @fun.command
 @lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option(
+    "display", "The display mode to use for the result.", type=str, required=False, choices=["fractional", "decimal"]
+)
+@lightbulb.option(
     "expr",
     "The mathematical expression to evaluate. If provided, interactive mode will not be used.",
     type=str,
@@ -457,9 +463,9 @@ class DictionaryNavigator(AuthorOnlyNavigator):
     "calc", "A calculator! If ran without options, an interactive calculator will be sent.", pass_options=True
 )
 @lightbulb.implements(lightbulb.SlashCommand)
-async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None) -> None:
+async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str = "fractional") -> None:
     if not expr:
-        view = CalculatorView(ctx)
+        view = CalculatorView(ctx, True if display == "fractional" else False)
         resp = await ctx.respond("```-```", components=view)
         await view.start(resp)
         return
@@ -478,7 +484,10 @@ async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None) -> None:
         )
         return
 
-    await ctx.respond(content=f"```{expr} = {str(result).rstrip('.0')}```")
+    if display == "decimal":
+        await ctx.respond(content=f"```{expr} = {str(float(result)).rstrip('.0')}```")
+    else:
+        await ctx.respond(content=f"```{expr} = {result}```")
 
 
 @fun.command
