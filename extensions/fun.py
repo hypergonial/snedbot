@@ -822,7 +822,7 @@ def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
     "The amount of sides a single die should have. 6 by default.",
     required=False,
     type=int,
-    min_value=4,
+    min_value=2,
     max_value=1000,
 )
 @lightbulb.option(
