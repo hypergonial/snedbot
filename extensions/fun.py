@@ -128,7 +128,7 @@ class EvalBufButton(miru.Button):
 
 
 class CalculatorView(AuthorOnlyView):
-    def __init__(self, ctx: lightbulb.Context, keep_frac=True) -> None:
+    def __init__(self, ctx: lightbulb.Context, keep_frac: bool = True) -> None:
         super().__init__(ctx, timeout=300)
         self._buf = []
         self._clear_next = True
@@ -463,7 +463,7 @@ class DictionaryNavigator(AuthorOnlyNavigator):
     "calc", "A calculator! If ran without options, an interactive calculator will be sent.", pass_options=True
 )
 @lightbulb.implements(lightbulb.SlashCommand)
-async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str = "fractional") -> None:
+async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str = "decimal") -> None:
     if not expr:
         view = CalculatorView(ctx, True if display == "fractional" else False)
         resp = await ctx.respond("```-```", components=view)
