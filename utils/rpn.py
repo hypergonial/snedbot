@@ -1,8 +1,9 @@
 import typing as t
+from fractions import Fraction
 
 __slots__ = ("Solver", "InvalidExpressionError")
 
-CallableT = t.TypeVar("CallableT", bound=t.Callable[..., float])
+CallableT = t.TypeVar("CallableT", bound=t.Callable[..., Fraction])
 
 
 class InvalidExpressionError(Exception):
@@ -20,17 +21,17 @@ class Operator(t.Generic[CallableT]):
         self.prec = prec
 
 
-class UnaryOperator(Operator[t.Callable[[float], float]]):
+class UnaryOperator(Operator[t.Callable[[Fraction], Fraction]]):
     """Represents a unary operator."""
 
-    def __call__(self, a: float) -> float:
+    def __call__(self, a: Fraction) -> Fraction:
         return self.op(a)
 
 
-class BinaryOperator(Operator[t.Callable[[float, float], float]]):
+class BinaryOperator(Operator[t.Callable[[Fraction, Fraction], Fraction]]):
     """Represents a binary operator."""
 
-    def __call__(self, a: float, b: float) -> float:
+    def __call__(self, a: Fraction, b: Fraction) -> Fraction:
         return self.op(a, b)
 
 
@@ -40,7 +41,7 @@ OPS: t.Dict[str, Operator] = {
     "*": BinaryOperator("*", 1, lambda a, b: a * b),
     "/": BinaryOperator("/", 1, lambda a, b: a / b),
     "~": UnaryOperator("~", 2, lambda a: -a),
-    "^": BinaryOperator("^", 3, lambda a, b: a**b),
+    "^": BinaryOperator("^", 3, lambda a, b: Fraction(a**b)),
 }
 """All valid operators."""
 
@@ -191,12 +192,12 @@ class Solver:
 
         self._rpn = result
 
-    def solve(self) -> float:
+    def solve(self) -> Fraction:
         """Solves the expression.
 
         Returns
         -------
-        float
+        Fraction
             The result of the expression.
         """
         self._validate()
@@ -205,7 +206,7 @@ class Solver:
         stack = []
         for c in self._rpn:
             if c not in OPS:
-                stack.append(float(c))
+                stack.append(Fraction(c))
                 continue
 
             op = OPS[c]
