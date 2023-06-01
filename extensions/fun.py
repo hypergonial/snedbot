@@ -22,9 +22,10 @@ from models import SnedBot, SnedSlashContext
 from models.checks import bot_has_permissions
 from models.context import SnedContext, SnedUserContext
 from models.plugin import SnedPlugin
-from models.views import AuthorOnlyNavigator
+from models.views import AuthorOnlyNavigator, AuthorOnlyView
 from utils import BucketType, RateLimiter, helpers
 from utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryException, UrbanEntry
+from utils.rpn import InvalidExpressionError, Solver
 
 ANIMAL_EMOJI_MAPPING: t.Dict[str, str] = {
     "dog": "🐶",
@@ -71,6 +72,111 @@ async def handle_errors(event: lightbulb.CommandErrorEvent) -> bool:
         return True
 
     return False
+
+
+class AddBufButton(miru.Button):
+    def __init__(self, value: str, *args, **kwargs):
+        if "label" not in kwargs:
+            kwargs["label"] = value
+        super().__init__(*args, **kwargs)
+        self.value = value
+
+    async def callback(self, ctx: miru.ViewContext):
+        assert isinstance(self.view, CalculatorView)
+        if len(self.view._buf) > 100:
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Expression too long", description="The expression is too long!", color=const.ERROR_COLOR
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
+            )
+            return
+        self.view._buf.append(self.value)
+        await self.view.refresh(ctx)
+
+
+class RemBufButton(miru.Button):
+    async def callback(self, ctx: miru.ViewContext):
+        assert isinstance(self.view, CalculatorView)
+        if self.view._buf:
+            self.view._buf.pop()
+        await self.view.refresh(ctx)
+
+
+class ClearBufButton(miru.Button):
+    async def callback(self, ctx: miru.ViewContext):
+        assert isinstance(self.view, CalculatorView)
+        self.view._buf.clear()
+        await self.view.refresh(ctx)
+
+
+class EvalBufButton(miru.Button):
+    async def callback(self, ctx: miru.ViewContext):
+        assert isinstance(self.view, CalculatorView)
+        if not self.view._buf:
+            return
+        solver = Solver("".join(self.view._buf))
+        try:
+            result = solver.solve()
+        except InvalidExpressionError as e:
+            await ctx.edit_response(content=f"```ERR: {e}```")
+        else:
+            await ctx.edit_response(content=f"```{''.join(self.view._buf)}={str(result).rstrip('.0')}```")
+        self.view._clear_next = True
+
+
+class CalculatorView(AuthorOnlyView):
+    def __init__(self, ctx: lightbulb.Context) -> None:
+        super().__init__(ctx, timeout=300)
+        self._buf = []
+        self._clear_next = True
+        buttons = [
+            AddBufButton("(", style=hikari.ButtonStyle.PRIMARY, row=0),
+            AddBufButton(")", style=hikari.ButtonStyle.PRIMARY, row=0),
+            RemBufButton(label="<-", style=hikari.ButtonStyle.DANGER, row=0),
+            ClearBufButton(label="C", style=hikari.ButtonStyle.DANGER, row=0),
+            AddBufButton("1", style=hikari.ButtonStyle.SECONDARY, row=1),
+            AddBufButton("2", style=hikari.ButtonStyle.SECONDARY, row=1),
+            AddBufButton("3", style=hikari.ButtonStyle.SECONDARY, row=1),
+            AddBufButton("+", style=hikari.ButtonStyle.PRIMARY, row=1),
+            AddBufButton("4", style=hikari.ButtonStyle.SECONDARY, row=2),
+            AddBufButton("5", style=hikari.ButtonStyle.SECONDARY, row=2),
+            AddBufButton("6", style=hikari.ButtonStyle.SECONDARY, row=2),
+            AddBufButton("-", style=hikari.ButtonStyle.PRIMARY, row=2),
+            AddBufButton("7", style=hikari.ButtonStyle.SECONDARY, row=3),
+            AddBufButton("8", style=hikari.ButtonStyle.SECONDARY, row=3),
+            AddBufButton("9", style=hikari.ButtonStyle.SECONDARY, row=3),
+            AddBufButton("*", style=hikari.ButtonStyle.PRIMARY, row=3),
+            AddBufButton(".", style=hikari.ButtonStyle.SECONDARY, row=4),
+            AddBufButton("0", style=hikari.ButtonStyle.SECONDARY, row=4),
+            EvalBufButton(label="=", style=hikari.ButtonStyle.SUCCESS, row=4),
+            AddBufButton("/", style=hikari.ButtonStyle.PRIMARY, row=4),
+        ]
+        for button in buttons:
+            self.add_item(button)
+
+    async def refresh(self, ctx: miru.ViewContext) -> None:
+        if not self._buf:
+            await ctx.edit_response(content="```-```")
+            self._clear_next = True
+            return
+        await ctx.edit_response(content=f"```{''.join(self._buf)}```")
+
+    async def view_check(self, ctx: miru.ViewContext) -> bool:
+        if not super().view_check(ctx):
+            return False
+
+        # Clear buffer if solved or in error state
+        if self._clear_next:
+            self._buf.clear()
+            self._clear_next = False
+
+        return True
+
+    async def on_timeout(self, ctx: miru.ViewContext) -> None:
+        for item in self.children:
+            item.disabled = True
+        await ctx.edit_response(components=self)
 
 
 class WinState(IntEnum):
@@ -336,6 +442,43 @@ class DictionaryNavigator(AuthorOnlyNavigator):
         ]
         super().__init__(lctx, pages=pages)  # type: ignore
         self.add_item(DictionarySelect(self.entries))
+
+
+@fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
+@lightbulb.option(
+    "expr",
+    "The mathematical expression to evaluate. If provided, interactive mode will not be used.",
+    type=str,
+    required=False,
+    max_length=100,
+)
+@lightbulb.command(
+    "calc", "A calculator! If ran without options, an interactive calculator will be sent.", pass_options=True
+)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None) -> None:
+    if not expr:
+        view = CalculatorView(ctx)
+        resp = await ctx.respond("```-```", components=view)
+        await view.start(resp)
+        return
+
+    solver = Solver(expr)
+    try:
+        result = solver.solve()
+    except InvalidExpressionError as e:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid Expression",
+                description=f"Error encountered evaluating expression: ```{e}```",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
+
+    await ctx.respond(content=f"```{expr} = {str(result).rstrip('.0')}```")
 
 
 @fun.command
