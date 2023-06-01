@@ -166,7 +166,7 @@ class CalculatorView(AuthorOnlyView):
         await ctx.edit_response(content=f"```{''.join(self._buf)}```")
 
     async def view_check(self, ctx: miru.ViewContext) -> bool:
-        if not super().view_check(ctx):
+        if not await super().view_check(ctx):
             return False
 
         # Clear buffer if solved or in error state
