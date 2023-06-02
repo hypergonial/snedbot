@@ -484,10 +484,10 @@ async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str
         )
         return
 
-    if display == "decimal":
-        await ctx.respond(content=f"```{expr} = {str(float(result)).rstrip('.0')}```")
-    else:
+    if display == "fractional":
         await ctx.respond(content=f"```{expr} = {result}```")
+    else:
+        await ctx.respond(content=f"```{expr} = {str(float(result)).rstrip('.0')}```")
 
 
 @fun.command
