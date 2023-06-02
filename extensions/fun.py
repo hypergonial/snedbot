@@ -124,7 +124,7 @@ class EvalBufButton(miru.Button):
             if not self.view._keep_frac:
                 result = str(float(result))
                 if result.endswith(".0"):
-                    result = result.rstrip(".0")
+                    result = result[:-2]
             await ctx.edit_response(content=f"```{''.join(self.view._buf)}={result}```")
         self.view._clear_next = True
 
@@ -491,7 +491,7 @@ async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str
     else:
         result = str(float(result))
         if result.endswith(".0"):
-            result = result.rstrip(".0")
+            result = result[:-2]
         await ctx.respond(content=f"```{expr} = {result}```")
 
 
