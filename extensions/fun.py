@@ -5,6 +5,7 @@ import os
 import random
 import typing as t
 from enum import IntEnum
+from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
 from textwrap import fill
@@ -91,6 +92,9 @@ class AddBufButton(miru.Button):
                 flags=hikari.MessageFlag.EPHEMERAL,
             )
             return
+        # Add a + after Ans if the user presses a number right after =
+        if not self.view._buf and self.view._ans and self.value not in ("+", "-", "*", "/", "(", ")"):
+            self.view._buf.append("+")
         self.view._buf.append(self.value)
         await self.view.refresh(ctx)
 
@@ -100,6 +104,8 @@ class RemBufButton(miru.Button):
         assert isinstance(self.view, CalculatorView)
         if self.view._buf:
             self.view._buf.pop()
+        elif self.view._ans:
+            self.view._ans = None
         await self.view.refresh(ctx)
 
 
@@ -107,6 +113,7 @@ class ClearBufButton(miru.Button):
     async def callback(self, ctx: miru.ViewContext):
         assert isinstance(self.view, CalculatorView)
         self.view._buf.clear()
+        self.view._ans = None
         await self.view.refresh(ctx)
 
 
@@ -115,12 +122,16 @@ class EvalBufButton(miru.Button):
         assert isinstance(self.view, CalculatorView)
         if not self.view._buf:
             return
+        # Inject the previous answer into the buffer
+        if self.view._ans:
+            self.view._buf.insert(0, str(self.view._ans))
         solver = Solver("".join(self.view._buf))
         try:
             result = solver.solve()
         except InvalidExpressionError as e:
             await ctx.edit_response(content=f"```ERR: {e}```")
         else:
+            self.view._ans = result
             if not self.view._keep_frac:
                 result = str(float(result))
                 if result.endswith(".0"):
@@ -135,6 +146,7 @@ class CalculatorView(AuthorOnlyView):
         self._buf = []
         self._clear_next = True
         self._keep_frac = keep_frac
+        self._ans: t.Optional[Fraction] = None
         buttons = [
             AddBufButton("(", style=hikari.ButtonStyle.PRIMARY, row=0),
             AddBufButton(")", style=hikari.ButtonStyle.PRIMARY, row=0),
@@ -162,10 +174,11 @@ class CalculatorView(AuthorOnlyView):
 
     async def refresh(self, ctx: miru.ViewContext) -> None:
         if not self._buf:
-            await ctx.edit_response(content="```-```")
-            self._clear_next = True
+            await ctx.edit_response(content="```Ans```" if self._ans else "```-```")
             return
-        await ctx.edit_response(content=f"```{''.join(self._buf)}```")
+        await ctx.edit_response(
+            content=f"```Ans{''.join(self._buf)}```" if self._ans else f"```{''.join(self._buf)}```"
+        )
 
     async def view_check(self, ctx: miru.ViewContext) -> bool:
         if not await super().view_check(ctx):
