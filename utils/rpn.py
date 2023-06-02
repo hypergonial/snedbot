@@ -44,7 +44,7 @@ def _div(a: Fraction, b: Fraction) -> Fraction:
 
 
 def _pow(a: Fraction, b: Fraction) -> Fraction:
-    if a < 0:
+    if a < 0 and (b < 1 and b > -1):
         raise InvalidExpressionError("Negative base")
     return Fraction(a**b)
 
