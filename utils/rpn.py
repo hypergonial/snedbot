@@ -204,6 +204,9 @@ class Solver:
 
         result += reversed(stack)
 
+        if "." in result:
+            raise InvalidExpressionError("'.' is not a valid value.")
+
         if "" in result:
             raise InvalidExpressionError("Failed building RPN, invalid expression")
 
