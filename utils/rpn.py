@@ -35,11 +35,19 @@ class BinaryOperator(Operator[t.Callable[[Fraction, Fraction], Fraction]]):
         return self.op(a, b)
 
 
+# Workaround because of needed error handling
+def _divide(a: Fraction, b: Fraction) -> Fraction:
+    try:
+        return a / b
+    except ZeroDivisionError:
+        raise InvalidExpressionError("Division by zero")
+
+
 OPS: t.Dict[str, Operator] = {
     "+": BinaryOperator("+", 0, lambda a, b: a + b),
     "-": BinaryOperator("-", 0, lambda a, b: a - b),
     "*": BinaryOperator("*", 1, lambda a, b: a * b),
-    "/": BinaryOperator("/", 1, lambda a, b: a / b),
+    "/": BinaryOperator("/", 1, _divide),
     "~": UnaryOperator("~", 2, lambda a: -a),
     "^": BinaryOperator("^", 3, lambda a, b: Fraction(a**b)),
 }

@@ -122,7 +122,9 @@ class EvalBufButton(miru.Button):
             await ctx.edit_response(content=f"```ERR: {e}```")
         else:
             if not self.view._keep_frac:
-                result = str(float(result)).rstrip(".0")
+                result = str(float(result))
+                if result.endswith(".0"):
+                    result = result.rstrip(".0")
             await ctx.edit_response(content=f"```{''.join(self.view._buf)}={result}```")
         self.view._clear_next = True
 
@@ -487,7 +489,10 @@ async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str
     if display == "fractional":
         await ctx.respond(content=f"```{expr} = {result}```")
     else:
-        await ctx.respond(content=f"```{expr} = {str(float(result)).rstrip('.0')}```")
+        result = str(float(result))
+        if result.endswith(".0"):
+            result = result.rstrip(".0")
+        await ctx.respond(content=f"```{expr} = {result}```")
 
 
 @fun.command
