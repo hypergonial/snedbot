@@ -204,11 +204,11 @@ class Solver:
 
         result += reversed(stack)
 
-        if "." in result:
-            raise InvalidExpressionError("'.' is not a valid value.")
-
-        if "" in result:
-            raise InvalidExpressionError("Failed building RPN, invalid expression")
+        for token in result:
+            if token in OPS:
+                continue
+            if not token or token.count(".") > 1 or not token.replace(".", "").isdigit():
+                raise InvalidExpressionError(f"Failed parsing expression, invalid value: '{token}'")
 
         self._rpn = result
 
