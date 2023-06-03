@@ -832,7 +832,6 @@ async def massban(ctx: SnedSlashContext) -> None:
     predicates = [
         lambda m: not m.is_bot,
         lambda m: m.id != ctx.author.id,
-        lambda m: m.discriminator != "0000",  # Deleted users
         lambda m: helpers.is_above(me, m),  # Only ban users below bot
     ]
 

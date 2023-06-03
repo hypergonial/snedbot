@@ -77,13 +77,13 @@ def create_starboard_payload(
     t.Dict[str, t.Any]
         The payload as keyword arguments.
     """
-
+    assert message.member is not None
     guild_id = hikari.Snowflake(guild)
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
     content = f"{emoji} **{stars}{' (Forced)' if force_starred else ''}** <#{message.channel_id}>"
     embed = (
         hikari.Embed(description=message.content, color=0xFFC20C)
-        .set_author(name=str(message.author), icon=message.author.display_avatar_url)
+        .set_author(name=message.member.display_name, icon=message.member.display_avatar_url)
         .set_footer(f"ID: {message.id}")
     )
     attachments = message.attachments
