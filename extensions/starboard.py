@@ -57,7 +57,6 @@ def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
 
 
 def create_starboard_payload(
-    app: SnedBot,
     guild: hikari.SnowflakeishOr[hikari.PartialGuild],
     message: hikari.Message,
     stars: int,
@@ -82,7 +81,7 @@ def create_starboard_payload(
         The payload as keyword arguments.
     """
     guild_id = hikari.Snowflake(guild)
-    member = app.cache.get_member(guild_id, message.author.id)
+    member = starboard.app.cache.get_member(guild_id, message.author.id)
     assert member is not None
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
     content = f"{emoji} **{stars}{' (Forced)' if force_starred else ''}** <#{message.channel_id}>"
