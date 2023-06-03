@@ -57,7 +57,11 @@ def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
 
 
 def create_starboard_payload(
-    guild: hikari.SnowflakeishOr[hikari.PartialGuild], message: hikari.Message, stars: int, force_starred: bool
+    app: SnedBot,
+    guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+    message: hikari.Message,
+    stars: int,
+    force_starred: bool,
 ) -> t.Dict[str, t.Any]:
     """Create message payload for a starboard entry.
 
@@ -77,13 +81,14 @@ def create_starboard_payload(
     t.Dict[str, t.Any]
         The payload as keyword arguments.
     """
-    assert message.member is not None
     guild_id = hikari.Snowflake(guild)
+    member = app.cache.get_member(guild_id, message.author.id)
+    assert member is not None
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
     content = f"{emoji} **{stars}{' (Forced)' if force_starred else ''}** <#{message.channel_id}>"
     embed = (
         hikari.Embed(description=message.content, color=0xFFC20C)
-        .set_author(name=message.member.display_name, icon=message.member.display_avatar_url)
+        .set_author(name=member.display_name, icon=member.display_avatar_url)
         .set_footer(f"ID: {message.id}")
     )
     attachments = message.attachments
