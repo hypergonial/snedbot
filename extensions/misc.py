@@ -183,7 +183,7 @@ async def about(ctx: SnedSlashContext) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title=f"ℹ️ About {me.username}",
-            description=f"""**• Made by:** `Hyper#0001`
+            description=f"""**• Made by:** `hypergons`
 **• Servers:** `{len(ctx.app.cache.get_guilds_view())}`
 **• Online since:** {helpers.format_dt(ctx.app.start_time, style='R')}
 **• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
