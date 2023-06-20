@@ -398,7 +398,7 @@ async def scan_messages(
             assert plugin.app.perspective is not None
             resp: kosu.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
         except kosu.PerspectiveException as e:
-            logger.warning(f"Perspective failed to analyze a message: {str(e)}")
+            logger.debug(f"Perspective failed to analyze a message: {str(e)}")
             return
         scores = {score.name.name: score.summary.value for score in resp.attribute_scores}
 
