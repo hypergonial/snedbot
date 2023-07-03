@@ -82,12 +82,13 @@ def create_starboard_payload(
     """
     guild_id = hikari.Snowflake(guild)
     member = starboard.app.cache.get_member(guild_id, message.author.id)
-    assert member is not None
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
     content = f"{emoji} **{stars}{' (Forced)' if force_starred else ''}** <#{message.channel_id}>"
     embed = (
         hikari.Embed(description=message.content, color=0xFFC20C)
-        .set_author(name=member.display_name, icon=member.display_avatar_url)
+        .set_author(
+            name=member.display_name if member else "Unknown", icon=member.display_avatar_url if member else None
+        )
         .set_footer(f"ID: {message.id}")
     )
     attachments = message.attachments
