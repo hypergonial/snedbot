@@ -14,10 +14,10 @@ import hikari
 import Levenshtein as lev
 import lightbulb
 import miru
-from config import Config
 from miru.ext import nav
 from PIL import Image, ImageDraw, ImageFont
 
+from config import Config
 from etc import const
 from models import SnedBot, SnedSlashContext
 from models.checks import bot_has_permissions
@@ -1038,7 +1038,9 @@ async def comf(ctx: SnedSlashContext) -> None:
             description="Your forecasted comfiness is:",
             color=const.EMBED_BLUE,
         )
-        .set_footer(f"Powered by the api.fraw.st oracle. {f'Timezone: {now.tzinfo.tzname(now)}' if now.tzinfo is not None else ''}")
+        .set_footer(
+            f"Powered by the api.fraw.st oracle. {f'Timezone: {now.tzinfo.tzname(now)}' if now.tzinfo is not None else ''}"
+        )
         .set_thumbnail(ctx.member.display_avatar_url)
     )
 

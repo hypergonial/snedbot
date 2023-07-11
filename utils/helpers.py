@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import datetime
-import pytz
 import re
 import typing as t
 import unicodedata
 
 import hikari
 import lightbulb
+import pytz
 
 from etc import const
 from models import errors
@@ -63,6 +63,7 @@ def utcnow() -> datetime.datetime:
     """
     return datetime.datetime.now(datetime.timezone.utc)
 
+
 async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> datetime.datetime:
     """A short-hand function to return a datetime from the user's preferred timezone.
 
@@ -78,11 +79,11 @@ async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser])
     datetime.datetime
         The current time in the user's timezone of preference.
     """
-    
+
     records = await bot.db_cache.get(table="preferences", user_id=hikari.Snowflake(user), limit=1)
     timezone = records[0].get("timezone") if records else "UTC"
     assert timezone is not None
-    
+
     timezone = pytz.timezone(timezone)
     return datetime.datetime.now(timezone)
 
