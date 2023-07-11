@@ -1003,6 +1003,67 @@ async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
         await event.message.respond("Vesztettem")
 
 
+comf_ratelimiter = RateLimiter(60, 3, BucketType.GLOBAL, wait=False)
+COMF_PROGRESS_BAR_WIDTH = 20
+
+
+@fun.command
+@lightbulb.app_command_permissions(None, dm_enabled=False)
+@lightbulb.command("comf", "Shows your current and upcoming comfiness.", pass_options=True)
+@lightbulb.implements(lightbulb.SlashCommand)
+async def comf(ctx: SnedSlashContext) -> None:
+    assert ctx.member is not None
+
+    await comf_ratelimiter.acquire(ctx)
+    if comf_ratelimiter.is_rate_limited(ctx):
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Ratelimited",
+                description="Please wait a couple minutes before trying again.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
+
+    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+
+    now = helpers.utcnow()
+    today = datetime.datetime.combine(now.date(), datetime.time(0, 0))
+    dates = [today + datetime.timedelta(days=delta_day + 1) for delta_day in range(3)]
+
+    embed = hikari.Embed(
+        title=f"Comfiness forecast for {ctx.member.display_name}",
+        description="Your forecasted comfiness is:",
+        color=const.EMBED_BLUE,
+    )
+    embed.set_footer(f"Generated on {today.strftime('%Y-%m-%d')}")
+    embed.set_thumbnail(ctx.member.display_avatar_url)
+
+    for date in dates:
+        params = {"id": str(ctx.author.id), "date": date.strftime("%Y-%m-%d %H:%M:%S")}
+        async with ctx.bot.session.get("https://api.fraw.st/comf", params=params) as response:
+            if response.status != 200:
+                await ctx.respond(
+                    embed=hikari.Embed(
+                        title="❌ Network Error",
+                        description="Could not access our certified comfiness oracle. Please try again later.",
+                        color=const.ERROR_COLOR,
+                    ),
+                    flags=hikari.MessageFlag.EPHEMERAL,
+                )
+                return
+
+            response = await response.json()
+            comf_value: float = response["comfValue"]
+            rounded_comf = int(comf_value * COMF_PROGRESS_BAR_WIDTH / 100)
+
+            progress_bar = "█" * rounded_comf + " " * (COMF_PROGRESS_BAR_WIDTH - rounded_comf)
+            embed.add_field(f"<t:{int(date.timestamp())}:D>", f"`[{progress_bar}]` {comf_value:.1f}%")
+
+    await ctx.respond(embed=embed)
+
+
 def load(bot: SnedBot) -> None:
     bot.add_plugin(fun)
 
