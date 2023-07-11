@@ -1028,7 +1028,8 @@ async def comf(ctx: SnedSlashContext) -> None:
 
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    today = datetime.datetime.combine(helpers.utcnow().date(), datetime.time(0, 0))
+    now = await helpers.usernow(ctx.bot, ctx.author)
+    today = datetime.datetime.combine(now.date(), datetime.time(0, 0), tzinfo=now.tzinfo)
     dates = [today + datetime.timedelta(days=delta_day + 1) for delta_day in range(3)]
 
     embed = (
@@ -1037,7 +1038,7 @@ async def comf(ctx: SnedSlashContext) -> None:
             description="Your forecasted comfiness is:",
             color=const.EMBED_BLUE,
         )
-        .set_footer("Powered by the api.fraw.st oracle.")
+        .set_footer(f"Powered by the api.fraw.st oracle. {f'Timezone: {now.tzinfo.tzname(now)}' if now.tzinfo is not None else ''}")
         .set_thumbnail(ctx.member.display_avatar_url)
     )
 
@@ -1060,7 +1061,7 @@ async def comf(ctx: SnedSlashContext) -> None:
             rounded_comf = int(comf_value * COMF_PROGRESS_BAR_WIDTH / 100)
 
             progress_bar = "█" * rounded_comf + " " * (COMF_PROGRESS_BAR_WIDTH - rounded_comf)
-            embed.add_field(f"<t:{int(date.timestamp())}:D>", f"`[{progress_bar}]` {comf_value:.1f}%")
+            embed.add_field(f"**{date.strftime('%B %d, %Y')}**", f"`[{progress_bar}]` {comf_value:.1f}%")
 
     await ctx.respond(embed=embed)
 

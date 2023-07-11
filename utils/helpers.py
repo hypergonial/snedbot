@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import pytz
 import re
 import typing as t
 import unicodedata
@@ -13,6 +14,9 @@ from models import errors
 from models.context import SnedApplicationContext, SnedContext
 from models.db_user import DatabaseUser
 from models.journal import JournalEntry
+
+if t.TYPE_CHECKING:
+    from models import SnedBot
 
 MESSAGE_LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)channels[\/][0-9]{1,}[\/][0-9]{1,}[\/][0-9]{1,}"
@@ -58,6 +62,29 @@ def utcnow() -> datetime.datetime:
     A short-hand function to return a timezone-aware utc datetime.
     """
     return datetime.datetime.now(datetime.timezone.utc)
+
+async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> datetime.datetime:
+    """A short-hand function to return a datetime from the user's preferred timezone.
+
+    Parameters
+    ----------
+    bot : SnedBot
+        The bot instance.
+    user : hikari.SnowflakeishOr[hikari.User]
+        The user whose timezone preference to use.
+
+    Returns
+    -------
+    datetime.datetime
+        The current time in the user's timezone of preference.
+    """
+    
+    records = await bot.db_cache.get(table="preferences", user_id=hikari.Snowflake(user), limit=1)
+    timezone = records[0].get("timezone") if records else "UTC"
+    assert timezone is not None
+    
+    timezone = pytz.timezone(timezone)
+    return datetime.datetime.now(timezone)
 
 
 def add_embed_footer(embed: hikari.Embed, invoker: hikari.Member) -> hikari.Embed:
