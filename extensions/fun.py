@@ -1009,7 +1009,7 @@ COMF_PROGRESS_BAR_WIDTH = 20
 
 @fun.command
 @lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("comf", "Shows your current and upcoming comfiness.", pass_options=True)
+@lightbulb.command("comf", "Shows your current and upcoming comfiness.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def comf(ctx: SnedSlashContext) -> None:
     assert ctx.member is not None
