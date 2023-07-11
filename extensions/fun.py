@@ -14,10 +14,10 @@ import hikari
 import Levenshtein as lev
 import lightbulb
 import miru
+from config import Config
 from miru.ext import nav
 from PIL import Image, ImageDraw, ImageFont
 
-from config import Config
 from etc import const
 from models import SnedBot, SnedSlashContext
 from models.checks import bot_has_permissions
@@ -1028,17 +1028,18 @@ async def comf(ctx: SnedSlashContext) -> None:
 
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    now = helpers.utcnow()
-    today = datetime.datetime.combine(now.date(), datetime.time(0, 0))
+    today = datetime.datetime.combine(helpers.utcnow().date(), datetime.time(0, 0))
     dates = [today + datetime.timedelta(days=delta_day + 1) for delta_day in range(3)]
 
-    embed = hikari.Embed(
-        title=f"Comfiness forecast for {ctx.member.display_name}",
-        description="Your forecasted comfiness is:",
-        color=const.EMBED_BLUE,
+    embed = (
+        hikari.Embed(
+            title=f"Comfiness forecast for {ctx.member.display_name}",
+            description="Your forecasted comfiness is:",
+            color=const.EMBED_BLUE,
+        )
+        .set_footer("Powered by the api.fraw.st oracle.")
+        .set_thumbnail(ctx.member.display_avatar_url)
     )
-    embed.set_footer(f"Generated on {today.strftime('%Y-%m-%d')}")
-    embed.set_thumbnail(ctx.member.display_avatar_url)
 
     for date in dates:
         params = {"id": str(ctx.author.id), "date": date.strftime("%Y-%m-%d %H:%M:%S")}
