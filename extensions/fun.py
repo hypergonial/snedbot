@@ -1003,7 +1003,7 @@ async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
         await event.message.respond("Vesztettem")
 
 
-comf_ratelimiter = RateLimiter(60, 3, BucketType.GLOBAL, wait=False)
+comf_ratelimiter = RateLimiter(60, 5, BucketType.USER, wait=False)
 COMF_PROGRESS_BAR_WIDTH = 20
 
 
