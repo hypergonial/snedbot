@@ -45,8 +45,9 @@ async def ping(ctx: SnedSlashContext) -> None:
 @lightbulb.option(
     "color",
     "The color of the embed. Expects three space-separated values for an RGB value.",
-    type=hikari.Color,
+    type=str,
     required=False,
+    max_length=11,
 )
 @lightbulb.option("author_url", "An URL to direct users to if the author is clicked.", required=False)
 @lightbulb.option(
