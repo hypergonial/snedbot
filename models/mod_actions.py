@@ -252,7 +252,7 @@ class ModActions:
                 )
                 await member.edit(
                     communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
-                    reason="Automatic timeout extension applied.",
+                    reason=f"Automatic timeout extension applied. Timed out until {datetime.datetime.fromtimestamp(expiry, datetime.timezone.utc).isoformat()}.",
                 )
 
             else:
@@ -304,7 +304,7 @@ class ModActions:
             )
             await event.member.edit(
                 communication_disabled_until=helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
-                reason="Automatic timeout extension applied.",
+                reason=f"Automatic timeout extension applied. Timed out until {datetime.datetime.fromtimestamp(expiry, datetime.timezone.utc).isoformat()}.",
             )
 
         else:
@@ -495,8 +495,8 @@ class ModActions:
         hikari.Embed
             The response to display to the user.
         """
-        raw_reason = helpers.format_reason(reason, max_length=1500)
-        reason = helpers.format_reason(reason, moderator, max_length=512)
+        raw_reason = helpers.format_reason(reason, max_length=1400)
+        reason = helpers.format_reason(f"Timed out until {duration.isoformat()} - {reason}", moderator, max_length=512)
 
         me = self.app.cache.get_member(member.guild_id, self.app.user_id)
         assert me is not None
@@ -510,7 +510,9 @@ class ModActions:
         )
 
         try:
-            await self.pre_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
+            await self.pre_mod_actions(
+                member.guild_id, member, ActionType.TIMEOUT, reason=f"Timed out until {duration} - {raw_reason}"
+            )
         except DMFailedError:
             embed.set_footer("Failed sending DM to user.")
 
@@ -530,7 +532,9 @@ class ModActions:
         else:
             await member.edit(communication_disabled_until=duration, reason=reason)
 
-        await self.post_mod_actions(member.guild_id, member, ActionType.TIMEOUT, reason=raw_reason)
+        await self.post_mod_actions(
+            member.guild_id, member, ActionType.TIMEOUT, reason=f"Timed out until {duration} - {raw_reason}"
+        )
         return embed
 
     async def remove_timeout(

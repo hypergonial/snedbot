@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import datetime
 import json
@@ -7,6 +9,7 @@ import sys
 import traceback
 import typing as t
 
+import attr
 import hikari
 import lightbulb
 
@@ -26,7 +29,10 @@ from models.journal import JournalEntry, JournalEntryType
 from models.plugin import SnedPlugin
 from utils import helpers
 
-BOT_REASON_REGEX = re.compile(r"(?P<name>.*#\d{4})\s\((?P<id>\d+)\):\s(?P<reason>.*)")
+BOT_REASON_REGEX = re.compile(r"(?P<name>.*)\s\((?P<id>\d+)\):\s(?P<reason>.*)")
+TIMEOUT_REGEX = re.compile(
+    r"Timed out until (?P<date>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}\+\d{2}:\d{2}) - (?P<reason>.*)"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +67,45 @@ userlog.d.valid_log_events = (
 
 # List of guilds where logging is temporarily suspended
 userlog.d.frozen_guilds = []
+
+
+@attr.define()
+class UserLike:
+    """
+    A wrapper for user-like objects, for easier printing
+    """
+
+    id: hikari.Snowflake
+    username: str
+
+    def __str__(self):
+        return f"{self.username} ({self.id})"
+
+
+@attr.define()
+class ParsedBotReason:
+    """
+    A wrapper for parsing bot reasons following the format:
+
+    <name> (<id>): <reason>
+    """
+
+    reason: t.Optional[str]
+    """The extracted reason string"""
+    user: t.Optional[UserLike]
+    """The extracted UserLike object, this is the moderator who performed the action."""
+
+    @classmethod
+    def from_reason(cls, reason: t.Optional[str]) -> ParsedBotReason:
+        """
+        Parse a reason string and return a StripBotReason object
+        """
+        match = BOT_REASON_REGEX.match(str(reason))
+
+        if not match:
+            return cls(reason, None)
+
+        return cls(match.group("reason"), UserLike(hikari.Snowflake(match.group("id")), match.group("name")))
 
 
 async def get_log_channel_id(log_event: str, guild_id: int) -> t.Optional[int]:
@@ -121,17 +166,6 @@ userlog.d.actions["set_log_channel"] = set_log_channel
 async def is_color_enabled(guild_id: int) -> bool:
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
     return records[0]["color"] if records else True
-
-
-def parse_user(arg: t.Union[str, hikari.PartialUser, None]) -> t.Optional[hikari.PartialUser]:
-    """
-    Attempt to convert a string to a User object.
-    """
-    if isinstance(arg, str):
-        users = userlog.app.cache.get_users_view()
-        return lightbulb.utils.find(users.values(), lambda u: u.username == arg or str(u) == arg)
-    else:
-        return arg
 
 
 userlog.d.actions["is_color_enabled"] = is_color_enabled
@@ -255,7 +289,6 @@ async def unfreeze_logging(guild_id: int) -> None:
 userlog.d.actions["unfreeze_logging"] = unfreeze_logging
 
 
-# TODO: refactor this to better take advantage of the new audit log cache
 async def find_auditlog_data(
     guild: hikari.SnowflakeishOr[hikari.PartialGuild],
     *,
@@ -394,18 +427,6 @@ def create_log_content(message: hikari.PartialMessage, max_length: t.Optional[in
         return contents[: max_length - 3] + "..."
 
     return contents
-
-
-def strip_bot_reason(reason: t.Optional[str]) -> t.Tuple[t.Optional[str], t.Optional[str]]:
-    """
-    Strip action author for it to be parsed into the actual embed instead of the bot
-    """
-    match = BOT_REASON_REGEX.match(str(reason))
-
-    if not match:
-        return reason, None
-
-    return match.group("reason"), match.group("name")
 
 
 ###############################
@@ -702,12 +723,13 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
         reason: t.Optional[str] = entry.reason or "No reason provided"
     else:
-        moderator = "Error"
+        moderator = "Unknown"
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
 
     if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
-        reason, moderator = strip_bot_reason(reason)
-        moderator = moderator or plugin.app.get_me()
+        parsed = ParsedBotReason.from_reason(reason)
+        reason, moderator = (parsed.reason, parsed.user)
+        moderator = parsed.user or plugin.app.get_me()
 
     embed = hikari.Embed(
         title="🔨 User unbanned",
@@ -716,13 +738,12 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
     )
     await log("ban", embed, event.guild_id)
 
-    moderator = parse_user(moderator)
     await JournalEntry(
         user_id=event.user.id,
         guild_id=event.guild_id,
         entry_type=JournalEntryType.UNBAN,
         content=reason,
-        author_id=hikari.Snowflake(moderator) if moderator else None,
+        author_id=moderator.id if isinstance(moderator, (UserLike, hikari.PartialUser)) else None,
         created_at=helpers.utcnow(),
     ).update()
 
@@ -741,7 +762,8 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
 
     if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
-        reason, moderator = strip_bot_reason(reason)
+        parsed = ParsedBotReason.from_reason(reason)
+        reason, moderator = (parsed.reason, parsed.user)
         moderator = moderator or plugin.app.get_me()
 
     embed = hikari.Embed(
@@ -751,13 +773,12 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
     )
     await log("ban", embed, event.guild_id)
 
-    moderator = parse_user(moderator)
     await JournalEntry(
         user_id=event.user.id,
         guild_id=event.guild_id,
         entry_type=JournalEntryType.BAN,
         content=reason,
-        author_id=hikari.Snowflake(moderator) if moderator else None,
+        author_id=moderator.id if isinstance(moderator, (UserLike, hikari.PartialUser)) else None,
         created_at=helpers.utcnow(),
     ).update()
 
@@ -777,7 +798,8 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
         reason: t.Optional[str] = entry.reason or "No reason provided"
 
         if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
-            reason, moderator = strip_bot_reason(reason)
+            parsed = ParsedBotReason.from_reason(reason)
+            reason, moderator = (parsed.reason, parsed.user)
             moderator = moderator or plugin.app.get_me()
 
         embed = hikari.Embed(
@@ -787,13 +809,12 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
         )
         await log("kick", embed, event.guild_id)
 
-        moderator = parse_user(moderator)
         await JournalEntry(
             user_id=event.user.id,
             guild_id=event.guild_id,
             entry_type=JournalEntryType.KICK,
             content=reason,
-            author_id=hikari.Snowflake(moderator) if moderator else None,
+            author_id=moderator.id if isinstance(moderator, (UserLike, hikari.PartialUser)) else None,
             created_at=helpers.utcnow(),
         ).update()
         return
@@ -842,16 +863,27 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
         if not entry:
             return
 
-        if entry.reason == "Automatic timeout extension applied." and entry.user_id == plugin.app.user_id:
-            return
-
-        reason = entry.reason
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
 
-        if entry.user_id == plugin.app.user_id:
-            reason, moderator = strip_bot_reason(reason)
-            moderator = moderator or str(plugin.app.get_me())
+        # Reason parsing
+        if entry.user_id == plugin.app.user_id and entry.reason:
+            # Find actual moderator instead of bot
+            parsed = ParsedBotReason.from_reason(entry.reason)
+            moderator = parsed.user or plugin.app.get_me()
+            reason = parsed.reason or "No reason provided"
+
+            # Ignore re-timeouts
+            if reason.startswith("Automatic timeout extension applied"):
+                return
+
+            # In the case of bot timeouts, they might last longer than a month
+            # with re-timeouts, so we need to parse the actual date from the remaining reason
+            if match := TIMEOUT_REGEX.match(reason):
+                comms_disabled_until = datetime.datetime.fromisoformat(match.group("date"))
+                reason = match.group("reason")
+        else:
+            reason = entry.reason or "No reason provided"
 
         if comms_disabled_until is None:
             embed = hikari.Embed(
@@ -859,13 +891,14 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
                 description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
                 color=const.EMBED_GREEN,
             )
-            moderator = parse_user(moderator)
+            await log("timeout", embed, event.guild_id)
+
             await JournalEntry(
                 user_id=event.user.id,
                 guild_id=event.guild_id,
                 entry_type=JournalEntryType.TIMEOUT_REMOVE,
                 content=reason,
-                author_id=hikari.Snowflake(moderator) if moderator else None,
+                author_id=moderator.id if moderator else None,
                 created_at=helpers.utcnow(),
             ).update()
             return
@@ -880,13 +913,13 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 **Reason:** ```{reason}```""",
             color=const.ERROR_COLOR,
         )
-        moderator = parse_user(moderator)
+
         await JournalEntry(
             user_id=event.user.id,
             guild_id=event.guild_id,
             entry_type=JournalEntryType.TIMEOUT,
-            content=reason,
-            author_id=hikari.Snowflake(moderator) if moderator else None,
+            content=f"Until {helpers.format_dt(comms_disabled_until, style='d')} - {reason}",
+            author_id=moderator.id if moderator else None,
             created_at=helpers.utcnow(),
         ).update()
 
@@ -926,8 +959,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 
         if entry and entry.user_id == plugin.app.user_id:
             # Attempt to find the moderator in reason if sent by us
-            _, moderator = strip_bot_reason(entry.reason)
-            moderator = moderator or plugin.app.get_me()
+            moderator = ParsedBotReason.from_reason(entry.reason).user or plugin.app.get_me()
 
         if isinstance(moderator, (hikari.User)) and moderator.is_bot:
             # Do not log role updates done by ourselves or other bots

@@ -405,7 +405,7 @@ def format_reason(
         The formatted reason
     """
     if not reason:
-        reason = "No reason provided."
+        reason = "No reason provided"
 
     if moderator:
         # This format must remain the same, as the userlog extension depends on it for author parsing.
