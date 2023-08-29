@@ -34,20 +34,20 @@ ENTRY_TYPES = {
 logger = logging.getLogger(__name__)
 
 
-def _parse_note(db: Database, user_id: int, guild_id: int, note: str) -> t.Optional[JournalEntry]:
+def _parse_note(db: Database, user_id: int, guild_id: int, note: str) -> JournalEntry | None:
     match = NOTE_REGEX.match(note)
     if not match:
         logger.warning(f"Invalid note format:\n{note}")
         return
 
     users = db.app.cache.get_users_view()
-    user: t.Optional[hikari.User] = (
+    user: hikari.User | None = (
         lightbulb.utils.find(users.values(), lambda u: str(u) == match.group("username"))
         if match.group("username") != "Unknown"
         else None
     )
     timestamp = datetime.datetime.fromtimestamp(int(match.group("timestamp")))
-    content: t.Optional[str] = (
+    content: str | None = (
         match.group("content")
         if match.group("content")
         != "Error retrieving data from audit logs! Ensure the bot has permissions to view them!"

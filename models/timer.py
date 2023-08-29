@@ -1,5 +1,4 @@
 import enum
-import typing as t
 
 import attr
 import hikari
@@ -33,7 +32,7 @@ class Timer:
     user_id: hikari.Snowflake
     """The user this timer is bound to."""
 
-    channel_id: t.Optional[hikari.Snowflake]
+    channel_id: hikari.Snowflake | None
     """The channel this timer is bound to."""
 
     event: TimerEvent
@@ -42,7 +41,7 @@ class Timer:
     expires: int
     """The expiry date of this timer as a UNIX timestamp."""
 
-    notes: t.Optional[str]
+    notes: str | None
     """Optional data for this timer. May be a JSON-serialized string depending on the event type."""
 
 

@@ -3,7 +3,6 @@ import datetime
 import logging
 import os
 import random
-import typing as t
 from enum import IntEnum
 from fractions import Fraction
 from io import BytesIO
@@ -28,7 +27,7 @@ from utils import BucketType, RateLimiter, helpers
 from utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryException, UrbanEntry
 from utils.rpn import InvalidExpressionError, Solver
 
-ANIMAL_EMOJI_MAPPING: t.Dict[str, str] = {
+ANIMAL_EMOJI_MAPPING: dict[str, str] = {
     "dog": "🐶",
     "cat": "🐱",
     "panda": "🐼",
@@ -146,7 +145,7 @@ class CalculatorView(AuthorOnlyView):
         self._buf = []
         self._clear_next = True
         self._keep_frac = keep_frac
-        self._ans: t.Optional[Fraction] = None
+        self._ans: Fraction | None = None
         buttons = [
             AddBufButton("(", style=hikari.ButtonStyle.PRIMARY, row=0),
             AddBufButton(")", style=hikari.ButtonStyle.PRIMARY, row=0),
@@ -361,7 +360,7 @@ class TicTacToeView(miru.View):
 
         return False
 
-    def check_winner(self) -> t.Optional[WinState]:
+    def check_winner(self) -> WinState | None:
         """
         Check if there is a winner
         """
@@ -405,7 +404,7 @@ class TicTacToeView(miru.View):
 
 
 class UrbanNavigator(AuthorOnlyNavigator):
-    def __init__(self, lctx: lightbulb.Context, *, entries: t.List[UrbanEntry]) -> None:
+    def __init__(self, lctx: lightbulb.Context, *, entries: list[UrbanEntry]) -> None:
         self.entries = entries
         pages = [
             hikari.Embed(
@@ -423,7 +422,7 @@ class UrbanNavigator(AuthorOnlyNavigator):
 
 
 class DictionarySelect(nav.NavTextSelect):
-    def __init__(self, entries: t.List[DictionaryEntry]) -> None:
+    def __init__(self, entries: list[DictionaryEntry]) -> None:
         options = [
             miru.SelectOption(
                 label=f"{entry.word[:40]}{f' - ({entry.functional_label})' if entry.functional_label else ''}",
@@ -446,7 +445,7 @@ class DictionarySelect(nav.NavTextSelect):
 
 
 class DictionaryNavigator(AuthorOnlyNavigator):
-    def __init__(self, lctx: lightbulb.Context, *, entries: t.List[DictionaryEntry]) -> None:
+    def __init__(self, lctx: lightbulb.Context, *, entries: list[DictionaryEntry]) -> None:
         self.entries = entries
         pages = [
             hikari.Embed(
@@ -478,7 +477,7 @@ class DictionaryNavigator(AuthorOnlyNavigator):
     "calc", "A calculator! If ran without options, an interactive calculator will be sent.", pass_options=True
 )
 @lightbulb.implements(lightbulb.SlashCommand)
-async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str = "decimal") -> None:
+async def calc(ctx: SnedSlashContext, expr: str | None = None, display: str = "decimal") -> None:
     if not expr:
         view = CalculatorView(ctx, True if display == "fractional" else False)
         resp = await ctx.respond("```-```", components=view)
@@ -514,7 +513,7 @@ async def calc(ctx: SnedSlashContext, expr: t.Optional[str] = None, display: str
 @lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
 @lightbulb.command("tictactoe", "Play tic tac toe with someone!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional[str] = None) -> None:
+async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: str | None = None) -> None:
     size_int = int(size or 3)
     helpers.is_member(user)
     assert ctx.member is not None
@@ -564,7 +563,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: t.Optional
 )
 @lightbulb.command("typeracer", "Start a typerace to see who can type the fastest!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def typeracer(ctx: SnedSlashContext, difficulty: t.Optional[str] = None, length: t.Optional[int] = None) -> None:
+async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length: int | None = None) -> None:
     length = length or 5
     difficulty = difficulty or "medium"
 
@@ -739,9 +738,7 @@ async def urban_lookup(ctx: SnedSlashContext, word: str) -> None:
 @lightbulb.option("user", "The user to show the avatar for.", hikari.Member, required=False)
 @lightbulb.command("avatar", "Displays a user's avatar for your viewing pleasure.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def avatar(
-    ctx: SnedSlashContext, user: t.Optional[hikari.Member] = None, show_global: t.Optional[bool] = None
-) -> None:
+async def avatar(ctx: SnedSlashContext, user: hikari.Member | None = None, show_global: bool | None = None) -> None:
     if user:
         helpers.is_member(user)
     member = user or ctx.member
@@ -758,7 +755,7 @@ async def avatar(
 @lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.command("Show Avatar", "Displays the target's avatar for your viewing pleasure.", pass_options=True)
 @lightbulb.implements(lightbulb.UserCommand)
-async def avatar_context(ctx: SnedUserContext, target: t.Union[hikari.User, hikari.Member]) -> None:
+async def avatar_context(ctx: SnedUserContext, target: hikari.User | hikari.Member) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title=f"{target.display_name if isinstance(target, hikari.Member) else target.username}'s avatar:",
@@ -853,9 +850,9 @@ def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def dice(
     ctx: SnedSlashContext,
-    sides: t.Optional[int] = None,
-    amount: t.Optional[int] = None,
-    show_sum: t.Optional[bool] = None,
+    sides: int | None = None,
+    amount: int | None = None,
+    show_sum: bool | None = None,
 ) -> None:
     sides = sides or 6
     amount = amount or 1

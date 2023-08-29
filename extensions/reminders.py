@@ -80,7 +80,7 @@ class SnoozeSelect(miru.TextSelect):
 
 class SnoozeView(miru.View):
     def __init__(
-        self, reminder_message: hikari.Message, *, timeout: t.Optional[float] = 600, autodefer: bool = True
+        self, reminder_message: hikari.Message, *, timeout: float | None = 600, autodefer: bool = True
     ) -> None:
         super().__init__(timeout=timeout, autodefer=autodefer)
         self.reminder_message = reminder_message
@@ -166,7 +166,7 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
             return
 
         assert timer.notes is not None
-        notes: t.Dict[str, t.Any] = json.loads(timer.notes)
+        notes: dict[str, t.Any] = json.loads(timer.notes)
 
         if event.context.user.id not in notes["additional_recipients"]:
             if len(notes["additional_recipients"]) > 50:
@@ -221,7 +221,7 @@ async def reminder(ctx: SnedSlashContext) -> None:
 )
 @lightbulb.command("create", "Create a new reminder.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_create(ctx: SnedSlashContext, when: str, message: t.Optional[str] = None) -> None:
+async def reminder_create(ctx: SnedSlashContext, when: str, message: str | None = None) -> None:
     assert ctx.guild_id is not None
 
     if message and len(message) >= 1000:

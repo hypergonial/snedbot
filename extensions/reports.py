@@ -1,5 +1,4 @@
 import logging
-import typing as t
 
 import hikari
 import lightbulb
@@ -37,8 +36,8 @@ class ReportModal(miru.Modal):
                 max_length=1000,
             )
         )
-        self.reason: t.Optional[str] = None
-        self.info: t.Optional[str] = None
+        self.reason: str | None = None
+        self.info: str | None = None
 
     async def callback(self, ctx: miru.ModalContext) -> None:
         if not ctx.values:
@@ -80,9 +79,7 @@ async def report_perms_error(ctx: SnedApplicationContext) -> None:
     )
 
 
-async def report(
-    ctx: SnedApplicationContext, member: hikari.Member, message: t.Optional[hikari.Message] = None
-) -> None:
+async def report(ctx: SnedApplicationContext, member: hikari.Member, message: hikari.Message | None = None) -> None:
     assert ctx.member is not None and ctx.guild_id is not None
 
     if member.id == ctx.member.id or member.is_bot:

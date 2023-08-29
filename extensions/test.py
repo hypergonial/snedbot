@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 test = SnedPlugin("Test")
 
 
-@test.listener(hikari.StartedEvent)
+@teslistener(hikari.StartedEvent)
 async def start_views(event: hikari.StartedEvent) -> None:
     await PersistentThing().start()
 
@@ -81,7 +81,7 @@ async def miru_persistent(ctx: SnedSlashContext) -> None:
     await ctx.respond("Beep Boop!", components=PersistentThing())
 
 
-@test.listener(hikari.GuildMessageCreateEvent)
+@teslistener(hikari.GuildMessageCreateEvent)
 async def nonce_printer(event: hikari.GuildMessageCreateEvent) -> None:
     print(f"Nonce is: {event.message.nonce}")
 

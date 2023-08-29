@@ -70,7 +70,7 @@ class UrbanEntry:
         )
 
     @classmethod
-    def from_dict(cls, data: t.Dict[str, t.Any]) -> UrbanEntry:
+    def from_dict(cls, data: dict[str, t.Any]) -> UrbanEntry:
         return cls(
             word=data["word"],
             definition=cls.parse_urban_string(data["definition"]),
@@ -93,23 +93,23 @@ class DictionaryEntry:
     word: str
     """The word in the dictionary entry."""
 
-    definitions: t.List[str]
+    definitions: list[str]
     """A list of definitions for the word."""
 
     offensive: bool
     """Whether the word is offensive."""
 
-    functional_label: t.Optional[str] = None
+    functional_label: str | None = None
     """The functional label of the word (e.g. noun)"""
 
-    etymology: t.Optional[str] = None
+    etymology: str | None = None
     """The etymology of the word."""
 
-    date: t.Optional[str] = None
+    date: str | None = None
     """An estimated date when the word was first used."""
 
     @classmethod
-    def from_dict(cls, data: t.Dict[str, t.Any]) -> DictionaryEntry:
+    def from_dict(cls, data: dict[str, t.Any]) -> DictionaryEntry:
         et = data.get("et", None)
         try:
             if et and et[0][0] == "text":
@@ -131,10 +131,10 @@ class DictionaryEntry:
 class DictionaryClient:
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
-        self._session: t.Optional[aiohttp.ClientSession] = None
-        self._autocomplete_cache: t.Dict[str, t.List[str]] = {}
-        self._mw_entry_cache: t.Dict[str, t.List[DictionaryEntry]] = {}
-        self._urban_entry_cache: t.Dict[str, t.List[UrbanEntry]] = {}
+        self._session: aiohttp.ClientSession | None = None
+        self._autocomplete_cache: dict[str, list[str]] = {}
+        self._mw_entry_cache: dict[str, list[DictionaryEntry]] = {}
+        self._urban_entry_cache: dict[str, list[UrbanEntry]] = {}
 
     @property
     def session(self) -> aiohttp.ClientSession:
@@ -142,7 +142,7 @@ class DictionaryClient:
             self._session = aiohttp.ClientSession()
         return self._session
 
-    async def get_urban_entries(self, word: str) -> t.List[UrbanEntry]:
+    async def get_urban_entries(self, word: str) -> list[UrbanEntry]:
         """Get entries for a word from the Urban dictionary.
 
         Parameters
@@ -174,7 +174,7 @@ class DictionaryClient:
 
             return []
 
-    async def get_mw_autocomplete(self, word: t.Optional[str] = None) -> t.List[str]:
+    async def get_mw_autocomplete(self, word: str | None = None) -> list[str]:
         """Get autocomplete results for a word from the Merriam-Webster dictionary.
 
         Parameters
@@ -205,14 +205,14 @@ class DictionaryClient:
                     f"Failed to communicate with the dictionary API: {resp.status}: {resp.reason}"
                 )
 
-            results: t.List[str] = [
+            results: list[str] = [
                 doc.get("word") for doc in (await resp.json())["docs"] if doc.get("ref") == "owl-combined"
             ][:25]
             self._autocomplete_cache[word] = results
 
         return results
 
-    async def get_mw_entries(self, word: str) -> t.List[DictionaryEntry]:
+    async def get_mw_entries(self, word: str) -> list[DictionaryEntry]:
         """Get entries for a word from the Merriam-Webster dictionary.
 
         Parameters
@@ -242,7 +242,7 @@ class DictionaryClient:
             payload = await resp.json()
 
             if payload and isinstance(payload[0], dict):
-                results: t.List[DictionaryEntry] = [DictionaryEntry.from_dict(data) for data in (payload)][:25]
+                results: list[DictionaryEntry] = [DictionaryEntry.from_dict(data) for data in (payload)][:25]
                 self._mw_entry_cache[word] = results
                 return results
 

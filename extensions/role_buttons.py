@@ -1,6 +1,5 @@
 import enum
 import logging
-import typing as t
 
 import hikari
 import lightbulb
@@ -442,9 +441,9 @@ async def rolebutton_add(
     message_link: str,
     role: hikari.Role,
     emoji: str,
-    style: t.Optional[str] = None,
-    label: t.Optional[str] = None,
-    mode: t.Optional[str] = None,
+    style: str | None = None,
+    label: str | None = None,
+    mode: str | None = None,
 ) -> None:
     assert ctx.guild_id is not None and ctx.member is not None
 

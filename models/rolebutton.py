@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import enum
-import typing as t
 
 import hikari
 import miru
@@ -32,12 +31,12 @@ class RoleButton(DatabaseModel):
         role_id: hikari.Snowflake,
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
-        label: t.Optional[str] = None,
+        label: str | None = None,
         mode: RoleButtonMode = RoleButtonMode.TOGGLE,
-        add_title: t.Optional[str] = None,
-        add_description: t.Optional[str] = None,
-        remove_title: t.Optional[str] = None,
-        remove_description: t.Optional[str] = None,
+        add_title: str | None = None,
+        add_description: str | None = None,
+        remove_title: str | None = None,
+        remove_description: str | None = None,
     ) -> None:
         # Static
         self._id = id
@@ -77,7 +76,7 @@ class RoleButton(DatabaseModel):
         return self._custom_id
 
     @classmethod
-    async def fetch(cls, id: int) -> t.Optional[RoleButton]:
+    async def fetch(cls, id: int) -> RoleButton | None:
         """Fetch a rolebutton stored in the database by ID.
 
         Parameters
@@ -112,7 +111,7 @@ class RoleButton(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.List[RoleButton]:
+    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[RoleButton]:
         """Fetch all rolebuttons that belong to a given guild.
 
         Parameters
@@ -158,8 +157,8 @@ class RoleButton(DatabaseModel):
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
         mode: RoleButtonMode,
-        label: t.Optional[str] = None,
-        moderator: t.Optional[hikari.PartialUser] = None,
+        label: str | None = None,
+        moderator: hikari.PartialUser | None = None,
     ) -> RoleButton:
         """Create a new rolebutton with the provided parameters.
 
@@ -239,7 +238,7 @@ class RoleButton(DatabaseModel):
         cls._app.dispatch(RoleButtonCreateEvent(cls._app, rolebutton.guild_id, rolebutton, moderator))
         return rolebutton
 
-    async def update(self, moderator: t.Optional[hikari.PartialUser] = None) -> None:
+    async def update(self, moderator: hikari.PartialUser | None = None) -> None:
         """Update the rolebutton with the current state of this object.
 
         Parameters
@@ -289,7 +288,7 @@ class RoleButton(DatabaseModel):
         )
         self._app.dispatch(RoleButtonUpdateEvent(self._app, self.guild_id, self, moderator))
 
-    async def delete(self, moderator: t.Optional[hikari.PartialUser] = None) -> None:
+    async def delete(self, moderator: hikari.PartialUser | None = None) -> None:
         """Delete this rolebutton, removing it from the message and the database.
 
         Parameters

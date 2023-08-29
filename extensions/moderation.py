@@ -1,7 +1,6 @@
 import datetime
 import logging
 import re
-import typing as t
 
 import hikari
 import lightbulb
@@ -385,7 +384,7 @@ async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> No
     "warn", "Warn a user. This gets added to their journal and their warn counter is incremented.", pass_options=True
 )
 @lightbulb.implements(lightbulb.SlashCommand)
-async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: str | None = None) -> None:
     helpers.is_member(user)
     assert ctx.member is not None
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
@@ -433,7 +432,7 @@ async def warns_list(ctx: SnedSlashContext, user: hikari.Member) -> None:
 @lightbulb.option("user", "The user to clear warnings for.", type=hikari.Member)
 @lightbulb.command("clear", "Clear warnings for the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: str | None = None) -> None:
     helpers.is_member(user)
 
     assert ctx.guild_id is not None and ctx.member is not None
@@ -454,7 +453,7 @@ async def warns_clear(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opti
 @lightbulb.option("user", "The user to show the warning count for.", type=hikari.Member)
 @lightbulb.command("remove", "Remove a single warning from the specified user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: str | None = None) -> None:
     helpers.is_member(user)
 
     assert ctx.guild_id is not None and ctx.member is not None
@@ -484,9 +483,7 @@ async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: t.Opt
 @lightbulb.option("user", "The user to time out.", type=hikari.Member)
 @lightbulb.command("timeout", "Timeout a user, supports durations longer than 28 days.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def timeout_cmd(
-    ctx: SnedSlashContext, user: hikari.Member, duration: str, reason: t.Optional[str] = None
-) -> None:
+async def timeout_cmd(ctx: SnedSlashContext, user: hikari.Member, duration: str, reason: str | None = None) -> None:
     helpers.is_member(user)
     reason = helpers.format_reason(reason, max_length=1024)
     assert ctx.member is not None
@@ -548,7 +545,7 @@ async def timeouts(_: SnedSlashContext) -> None:
 @lightbulb.option("user", "The user to time out.", type=hikari.Member)
 @lightbulb.command("remove", "Remove timeout from a user.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: str | None = None) -> None:
     helpers.is_member(user)
     reason = helpers.format_reason(reason, max_length=1024)
 
@@ -610,9 +607,9 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason
 async def ban_cmd(
     ctx: SnedSlashContext,
     user: hikari.User,
-    reason: t.Optional[str] = None,
-    duration: t.Optional[str] = None,
-    days_to_delete: t.Optional[str] = None,
+    reason: str | None = None,
+    duration: str | None = None,
+    days_to_delete: str | None = None,
 ) -> None:
     assert ctx.member is not None
 
@@ -684,7 +681,7 @@ async def ban_cmd(
 )
 @lightbulb.implements(lightbulb.SlashCommand)
 async def softban_cmd(
-    ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None, days_to_delete: t.Optional[str] = None
+    ctx: SnedSlashContext, user: hikari.Member, reason: str | None = None, days_to_delete: str | None = None
 ) -> None:
     helpers.is_member(user)
     assert ctx.member is not None
@@ -722,7 +719,7 @@ async def softban_cmd(
 @lightbulb.option("user", "The user to be banned", type=hikari.User)
 @lightbulb.command("unban", "Unban a user who was previously banned.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional[str] = None) -> None:
+async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: str | None = None) -> None:
     assert ctx.member is not None
 
     await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
@@ -748,7 +745,7 @@ async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: t.Optional
 @lightbulb.option("user", "The user to be banned", type=hikari.Member)
 @lightbulb.command("kick", "Kick a user from this server.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: t.Optional[str] = None) -> None:
+async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: str | None = None) -> None:
     helpers.is_member(user)
     assert ctx.member is not None
 

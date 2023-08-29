@@ -57,7 +57,7 @@ escalate_prewarn_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER
 escalate_ratelimiter = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
 
 
-async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> t.Dict[str, t.Any]:
+async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> dict[str, t.Any]:
     """Return auto-moderation policies for the specified guild."""
 
     guild_id = hikari.Snowflake(guild)
@@ -90,11 +90,11 @@ automod.d.actions.get_policies = get_policies
 
 async def punish(
     message: hikari.PartialMessage,
-    policies: t.Dict[str, t.Any],
+    policies: dict[str, t.Any],
     action: AutomodActionType,
     reason: str,
-    offender: t.Optional[hikari.Member] = None,
-    original_action: t.Optional[AutomodActionType] = None,
+    offender: hikari.Member | None = None,
+    original_action: AutomodActionType | None = None,
 ) -> None:
     required_perms = (
         hikari.Permissions.BAN_MEMBERS
@@ -274,7 +274,7 @@ async def punish(
 @automod.listener(hikari.GuildMessageCreateEvent, bind=True)
 @automod.listener(hikari.GuildMessageUpdateEvent, bind=True)
 async def scan_messages(
-    plugin: SnedPlugin, event: t.Union[hikari.GuildMessageCreateEvent, hikari.GuildMessageUpdateEvent]
+    plugin: SnedPlugin, event: hikari.GuildMessageCreateEvent | hikari.GuildMessageUpdateEvent
 ) -> None:
     """Scan messages for all possible offences."""
 

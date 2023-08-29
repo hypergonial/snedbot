@@ -53,8 +53,8 @@ class BooleanButton(miru.Button, SettingsItem):
         state: bool,
         label: str,
         disabled: bool = False,
-        row: t.Optional[int] = None,
-        custom_id: t.Optional[str] = None,
+        row: int | None = None,
+        custom_id: str | None = None,
     ) -> None:
         style = hikari.ButtonStyle.SUCCESS if state else hikari.ButtonStyle.DANGER
         emoji = "✔️" if state else "✖️"
@@ -88,8 +88,8 @@ class OptionsModal(miru.Modal):
         view: SettingsView,
         title: str,
         *,
-        custom_id: t.Optional[str] = None,
-        timeout: t.Optional[float] = 300,
+        custom_id: str | None = None,
+        timeout: float | None = 300,
     ) -> None:
         super().__init__(title, custom_id=custom_id, timeout=timeout)
         self.view = view
@@ -114,11 +114,11 @@ class PerspectiveBoundsModal(miru.Modal):
     def __init__(
         self,
         view: miru.View,
-        values: t.Dict[str, float],
+        values: dict[str, float],
         title: str,
         *,
-        custom_id: t.Optional[str] = None,
-        timeout: t.Optional[float] = 300,
+        custom_id: str | None = None,
+        timeout: float | None = 300,
     ) -> None:
         super().__init__(title, custom_id=custom_id, timeout=timeout)
         self.add_item(

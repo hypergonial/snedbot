@@ -1,6 +1,5 @@
 import logging
 import re
-import typing as t
 from difflib import get_close_matches
 
 import hikari
@@ -246,7 +245,7 @@ async def invite(ctx: SnedSlashContext) -> None:
 @lightbulb.option("nickname", "The nickname to set the bot's nickname to. Type 'None' to reset it!")
 @lightbulb.command("setnick", "Set the bot's nickname!", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def setnick(ctx: SnedSlashContext, nickname: t.Optional[str] = None) -> None:
+async def setnick(ctx: SnedSlashContext, nickname: str | None = None) -> None:
     assert ctx.guild_id is not None
 
     nickname = nickname[:32] if nickname and not nickname.casefold() == "none" else None
@@ -467,7 +466,7 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
 @set_timezone.autocomplete("timezone")
 async def tz_opts(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value:
         assert isinstance(option.value, str)
         return get_close_matches(option.value.title(), pytz.common_timezones, 25)
@@ -495,7 +494,7 @@ async def tz_opts(
     "timestamp", "Create a Discord timestamp from human-readable time formats and dates.", pass_options=True
 )
 @lightbulb.implements(lightbulb.SlashCommand)
-async def timestamp_gen(ctx: SnedSlashContext, time: str, style: t.Optional[str] = None) -> None:
+async def timestamp_gen(ctx: SnedSlashContext, time: str, style: str | None = None) -> None:
     try:
         converted_time = await ctx.app.scheduler.convert_time(
             time, conversion_mode=ConversionMode.ABSOLUTE, user=ctx.user

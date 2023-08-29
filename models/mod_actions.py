@@ -83,7 +83,7 @@ class ModActions:
 
         Returns
         -------
-        t.Dict[str, bool]
+        dict[str, bool]
             The guild's moderation settings.
         """
         records = await self.app.db_cache.get(table="mod_config", guild_id=hikari.Snowflake(guild))
@@ -95,9 +95,9 @@ class ModActions:
     async def pre_mod_actions(
         self,
         guild: hikari.SnowflakeishOr[hikari.Guild],
-        target: t.Union[hikari.Member, hikari.User],
+        target: hikari.Member | hikari.User,
         action_type: ActionType,
-        reason: t.Optional[str] = None,
+        reason: str | None = None,
     ) -> None:
         """
         Actions that need to be executed before a moderation action takes place.
@@ -132,9 +132,9 @@ class ModActions:
     async def post_mod_actions(
         self,
         guild: hikari.SnowflakeishOr[hikari.Guild],
-        target: t.Union[hikari.Member, hikari.User],
+        target: hikari.Member | hikari.User,
         action_type: ActionType,
-        reason: t.Optional[str] = None,
+        reason: str | None = None,
     ) -> None:
         """
         Actions that need to be executed after a moderation action took place.
@@ -354,9 +354,7 @@ class ModActions:
         except Exception as e:
             logger.info(f"Failed unbanning {event.timer.user_id} from {event.timer.guild_id}: {e.__class__}: {e}")
 
-    async def warn(
-        self, member: hikari.Member, moderator: hikari.Member, reason: t.Optional[str] = None
-    ) -> hikari.Embed:
+    async def warn(self, member: hikari.Member, moderator: hikari.Member, reason: str | None = None) -> hikari.Embed:
         """Warn a user, incrementing their warn counter, and logging the event if it is set up.
 
         Parameters
@@ -365,7 +363,7 @@ class ModActions:
             The member to be warned.
         moderator : hikari.Member
             The moderator who warned the member.
-        reason : t.Optional[str], optional
+        reason : str | None, optional
             The reason for this action, by default None
 
         Returns
@@ -397,7 +395,7 @@ class ModActions:
         return embed
 
     async def clear_warns(
-        self, member: hikari.Member, moderator: hikari.Member, reason: t.Optional[str] = None
+        self, member: hikari.Member, moderator: hikari.Member, reason: str | None = None
     ) -> hikari.Embed:
         """Clear a user's warns, dispatches a WarnsClearEvent.
 
@@ -407,7 +405,7 @@ class ModActions:
             The member to clear warnings for.
         moderator : hikari.Member
             The moderator responsible for clearing the warnings.
-        reason : t.Optional[str], optional
+        reason : str | None, optional
             The reason for clearing the warnings, by default None
 
         Returns
@@ -430,7 +428,7 @@ class ModActions:
         )
 
     async def remove_warn(
-        self, member: hikari.Member, moderator: hikari.Member, reason: t.Optional[str] = None
+        self, member: hikari.Member, moderator: hikari.Member, reason: str | None = None
     ) -> hikari.Embed:
         """Removes a warning from the user, dispatches a WarnRemoveEvent.
 
@@ -440,7 +438,7 @@ class ModActions:
             The member to remove a warning from.
         moderator : hikari.Member
             The moderator responsible for removing the warning.
-        reason : t.Optional[str], optional
+        reason : str | None, optional
             The reason for removing the warning, by default None
 
         Returns
@@ -475,7 +473,7 @@ class ModActions:
         member: hikari.Member,
         moderator: hikari.Member,
         duration: datetime.datetime,
-        reason: t.Optional[str] = None,
+        reason: str | None = None,
     ) -> hikari.Embed:
         """Time out the member for the specified duration.
 
@@ -487,7 +485,7 @@ class ModActions:
             The moderator to log the timeout under.
         duration : datetime.datetime
             The duration of the timeout.
-        reason : t.Optional[str], optional
+        reason : str | None, optional
             The reason for the timeout, by default None
 
         Returns
@@ -537,9 +535,7 @@ class ModActions:
         )
         return embed
 
-    async def remove_timeout(
-        self, member: hikari.Member, moderator: hikari.Member, reason: t.Optional[str] = None
-    ) -> None:
+    async def remove_timeout(self, member: hikari.Member, moderator: hikari.Member, reason: str | None = None) -> None:
         """Removes a timeout from a user with the specified reason.
 
         Parameters
@@ -548,7 +544,7 @@ class ModActions:
             The member to remove timeout from.
         moderator : hikari.Member
             The moderator to log the timeout removal under.
-        reason : t.Optional[str], optional
+        reason : str | None, optional
             The reason for the timeout removal, by default None
         """
 
@@ -558,13 +554,13 @@ class ModActions:
 
     async def ban(
         self,
-        user: t.Union[hikari.User, hikari.Member],
+        user: hikari.User | hikari.Member,
         moderator: hikari.Member,
-        duration: t.Optional[datetime.datetime] = None,
+        duration: datetime.datetime | None = None,
         *,
         soft: bool = False,
         days_to_delete: int = 0,
-        reason: t.Optional[str] = None,
+        reason: str | None = None,
     ) -> hikari.Embed:
         """Ban a user from a guild.
 
@@ -663,7 +659,7 @@ class ModActions:
                 color=const.ERROR_COLOR,
             )
 
-    async def unban(self, user: hikari.User, moderator: hikari.Member, reason: t.Optional[str] = None) -> hikari.Embed:
+    async def unban(self, user: hikari.User, moderator: hikari.Member, reason: str | None = None) -> hikari.Embed:
         """Unban a user from a guild.
 
         Parameters
@@ -672,7 +668,7 @@ class ModActions:
             The user to be unbanned.
         moderator : hikari.Member
             The moderator who is unbanning this user.
-        reason : t.Optional[str], optional
+        reason : str | None, optional
             The reason for the unban, by default None
 
         Returns
@@ -722,7 +718,7 @@ class ModActions:
         member: hikari.Member,
         moderator: hikari.Member,
         *,
-        reason: t.Optional[str] = None,
+        reason: str | None = None,
     ) -> hikari.Embed:
         """Kick a member from the specified guild.
 

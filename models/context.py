@@ -23,13 +23,13 @@ class ConfirmView(AuthorOnlyView):
         self,
         lctx: lightbulb.Context,
         timeout: int,
-        confirm_resp: t.Optional[t.Dict[str, t.Any]] = None,
-        cancel_resp: t.Optional[t.Dict[str, t.Any]] = None,
+        confirm_resp: dict[str, t.Any] | None = None,
+        cancel_resp: dict[str, t.Any] | None = None,
     ) -> None:
         super().__init__(lctx, timeout=timeout)
         self.confirm_resp = confirm_resp
         self.cancel_resp = cancel_resp
-        self.value: t.Optional[bool] = None
+        self.value: bool | None = None
 
     @miru.button(emoji="✖️", style=hikari.ButtonStyle.DANGER)
     async def cancel_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
@@ -52,13 +52,13 @@ class SnedContext(lightbulb.Context):
     async def confirm(
         self,
         *args,
-        confirm_payload: t.Optional[t.Dict[str, t.Any]] = None,
-        cancel_payload: t.Optional[t.Dict[str, t.Any]] = None,
+        confirm_payload: dict[str, t.Any] | None = None,
+        cancel_payload: dict[str, t.Any] | None = None,
         timeout: int = 120,
         edit: bool = False,
-        message: t.Optional[hikari.Message] = None,
+        message: hikari.Message | None = None,
         **kwargs,
-    ) -> t.Optional[bool]:
+    ) -> bool | None:
         """Confirm a given action.
 
         Parameters

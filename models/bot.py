@@ -100,7 +100,7 @@ class SnedBot(lightbulb.BotApp):
         # Initizaling configuration and database
         self._config = config
         self._db = Database(self)
-        self._session: t.Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
         self._db_cache = cache.DatabaseCache(self)
         self._mod = ModActions(self)
         miru.install(self)
@@ -109,12 +109,12 @@ class SnedBot(lightbulb.BotApp):
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
         self._db_backup_loop = IntervalLoop(self.backup_db, seconds=3600 * 24)
         self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
-        self._user_id: t.Optional[hikari.Snowflake] = None
-        self._perspective: t.Optional[kosu.Client] = None
+        self._user_id: hikari.Snowflake | None = None
+        self._perspective: kosu.Client | None = None
         self._scheduler = scheduler.Scheduler(self)
         self._audit_log_cache: AuditLogCache = AuditLogCache(self)
-        self._initial_guilds: t.List[hikari.Snowflake] = []
-        self._start_time: t.Optional[datetime.datetime] = None
+        self._initial_guilds: list[hikari.Snowflake] = []
+        self._start_time: datetime.datetime | None = None
 
         self.check(is_not_blacklisted)
 
@@ -243,7 +243,7 @@ class SnedBot(lightbulb.BotApp):
 
     async def get_prefix_context(
         self, event: hikari.MessageCreateEvent, cls: t.Type[lightbulb.PrefixContext] = SnedPrefixContext
-    ) -> t.Optional[SnedPrefixContext]:
+    ) -> SnedPrefixContext | None:
         return await super().get_prefix_context(event, cls)  # type: ignore
 
     async def on_guild_available(self, event: hikari.GuildAvailableEvent) -> None:

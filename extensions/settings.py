@@ -33,13 +33,13 @@ class SettingsView(models.AuthorOnlyView):
         self,
         lctx: lightbulb.Context,
         *,
-        timeout: t.Optional[float] = 300,
+        timeout: float | None = 300,
         ephemeral: bool = False,
         autodefer: bool = False,
     ) -> None:
         super().__init__(lctx, timeout=timeout, autodefer=autodefer)
 
-        self.last_item: t.Optional[ViewItem] = None
+        self.last_item: ViewItem | None = None
         """Last component that was interacted with."""
 
         self.value: SettingValue = SettingValue()
@@ -54,7 +54,7 @@ class SettingsView(models.AuthorOnlyView):
         self._done_event: asyncio.Event = asyncio.Event()
         """Event that is set and cleared when a DoneButton or BackButton is pressed, or the view stops."""
 
-        self.menu_actions: t.Dict[str, t.Callable[..., t.Awaitable[None]]] = {
+        self.menu_actions: dict[str, t.Callable[..., t.Awaitable[None]]] = {
             "Main": self.settings_main,
             "Reports": self.settings_report,
             "Moderation": self.settings_mod,
@@ -72,7 +72,7 @@ class SettingsView(models.AuthorOnlyView):
         await self._done_event.wait()
 
     # Transitions
-    def add_buttons(self, buttons: t.Sequence[miru.Button], parent: t.Optional[str] = None, **kwargs) -> None:
+    def add_buttons(self, buttons: t.Sequence[miru.Button], parent: str | None = None, **kwargs) -> None:
         """Add a new set of buttons, clearing previous components."""
         self.clear_items()
 
@@ -85,7 +85,7 @@ class SettingsView(models.AuthorOnlyView):
             self.add_item(button)
 
     def select_screen(
-        self, select: miru.SelectBase, parent: t.Optional[str] = None, with_done: bool = False, **kwargs
+        self, select: miru.SelectBase, parent: str | None = None, with_done: bool = False, **kwargs
     ) -> None:
         """Set view to a new select screen, clearing previous components."""
         self.clear_items()
@@ -618,7 +618,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             return
         await self.settings_automod_policy(self.value.text)
 
-    async def settings_automod_policy(self, policy: t.Optional[str] = None) -> None:
+    async def settings_automod_policy(self, policy: str | None = None) -> None:
         """Settings for an automoderation policy"""
 
         assert (
@@ -632,7 +632,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         assert automod is not None
 
-        policies: t.Dict[str, t.Any] = await automod.d.actions.get_policies(self.last_context.guild_id)
+        policies: dict[str, t.Any] = await automod.d.actions.get_policies(self.last_context.guild_id)
         policy_data = policies[policy]
         embed = hikari.Embed(
             title=f"Options for: {policy_strings[policy]['name']}",

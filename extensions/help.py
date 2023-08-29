@@ -91,7 +91,7 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
 )
 @lightbulb.command("help", "Get help regarding various subjects of the bot's functionality.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
-async def help_cmd(ctx: SnedSlashContext, topic: t.Optional[str] = None) -> None:
+async def help_cmd(ctx: SnedSlashContext, topic: str | None = None) -> None:
     if ctx.member:
         topic = (
             topic or "admin_home"

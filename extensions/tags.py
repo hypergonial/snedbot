@@ -1,5 +1,4 @@
 import logging
-import typing as t
 from difflib import get_close_matches
 from itertools import chain
 
@@ -21,7 +20,7 @@ tags = SnedPlugin("Tag", include_datastore=True)
 class TagEditorModal(miru.Modal):
     """Modal for creation and editing of tags."""
 
-    def __init__(self, name: t.Optional[str] = None, content: t.Optional[str] = None) -> None:
+    def __init__(self, name: str | None = None, content: str | None = None) -> None:
         title = "Create a tag"
         if content:
             title = f"Editing tag {name}"
@@ -93,7 +92,7 @@ async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> 
 @tag_cmd.autocomplete("name")
 async def tag_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_names(str(option.value), interaction.guild_id)) or []
     return []
@@ -190,7 +189,7 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
 @tag_info.autocomplete("name")
 async def tag_info_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_names(str(option.value), interaction.guild_id)) or []
     return []
@@ -260,7 +259,7 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
 @tag_alias.autocomplete("name")
 async def tag_alias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
@@ -315,7 +314,7 @@ async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
 @tag_delalias.autocomplete("name")
 async def tag_delalias_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
@@ -363,7 +362,7 @@ async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member
 @tag_transfer.autocomplete("name")
 async def tag_transfer_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
@@ -427,7 +426,7 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
 @tag_claim.autocomplete("name")
 async def tag_claim_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
@@ -477,7 +476,7 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
 @tag_edit.autocomplete("name")
 async def tag_edit_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
@@ -521,7 +520,7 @@ async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
 @tag_delete.autocomplete("name")
 async def tag_delete_name_ac(
     option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> t.List[str]:
+) -> list[str]:
     if option.value and interaction.guild_id:
         return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
     return []
@@ -531,7 +530,7 @@ async def tag_delete_name_ac(
 @lightbulb.option("owner", "Only show tags that are owned by this user.", type=hikari.User, required=False)
 @lightbulb.command("list", "List all tags this server has.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_list(ctx: SnedSlashContext, owner: t.Optional[hikari.User] = None) -> None:
+async def tag_list(ctx: SnedSlashContext, owner: hikari.User | None = None) -> None:
     assert ctx.member is not None and ctx.guild_id is not None
 
     tags = await Tag.fetch_all(ctx.guild_id, owner)

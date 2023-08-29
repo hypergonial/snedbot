@@ -85,10 +85,11 @@ async def handle_test_invite(event: miru.ComponentInteractionCreateEvent) -> Non
 
 
 @ff.command
+@lightbulb.add_cooldown(1800, 1, lightbulb.GuildBucket)
 @lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
 @lightbulb.option(
     "recipients",
-    "A list of all users to send the notice to, one user per line. Format: User#1234",
+    "A list of all users to send the notice to, one username per line, max 25 users.",
     type=hikari.Attachment,
 )
 @lightbulb.command(
@@ -110,7 +111,7 @@ async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment)
     failed = []
     user_str_list = (await recipients.read()).decode("utf-8").splitlines()
 
-    for user_str in user_str_list:
+    for user_str in user_str_list[:25]:
         try:
             user = await converter.convert(user_str)
             await user.send(TEST_NOTICE, components=view)
@@ -123,10 +124,11 @@ async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment)
 
 
 @ff.command
+@lightbulb.add_cooldown(1800, 1, lightbulb.GuildBucket)
 @lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
 @lightbulb.option(
     "recipients",
-    "A list of users and keys to send the notice to, one user per line. Format: User#1234:KEY",
+    "A list of users and keys to send the notice to, one user per line. Format: username:KEY, max 25 users.",
     type=hikari.Attachment,
 )
 @lightbulb.command(
@@ -143,7 +145,7 @@ async def send_test_key(ctx: SnedSlashContext, recipients: hikari.Attachment) ->
     failed = []
     recipients_list = (await recipients.read()).decode("utf-8").splitlines()
 
-    for line in recipients_list:
+    for line in recipients_list[:25]:
         try:
             user, key = line.split(":", maxsplit=1)
             user = await converter.convert(user.strip())

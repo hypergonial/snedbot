@@ -1,4 +1,3 @@
-import typing as t
 
 import hikari
 import lightbulb
@@ -16,7 +15,7 @@ annoverse.default_enabled_guilds = Config().DEBUG_GUILDS or (372128553031958529,
 QUESTIONS_CHANNEL_ID = 955463477760229397
 OUTPUT_CHANNEL_ID = 955463511767654450
 
-question_counters: t.Dict[hikari.Snowflake, int] = {}
+question_counters: dict[hikari.Snowflake, int] = {}
 
 
 @annoverse.command

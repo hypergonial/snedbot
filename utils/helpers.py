@@ -41,7 +41,7 @@ BADGE_EMOJI_MAPPING = {
 }
 
 
-def format_dt(time: datetime.datetime, style: t.Optional[str] = None) -> str:
+def format_dt(time: datetime.datetime, style: str | None = None) -> str:
     """
     Convert a datetime into a Discord timestamp.
     For styling see this link: https://discord.com/developers/docs/reference#message-formatting-timestamp-styles
@@ -98,7 +98,7 @@ def add_embed_footer(embed: hikari.Embed, invoker: hikari.Member) -> hikari.Embe
     return embed
 
 
-def get_color(member: hikari.Member) -> t.Optional[hikari.Color]:
+def get_color(member: hikari.Member) -> hikari.Color | None:
     roles = sort_roles(member.get_roles())
     if roles:
         for role in roles:
@@ -296,7 +296,7 @@ def is_member(user: hikari.PartialUser) -> bool:  # Such useful
     raise errors.MemberExpectedError(f"Expected an instance of hikari.Member, not {user.__class__.__name__}!")
 
 
-async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> t.Optional[hikari.Message]:
+async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> hikari.Message | None:
     """Parse a message_link string into a message object.
 
     Parameters
@@ -386,13 +386,13 @@ async def maybe_edit(message: hikari.PartialMessage, *args, **kwargs) -> None:
 
 
 def format_reason(
-    reason: t.Optional[str] = None, moderator: t.Optional[hikari.Member] = None, *, max_length: t.Optional[int] = 512
+    reason: str | None = None, moderator: hikari.Member | None = None, *, max_length: int | None = 512
 ) -> str:
     """Format a reason for a moderation action.
 
     Parameters
     ----------
-    reason : t.Optional[str], optional
+    reason : str | None, optional
         The reason for the action, by default None
     moderator : Optional[hikari.Member], optional
         The moderator who executed the action, by default None
@@ -417,7 +417,7 @@ def format_reason(
     return reason
 
 
-def build_journal_pages(entries: t.List[JournalEntry]) -> t.List[hikari.Embed]:
+def build_journal_pages(entries: list[JournalEntry]) -> list[hikari.Embed]:
     """Build a list of embeds to send to a user containing journal entries, with pagination."""
 
     paginator = lightbulb.utils.StringPaginator(max_chars=1500)

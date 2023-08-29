@@ -47,9 +47,9 @@ class RateLimiter:
         self._bucket_data = {}
 
         self._queue: t.Deque[asyncio.Event] = deque()
-        self._task: t.Optional[asyncio.Task[t.Any]] = None
+        self._task: asyncio.Task[t.Any] | None = None
 
-    def _get_key(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> str:
+    def _get_key(self, ctx_or_message: lightbulb.Context | miru.Context | hikari.PartialMessage) -> str:
         """Get key for cooldown bucket"""
 
         assert ctx_or_message.member and ctx_or_message.author
@@ -64,7 +64,7 @@ class RateLimiter:
 
         return keys[self.bucket]
 
-    def is_rate_limited(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> bool:
+    def is_rate_limited(self, ctx_or_message: lightbulb.Context | miru.Context | hikari.PartialMessage) -> bool:
         """Returns a boolean determining if the ratelimiter is ratelimited or not."""
         now = time.monotonic()
         key = self._get_key(ctx_or_message)
@@ -79,7 +79,7 @@ class RateLimiter:
         self._bucket_data[key] = {"reset_at": now + self.period, "remaining": self.limit}
         return False
 
-    async def acquire(self, ctx_or_message: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> None:
+    async def acquire(self, ctx_or_message: lightbulb.Context | miru.Context | hikari.PartialMessage) -> None:
         """Acquire a ratelimit, block execution if ratelimited and wait is True."""
         event = asyncio.Event()
 
@@ -91,7 +91,7 @@ class RateLimiter:
         if self.wait:
             await event.wait()
 
-    async def _iter_queue(self, ctx: t.Union[lightbulb.Context, miru.Context, hikari.PartialMessage]) -> None:
+    async def _iter_queue(self, ctx: lightbulb.Context | miru.Context | hikari.PartialMessage) -> None:
         try:
             if not self._queue:
                 self._task = None

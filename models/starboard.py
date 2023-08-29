@@ -16,7 +16,7 @@ class StarboardSettings(DatabaseModel):
     guild_id: hikari.Snowflake = attr.field()
     """The guild this starboard settings belongs to."""
 
-    channel_id: t.Optional[hikari.Snowflake] = attr.field(default=None)
+    channel_id: hikari.Snowflake | None = attr.field(default=None)
     """The channel where the starboard messages will be sent."""
 
     star_limit: int = attr.field(default=5)
@@ -25,7 +25,7 @@ class StarboardSettings(DatabaseModel):
     is_enabled: bool = attr.field(default=False)
     """Whether the starboard is enabled or not."""
 
-    excluded_channels: t.Optional[t.Sequence[hikari.Snowflake]] = attr.field(default=None)
+    excluded_channels: t.Sequence[hikari.Snowflake] | None = attr.field(default=None)
     """Channels that are excluded from the starboard."""
 
     @classmethod
@@ -99,7 +99,7 @@ class StarboardEntry(DatabaseModel):
         )
 
     @classmethod
-    async def fetch(cls, original_message: hikari.SnowflakeishOr[hikari.PartialMessage]) -> t.Optional[StarboardEntry]:
+    async def fetch(cls, original_message: hikari.SnowflakeishOr[hikari.PartialMessage]) -> StarboardEntry | None:
         """Fetch the starboard entry for a message from the database, if one exists."""
 
         records = await cls._app.db_cache.get(

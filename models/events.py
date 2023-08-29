@@ -54,7 +54,7 @@ class SnedGuildEvent(SnedEvent):
         """
         return await self.app.rest.fetch_guild_preview(self.guild_id)
 
-    def get_guild(self) -> t.Optional[hikari.GatewayGuild]:
+    def get_guild(self) -> hikari.GatewayGuild | None:
         """Get the cached guild that this event relates to, if known.
 
         If not known, this will return `builtins.None` instead.
@@ -98,7 +98,7 @@ class MassBanEvent(SnedGuildEvent):
     """The actual amount of users that have been banned."""
     logfile: hikari.Resourceish
     """The massban session logfile."""
-    reason: t.Optional[str] = None
+    reason: str | None = None
     """The reason for the massban."""
 
 
@@ -116,7 +116,7 @@ class WarnEvent(SnedGuildEvent):
     """The moderator that warned the member."""
     warn_count: int
     """The amount of warnings the member has."""
-    reason: t.Optional[str] = None
+    reason: str | None = None
     """The reason for the warning."""
 
 
@@ -159,7 +159,7 @@ class AutoModMessageFlagEvent(SnedGuildEvent):
     user: hikari.PartialUser
     """The user that sent the message."""
     _guild_id: hikari.Snowflakeish
-    reason: t.Optional[str] = None
+    reason: str | None = None
     """The reason for the flag."""
 
 
@@ -173,7 +173,7 @@ class RoleButtonEvent(SnedGuildEvent):
     _guild_id: hikari.Snowflakeish
     rolebutton: RoleButton
     """The rolebutton that was altered."""
-    moderator: t.Optional[hikari.PartialUser] = None
+    moderator: hikari.PartialUser | None = None
     """The moderator that altered the rolebutton."""
 
 

@@ -2,17 +2,16 @@ import asyncio
 import inspect
 import logging
 import traceback
-import typing as t
 
 
 class IntervalLoop:
     def __init__(
         self,
         callback,
-        seconds: t.Optional[float] = None,
-        minutes: t.Optional[float] = None,
-        hours: t.Optional[float] = None,
-        days: t.Optional[float] = None,
+        seconds: float | None = None,
+        minutes: float | None = None,
+        hours: float | None = None,
+        days: float | None = None,
     ) -> None:
         if not seconds and not minutes and not hours and not days:
             raise ValueError("Expected a loop time.")
@@ -23,7 +22,7 @@ class IntervalLoop:
             days = hours or 0
 
         self._coro = callback
-        self._task: t.Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._failed: int = 0
         self._sleep: float = seconds + minutes * 60 + hours * 3600 + days * 24 * 3600
         self._stop_next: bool = False

@@ -109,13 +109,13 @@ class ParsedBotReason:
     <name> (<id>): <reason>
     """
 
-    reason: t.Optional[str]
+    reason: str | None
     """The extracted reason string"""
-    user: t.Optional[UserLike]
+    user: UserLike | None
     """The extracted UserLike object, this is the moderator who performed the action."""
 
     @classmethod
-    def from_reason(cls, reason: t.Optional[str]) -> ParsedBotReason:
+    def from_reason(cls, reason: str | None) -> ParsedBotReason:
         """
         Parse a reason string and return a StripBotReason object
         """
@@ -140,7 +140,7 @@ def display_user(user: hikari.UndefinedNoneOr[hikari.PartialUser | UserLike]) ->
     return f"{user} ({user.id})"
 
 
-async def get_log_channel_id(log_event: LogEvent, guild_id: int) -> t.Optional[int]:
+async def get_log_channel_id(log_event: LogEvent, guild_id: int) -> int | None:
     """Get the channel ID for a given log event.
 
     Parameters
@@ -152,7 +152,7 @@ async def get_log_channel_id(log_event: LogEvent, guild_id: int) -> t.Optional[i
 
     Returns
     -------
-    t.Optional[int]
+    int | None
         The channel ID, if any.
 
     Raises
@@ -170,7 +170,7 @@ async def get_log_channel_id(log_event: LogEvent, guild_id: int) -> t.Optional[i
 userlog.d.actions["get_log_channel_id"] = get_log_channel_id
 
 
-async def get_log_channel_ids_view(guild_id: int) -> t.Dict[str, t.Optional[int]]:
+async def get_log_channel_ids_view(guild_id: int) -> dict[str, int | None]:
     """
     Return a mapping of log_event:channel_id
     """
@@ -189,7 +189,7 @@ async def get_log_channel_ids_view(guild_id: int) -> t.Dict[str, t.Optional[int]
 userlog.d.actions["get_log_channel_ids_view"] = get_log_channel_ids_view
 
 
-async def set_log_channel(log_event: LogEvent, guild_id: int, channel_id: t.Optional[int] = None) -> None:
+async def set_log_channel(log_event: LogEvent, guild_id: int, channel_id: int | None = None) -> None:
     """Sets logging channel for a given logging event."""
     log_channels = await get_log_channel_ids_view(guild_id)
     log_channels[log_event.value] = channel_id
@@ -288,7 +288,7 @@ async def _iter_queue() -> None:
                 if not embeds:
                     continue
 
-                embed_chunks: t.List[t.List[hikari.Embed]] = [[]]
+                embed_chunks: list[list[hikari.Embed]] = [[]]
                 for embed in embeds:
                     # If combined length of all embeds is below 6000 and there are less than 10 embeds in chunk, add to chunk
                     if (
@@ -337,8 +337,8 @@ async def find_auditlog_data(
     guild: hikari.SnowflakeishOr[hikari.PartialGuild],
     *,
     event_type: hikari.AuditLogEventType,
-    user_id: t.Optional[int] = None,
-) -> t.Optional[hikari.AuditLogEntry]:
+    user_id: int | None = None,
+) -> hikari.AuditLogEntry | None:
     """Find a recently sent audit log entry that matches criteria.
 
     Parameters
@@ -375,7 +375,7 @@ async def find_auditlog_data(
     )
 
 
-async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> t.Optional[str]:
+async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str | None:
     """
     A helper function for displaying role updates.
     Returns a string containing the differences between two roles.
@@ -406,7 +406,7 @@ async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> t.Optional
 T = t.TypeVar("T")
 
 
-async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, str]) -> t.Optional[str]:
+async def get_diff(guild_id: int, old_object: T, object: T, attrs: dict[str, str]) -> str | None:
     """
     A helper function for displaying differences between certain attributes
     Returns a formatted string containing the differences.
@@ -456,7 +456,7 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: t.Dict[str, s
     return diff.strip() + reset if diff.strip() else None
 
 
-def create_log_content(message: hikari.PartialMessage, max_length: t.Optional[int] = None) -> str:
+def create_log_content(message: hikari.PartialMessage, max_length: int | None = None) -> str:
     """
     Process missing-content markers for messages before sending to logs
     """
@@ -762,7 +762,7 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
     if entry:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
-        reason: t.Optional[str] = entry.reason or "No reason provided"
+        reason: str | None = entry.reason or "No reason provided"
     else:
         moderator = None
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
@@ -797,7 +797,7 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
     if entry:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
-        reason: t.Optional[str] = entry.reason or "No reason provided"
+        reason: str | None = entry.reason or "No reason provided"
     else:
         moderator = None
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
@@ -836,7 +836,7 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
     if entry:  # This is a kick
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
-        reason: t.Optional[str] = entry.reason or "No reason provided"
+        reason: str | None = entry.reason or "No reason provided"
 
         if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
             parsed = ParsedBotReason.from_reason(reason)

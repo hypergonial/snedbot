@@ -1,4 +1,3 @@
-import typing as t
 
 import hikari
 import lightbulb
@@ -15,7 +14,7 @@ fandom = SnedPlugin("Fandom")
 FANDOM_QUERY_URL = "https://{site}.fandom.com/api.php?action=opensearch&search={query}&limit=5"
 
 
-async def search_fandom(site: str, query: str) -> t.Optional[str]:
+async def search_fandom(site: str, query: str) -> str | None:
     """Search a Fandom wiki with the specified query.
 
     Parameters

@@ -23,7 +23,7 @@ class DatabaseCache:
 
     def __init__(self, bot: SnedBot) -> None:
         self.bot: SnedBot = bot
-        self._cache: t.Dict[str, t.List[t.Dict[str, t.Any]]] = {}
+        self._cache: dict[str, list[dict[str, t.Any]]] = {}
         self.is_ready: bool = False
 
     def _clean_kwarg(self, kwarg: str) -> str:
@@ -57,8 +57,8 @@ class DatabaseCache:
         self._cache = {}
 
     async def get(
-        self, table: str, *, cache_only: bool = False, limit: t.Optional[int] = None, **kwargs: t.Any
-    ) -> t.Optional[t.List[t.Dict[str, t.Any]]]:
+        self, table: str, *, cache_only: bool = False, limit: int | None = None, **kwargs: t.Any
+    ) -> list[dict[str, t.Any]] | None:
         """Get a value from the database cache, lazily fetches from the database if the value is not cached.
 
         Parameters
@@ -80,7 +80,7 @@ class DatabaseCache:
         if not self.is_ready:
             return
 
-        rows: t.List[t.Dict[str, t.Any]] = []
+        rows: list[dict[str, t.Any]] = []
 
         for row in self._cache[table]:
             if limit and len(rows) >= limit:

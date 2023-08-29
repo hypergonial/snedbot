@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import enum
-import typing as t
 
 import asyncpg
 import attr
@@ -45,15 +44,15 @@ class JournalEntry(DatabaseModel):
     """The user this journal entry belongs to."""
     guild_id: hikari.Snowflake
     """The guild this entry belongs to."""
-    content: t.Optional[str]
+    content: str | None
     """The content of the entry."""
-    author_id: t.Optional[hikari.Snowflake]
+    author_id: hikari.Snowflake | None
     """The user who caused this entry to be created."""
     created_at: datetime.datetime
     """UNIX timestamp of the entry's creation."""
     entry_type: JournalEntryType
     """The type of this entry."""
-    id: t.Optional[int] = None
+    id: int | None = None
     """The ID of the journal entry."""
 
     @property
@@ -90,7 +89,7 @@ class JournalEntry(DatabaseModel):
     @classmethod
     async def fetch(
         cls, id: int, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> t.Optional[JournalEntry]:
+    ) -> JournalEntry | None:
         """Fetch a journal entry from the database.
 
         Parameters
@@ -120,7 +119,7 @@ class JournalEntry(DatabaseModel):
     @classmethod
     async def fetch_journal(
         cls, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> t.List[JournalEntry]:
+    ) -> list[JournalEntry]:
         """Fetch a user's journal from the database.
 
         Parameters

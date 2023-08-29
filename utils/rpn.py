@@ -52,7 +52,7 @@ def _pow(a: Fraction, b: Fraction) -> Fraction:
     return Fraction(a**b)
 
 
-OPS: t.Dict[str, Operator] = {
+OPS: dict[str, Operator] = {
     "+": BinaryOperator("+", 0, lambda a, b: a + b),
     "-": BinaryOperator("-", 0, lambda a, b: a - b),
     "*": BinaryOperator("*", 1, lambda a, b: a * b),
@@ -73,7 +73,7 @@ class Solver:
 
     def __init__(self, expr: str):
         self._expr = expr
-        self._rpn: t.List[str] = []
+        self._rpn: list[str] = []
 
     @property
     def expr(self) -> str:
@@ -128,7 +128,7 @@ class Solver:
                 new_expr.append(c)
         self._expr = "".join(new_expr)
 
-    def _should_write_top(self, c: str, stack: t.List[str]) -> bool:
+    def _should_write_top(self, c: str, stack: list[str]) -> bool:
         """Determines if the top operand of the stack should be appended to the result
         before pushing the current operand to the stack.
         This is determined by the precedence of the current operand.
@@ -177,7 +177,7 @@ class Solver:
         InvalidExpressionError
             If the expression is invalid.
         """
-        result: t.List[str] = [""]
+        result: list[str] = [""]
         stack = []
         for c in self._expr:
             if c.isspace():

@@ -38,7 +38,7 @@ class DatabaseUser(DatabaseModel):
     warns: int = 0
     """The count of warnings stored for this user."""
 
-    data: t.Dict[str, t.Any] = {}
+    data: dict[str, t.Any] = {}
     """Miscellaneous data stored for this user. Must be JSON serializable."""
 
     async def update(self) -> None:
@@ -94,7 +94,7 @@ class DatabaseUser(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> t.List[DatabaseUser]:
+    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[DatabaseUser]:
         """Fetch all stored user data that belongs to the specified guild.
 
         Parameters
@@ -124,7 +124,7 @@ class DatabaseUser(DatabaseModel):
             for record in records
         ]
 
-    async def fetch_journal(self) -> t.List[JournalEntry]:
+    async def fetch_journal(self) -> list[JournalEntry]:
         """Fetch all journal entries for this user.
 
         Returns

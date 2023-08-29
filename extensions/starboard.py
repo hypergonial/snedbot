@@ -28,10 +28,10 @@ STAR_MAPPING = {
 }
 
 
-def get_image_url(content: str) -> t.Optional[str]:
+def get_image_url(content: str) -> str | None:
     """Return a list of image URLs found in the message content."""
 
-    matches: t.Optional[re.Match[str]] = re.search(IMAGE_URL_REGEX, content)
+    matches: re.Match[str] | None = re.search(IMAGE_URL_REGEX, content)
 
     if not matches:
         return None
@@ -39,7 +39,7 @@ def get_image_url(content: str) -> t.Optional[str]:
     return content[matches.span()[0] : matches.span()[1]]
 
 
-def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
+def get_attachment_url(message: hikari.Message) -> str | None:
     """Return a list of image attachment URLs found in the message."""
 
     if not message.attachments:
@@ -48,7 +48,7 @@ def get_attachment_url(message: hikari.Message) -> t.Optional[str]:
     attach_urls = [attachment.url for attachment in message.attachments]
     string = " ".join(attach_urls)
 
-    matches: t.Optional[re.Match[str]] = re.search(IMAGE_URL_REGEX, string)
+    matches: re.Match[str] | None = re.search(IMAGE_URL_REGEX, string)
 
     if not matches:
         return None
@@ -61,7 +61,7 @@ def create_starboard_payload(
     message: hikari.Message,
     stars: int,
     force_starred: bool,
-) -> t.Dict[str, t.Any]:
+) -> dict[str, t.Any]:
     """Create message payload for a starboard entry.
 
     Parameters
@@ -77,7 +77,7 @@ def create_starboard_payload(
 
     Returns
     -------
-    t.Dict[str, t.Any]
+    dict[str, t.Any]
         The payload as keyword arguments.
     """
     guild_id = hikari.Snowflake(guild)
@@ -183,7 +183,7 @@ async def star_message(
 @starboard.listener(hikari.GuildReactionDeleteEvent, bind=True)
 @starboard.listener(hikari.GuildReactionAddEvent, bind=True)
 async def on_reaction(
-    plugin: SnedPlugin, event: t.Union[hikari.GuildReactionAddEvent, hikari.GuildReactionDeleteEvent]
+    plugin: SnedPlugin, event: hikari.GuildReactionAddEvent | hikari.GuildReactionDeleteEvent
 ) -> None:
     """Listen for reactions & star messages where appropriate."""
 

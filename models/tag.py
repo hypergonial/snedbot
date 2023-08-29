@@ -22,15 +22,15 @@ class Tag(DatabaseModel):
     guild_id: hikari.Snowflake
     name: str
     owner_id: hikari.Snowflake
-    aliases: t.Optional[t.List[str]]
+    aliases: list[str] | None
     content: str
-    creator_id: t.Optional[hikari.Snowflake] = None
+    creator_id: hikari.Snowflake | None = None
     uses: int = 0
 
     @classmethod
     async def fetch(
         cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild], add_use: bool = False
-    ) -> t.Optional[Tag]:
+    ) -> Tag | None:
         """Fetches a tag from the database.
 
         Parameters
@@ -72,7 +72,7 @@ class Tag(DatabaseModel):
     @classmethod
     async def fetch_closest_names(
         cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> t.Optional[t.List[str]]:
+    ) -> list[str] | None:
         """Fetch the closest tagnames for the provided name.
 
         Parameters
@@ -104,7 +104,7 @@ class Tag(DatabaseModel):
         name: str,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         owner: hikari.SnowflakeishOr[hikari.PartialUser],
-    ) -> t.Optional[t.List[str]]:
+    ) -> list[str] | None:
         """Fetch the closest tagnames for the provided name and owner.
 
         Parameters
@@ -139,15 +139,15 @@ class Tag(DatabaseModel):
     async def fetch_all(
         cls,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        owner: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
-    ) -> t.List[Tag]:
+        owner: hikari.SnowflakeishOr[hikari.PartialUser] | None = None,
+    ) -> list[Tag]:
         """Fetch all tags that belong to a guild, and optionally a user.
 
         Parameters
         ----------
         guild : hikari.SnowflakeishOr[hikari.PartialGuild]
             The guild the tags belong to.
-        owner : t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]], optional
+        owner : hikari.SnowflakeishOr[hikari.PartialUser], optional
             The owner the tags belong to, by default None
 
         Returns
@@ -188,7 +188,7 @@ class Tag(DatabaseModel):
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         creator: hikari.SnowflakeishOr[hikari.PartialUser],
         owner: hikari.SnowflakeishOr[hikari.PartialUser],
-        aliases: t.List[str],
+        aliases: list[str],
         content: str,
     ) -> Tag:
         """Create a new tag object and save it to the database.
@@ -203,7 +203,7 @@ class Tag(DatabaseModel):
             The creator of the tag.
         owner : hikari.SnowflakeishOr[hikari.PartialUser]
             The current owner of the tag.
-        aliases : t.List[str]
+        aliases : list[str]
             A list of all aliases the tag has.
         content : str
             The content of the tag.

@@ -4,7 +4,6 @@ import asyncio
 import datetime
 import logging
 import traceback
-import typing as t
 
 import hikari
 import lightbulb
@@ -30,7 +29,7 @@ ch = SnedPlugin("Command Handler")
 
 
 async def log_exc_to_channel(
-    error_str: str, ctx: t.Optional[lightbulb.Context] = None, event: t.Optional[hikari.ExceptionEvent] = None
+    error_str: str, ctx: lightbulb.Context | None = None, event: hikari.ExceptionEvent | None = None
 ) -> None:
     """Log an exception traceback to the specified logging channel.
 
@@ -38,9 +37,9 @@ async def log_exc_to_channel(
     ----------
     error_str : str
         The exception message to print.
-    ctx : t.Optional[lightbulb.Context], optional
+    ctx : lightbulb.Context, optional
         The context to use for additional information, by default None
-    event : t.Optional[hikari.ExceptionEvent], optional
+    event : hikari.ExceptionEvent, optional
         The event to use for additional information, by default None
     """
 

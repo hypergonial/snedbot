@@ -25,7 +25,7 @@ class AuditLogCache:
     """
 
     def __init__(self, bot: SnedBot, capacity: int = 10) -> None:
-        self._cache: t.Dict[hikari.Snowflake, t.Dict[hikari.AuditLogEventType, t.List[hikari.AuditLogEntry]]] = {}
+        self._cache: dict[hikari.Snowflake, dict[hikari.AuditLogEventType, list[hikari.AuditLogEntry]]] = {}
         self._capacity = capacity
         self._bot = bot
 
@@ -44,7 +44,7 @@ class AuditLogCache:
 
     def get(
         self, guild: hikari.SnowflakeishOr[hikari.PartialGuild], action_type: hikari.AuditLogEventType
-    ) -> t.List[hikari.AuditLogEntry]:
+    ) -> list[hikari.AuditLogEntry]:
         """Get all audit log entries for a guild and event type.
 
         Parameters
@@ -66,7 +66,7 @@ class AuditLogCache:
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         action_type: hikari.AuditLogEventType,
         predicate: t.Callable[[hikari.AuditLogEntry], bool],
-    ) -> t.Optional[hikari.AuditLogEntry]:
+    ) -> hikari.AuditLogEntry | None:
         """Get the first audit log entry that matches a predicate.
 
         Parameters

@@ -6,7 +6,6 @@ import enum
 import logging
 import re
 import typing
-import typing as t
 
 import dateparser
 import hikari
@@ -38,8 +37,8 @@ class Scheduler:
 
     def __init__(self, bot: SnedBot) -> None:
         self.bot: SnedBot = bot
-        self._current_timer: t.Optional[Timer] = None  # Currently active timer that is being awaited
-        self._current_task: t.Optional[asyncio.Task] = None  # Current task that is handling current_timer
+        self._current_timer: Timer | None = None  # Currently active timer that is being awaited
+        self._current_task: asyncio.Task | None = None  # Current task that is handling current_timer
         self._timer_loop: IntervalLoop = IntervalLoop(self._wait_for_active_timers, hours=1.0)
         self._is_started: bool = False
 
@@ -80,8 +79,8 @@ class Scheduler:
         self,
         timestr: str,
         *,
-        user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
-        conversion_mode: t.Optional[ConversionMode] = None,
+        user: hikari.SnowflakeishOr[hikari.PartialUser] | None = None,
+        conversion_mode: ConversionMode | None = None,
         future_time: bool = False,
     ) -> datetime.datetime:
         """Try converting a string of human-readable time to a datetime object.
@@ -90,9 +89,9 @@ class Scheduler:
         ----------
         timestr : str
             The string containing the time.
-        user : t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]], optional
+        user : hikari.SnowflakeishOr[hikari.PartialUser], optional
             The user whose preferences will be used in the case of timezones, by default None
-        force_mode : t.Optional[str], optional
+        force_mode : str | None, optional
             If specified, forces either 'relative' or 'absolute' conversion, by default None
         future_time : bool, optional
             If True and the time specified is in the past, raise an error, by default False
@@ -185,7 +184,7 @@ class Scheduler:
 
         raise ValueError("Time conversion failed.")
 
-    async def get_latest_timer(self, days: int = 5) -> t.Optional[Timer]:
+    async def get_latest_timer(self, days: int = 5) -> Timer | None:
         """Gets the latest timer in the specified range of days.
 
         Parameters
@@ -342,9 +341,9 @@ class Scheduler:
         event: TimerEvent,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         user: hikari.SnowflakeishOr[hikari.PartialUser],
-        channel: t.Optional[hikari.SnowflakeishOr[hikari.TextableChannel]] = None,
+        channel: hikari.SnowflakeishOr[hikari.TextableChannel] | None = None,
         *,
-        notes: t.Optional[str] = None,
+        notes: str | None = None,
     ) -> Timer:
         """Create a new timer and schedule it.
 
@@ -358,9 +357,9 @@ class Scheduler:
             The guild this timer belongs to.
         user : hikari.SnowflakeishOr[hikari.PartialUser]
             The user this timer belongs to.
-        channel : t.Optional[hikari.SnowflakeishOr[hikari.TextableChannel]], optional
+        channel : hikari.SnowflakeishOr[hikari.TextableChannel], optional
             The channel to bind this timer to, by default None
-        notes : t.Optional[str], optional
+        notes : str | None, optional
             Optional parameters or data to include, by default None
 
         Returns

@@ -5,7 +5,6 @@ import shlex
 import subprocess
 import textwrap
 import traceback
-import typing as t
 
 import hikari
 import lightbulb
@@ -65,7 +64,7 @@ def format_output(text: str) -> str:
 
 async def send_paginated(
     ctx: SnedPrefixContext,
-    messageable: hikari.SnowflakeishOr[t.Union[hikari.TextableChannel, hikari.User]],
+    messageable: hikari.SnowflakeishOr[hikari.TextableChannel | hikari.User],
     text: str,
     *,
     prefix: str = "",
@@ -191,7 +190,7 @@ async def eval_py(ctx: SnedPrefixContext, code: str) -> None:
 
     # Check if last line is an expression and return it if so
     abstract_syntax_tree = ast.parse(code, filename=f"{ctx.guild_id}{ctx.channel_id}.py")
-    node: t.List[ast.stmt] = abstract_syntax_tree.body
+    node: list[ast.stmt] = abstract_syntax_tree.body
 
     if node and type(node[0]) is ast.Expr:
         code_split = code.split("\n")
