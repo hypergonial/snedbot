@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import enum
 import json
 import logging
 import re
@@ -47,23 +48,41 @@ userlog.d.queue = {}
 # Queue iter task
 userlog.d._task = None
 
-userlog.d.valid_log_events = (
-    "ban",
-    "kick",
-    "timeout",
-    "message_delete",
-    "message_delete_mod",
-    "message_edit",
-    "bulk_delete",
-    "flags",
-    "roles",
-    "channels",
-    "member_join",
-    "member_leave",
-    "nickname",
-    "guild_settings",
-    "warn",
-)
+
+class LogEvent(enum.Enum):
+    """Enum for all valid log events."""
+
+    BAN = "ban"
+    """Logs related to bans and unbans"""
+    KICK = "kick"
+    """Logs related to kicks"""
+    TIMEOUT = "timeout"
+    """Logs related to timeouts & timeout removals"""
+    MESSAGE_DELETE = "message_delete"
+    """Logs related to messages voluntarily deleted by users"""
+    MESSAGE_DELETE_MOD = "message_delete_mod"
+    """Logs related to messages deleted by moderators"""
+    MESSAGE_EDIT = "message_edit"
+    """Logs related to message edits"""
+    BULK_DELETE = "bulk_delete"
+    """Logs related to bulk message deletions by moderators"""
+    FLAGS = "flags"
+    """Logs related to automod message flagging"""
+    ROLES = "roles"
+    """Logs related to role creation, deletion updates & assignments"""
+    CHANNELS = "channels"
+    """Logs related to channel creation, deletion & updates"""
+    MEMBER_JOIN = "member_join"
+    """Logs related to member joins"""
+    MEMBER_LEAVE = "member_leave"
+    """Logs related to member leaves, this should not include kicks or bans"""
+    NICKNAME = "nickname"
+    """Logs related to nickname changes"""
+    GUILD_SETTINGS = "guild_settings"
+    """Logs related to guild setting changes"""
+    WARN = "warn"
+    """Logs related to new warnings, warning removals & clears"""
+
 
 # List of guilds where logging is temporarily suspended
 userlog.d.frozen_guilds = []
@@ -108,15 +127,44 @@ class ParsedBotReason:
         return cls(match.group("reason"), UserLike(hikari.Snowflake(match.group("id")), match.group("name")))
 
 
-async def get_log_channel_id(log_event: str, guild_id: int) -> t.Optional[int]:
-    if log_event not in userlog.d.valid_log_events:
-        raise ValueError("Invalid log_event passed.")
+def display_user(user: hikari.UndefinedNoneOr[hikari.PartialUser | UserLike]) -> str:
+    """
+    A helper function for displaying user-like objects generically.
+    """
+    if not user:
+        return "Unknown"
 
+    if isinstance(user, UserLike):
+        return str(user)
+
+    return f"{user} ({user.id})"
+
+
+async def get_log_channel_id(log_event: LogEvent, guild_id: int) -> t.Optional[int]:
+    """Get the channel ID for a given log event.
+
+    Parameters
+    ----------
+    log_event : str
+        The event to get the channel ID for.
+    guild_id : int
+        The ID of the guild.
+
+    Returns
+    -------
+    t.Optional[int]
+        The channel ID, if any.
+
+    Raises
+    ------
+    ValueError
+        If an invalid log_event is passed.
+    """
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
 
     log_channels = json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else None
 
-    return log_channels.get(log_event) if log_channels else None
+    return log_channels.get(log_event.value) if log_channels else None
 
 
 userlog.d.actions["get_log_channel_id"] = get_log_channel_id
@@ -131,8 +179,8 @@ async def get_log_channel_ids_view(guild_id: int) -> t.Dict[str, t.Optional[int]
 
     log_channels = json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else {}
 
-    for log_event in userlog.d.valid_log_events:
-        if log_event not in log_channels.keys():
+    for log_event in LogEvent:
+        if log_event.value not in log_channels.keys():
             log_channels[log_event] = None
 
     return log_channels
@@ -141,14 +189,10 @@ async def get_log_channel_ids_view(guild_id: int) -> t.Dict[str, t.Optional[int]
 userlog.d.actions["get_log_channel_ids_view"] = get_log_channel_ids_view
 
 
-async def set_log_channel(log_event: str, guild_id: int, channel_id: t.Optional[int] = None) -> None:
+async def set_log_channel(log_event: LogEvent, guild_id: int, channel_id: t.Optional[int] = None) -> None:
     """Sets logging channel for a given logging event."""
-
-    if log_event not in userlog.d.valid_log_events:
-        raise ValueError("Invalid log_event passed.")
-
     log_channels = await get_log_channel_ids_view(guild_id)
-    log_channels[log_event] = channel_id
+    log_channels[log_event.value] = channel_id
     await userlog.app.db.execute(
         """
         INSERT INTO log_config (log_channels, guild_id) VALUES ($1, $2)
@@ -172,7 +216,7 @@ userlog.d.actions["is_color_enabled"] = is_color_enabled
 
 
 async def log(
-    log_event: str,
+    log_event: LogEvent,
     log_content: hikari.Embed,
     guild_id: int,
     file: hikari.UndefinedOr[hikari.Resourceish] = hikari.UNDEFINED,
@@ -450,27 +494,26 @@ async def message_delete(plugin: SnedPlugin, event: hikari.GuildMessageDeleteEve
     if entry:
         assert entry.user_id is not None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
-        assert moderator is not None
 
         embed = hikari.Embed(
             title="🗑️ Message deleted by Moderator",
-            description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
-**Moderator:** `{moderator} ({moderator.id})`
+            description=f"""**Message author:** `{display_user(event.old_message.author)}`
+**Moderator:** `{display_user(moderator)}`
 **Channel:** <#{event.channel_id}>
 **Message content:** ```{contents.replace("`", "´")}```""",
             color=const.ERROR_COLOR,
         )
-        await log("message_delete_mod", embed, event.guild_id)
+        await log(LogEvent.MESSAGE_DELETE_MOD, embed, event.guild_id)
 
     else:
         embed = hikari.Embed(
             title="🗑️ Message deleted",
-            description=f"""**Message author:** `{event.old_message.author} ({event.old_message.author.id})`
+            description=f"""**Message author:** `{display_user(event.old_message.author)}`
 **Channel:** <#{event.channel_id}>
 **Message content:** ```{contents.replace("`", "´")}```""",
             color=const.ERROR_COLOR,
         )
-        await log("message_delete", embed, event.guild_id)
+        await log(LogEvent.MESSAGE_DELETE, embed, event.guild_id)
 
 
 @userlog.listener(hikari.GuildMessageUpdateEvent, bind=True)
@@ -495,18 +538,18 @@ async def message_update(plugin: SnedPlugin, event: hikari.GuildMessageUpdateEve
 
     embed = hikari.Embed(
         title="🖊️ Message edited",
-        description=f"""**Message author:** `{event.author} ({event.author_id})`
+        description=f"""**Message author:** `{display_user(event.author)}`
 **Channel:** <#{event.channel_id}>
 **Before:** ```{old_content.replace("`", "´")}``` \n**After:** ```{new_content.replace("`", "´")}```
 [Jump!]({event.message.make_link(event.guild_id)})""",
         color=const.EMBED_BLUE,
     )
-    await log("message_edit", embed, event.guild_id)
+    await log(LogEvent.MESSAGE_EDIT, embed, event.guild_id)
 
 
 @userlog.listener(hikari.GuildBulkMessageDeleteEvent, bind=True)
 async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessageDeleteEvent) -> None:
-    moderator = "Discord"
+    moderator = None
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.MESSAGE_BULK_DELETE)
     if entry:
         assert entry.user_id is not None
@@ -517,11 +560,11 @@ async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessage
     embed = hikari.Embed(
         title="🗑️ Bulk message deletion",
         description=f"""**Channel:** {channel.mention if channel else 'Unknown'}
-**Moderator:** `{moderator}`
+**Moderator:** `{display_user(moderator) if moderator else 'Discord'}`
 ```{len(event.message_ids)} messages have been purged.```""",
         color=const.ERROR_COLOR,
     )
-    await log("bulk_delete", embed, event.guild_id)
+    await log(LogEvent.BULK_DELETE, embed, event.guild_id)
 
 
 @userlog.listener(hikari.RoleDeleteEvent, bind=True)
@@ -532,10 +575,10 @@ async def role_delete(plugin: SnedPlugin, event: hikari.RoleDeleteEvent) -> None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title="🗑️ Role deleted",
-            description=f"**Role:** `{event.old_role}`\n**Moderator:** `{moderator}`",
+            description=f"**Role:** `{event.old_role}`\n**Moderator:** `{display_user(moderator)}`",
             color=const.ERROR_COLOR,
         )
-        await log("roles", embed, event.guild_id)
+        await log(LogEvent.ROLES, embed, event.guild_id)
 
 
 @userlog.listener(hikari.RoleCreateEvent, bind=True)
@@ -546,10 +589,10 @@ async def role_create(plugin: SnedPlugin, event: hikari.RoleCreateEvent) -> None
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title="❇️ Role created",
-            description=f"**Role:** `{event.role}`\n**Moderator:** `{moderator}`",
+            description=f"**Role:** `{event.role}`\n**Moderator:** `{display_user(moderator)}`",
             color=const.EMBED_GREEN,
         )
-        await log("roles", embed, event.guild_id)
+        await log(LogEvent.ROLES, embed, event.guild_id)
 
 
 @userlog.listener(hikari.RoleUpdateEvent, bind=True)
@@ -576,10 +619,10 @@ async def role_update(plugin: SnedPlugin, event: hikari.RoleUpdateEvent) -> None
         perms_str = f"\nPermissions:\n {perms_diff}" if perms_diff else ""
         embed = hikari.Embed(
             title="🖊️ Role updated",
-            description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{moderator}`\n**Changes:**```ansi\n{diff}{perms_str}```""",
+            description=f"""**Role:** `{event.role.name}` \n**Moderator:** `{display_user(moderator)}`\n**Changes:**```ansi\n{diff}{perms_str}```""",
             color=const.EMBED_BLUE,
         )
-        await log("roles", embed, event.guild_id)
+        await log(LogEvent.ROLES, embed, event.guild_id)
 
 
 @userlog.listener(hikari.GuildChannelDeleteEvent, bind=True)
@@ -590,10 +633,10 @@ async def channel_delete(plugin: SnedPlugin, event: hikari.GuildChannelDeleteEve
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title="#️⃣ Channel deleted",
-            description=f"**Channel:** `{event.channel.name}` `({event.channel.type.name})`\n**Moderator:** `{moderator}` {f'`({moderator.id})`' if moderator else ''}",  # type: ignore
+            description=f"**Channel:** `{event.channel.name}` `({event.channel.type.name})`\n**Moderator:** `{display_user(moderator)}`",  # type: ignore
             color=const.ERROR_COLOR,
         )
-        await log("channels", embed, event.guild_id)
+        await log(LogEvent.CHANNELS, embed, event.guild_id)
 
 
 @userlog.listener(hikari.GuildChannelCreateEvent, bind=True)
@@ -604,10 +647,10 @@ async def channel_create(plugin: SnedPlugin, event: hikari.GuildChannelCreateEve
         moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         embed = hikari.Embed(
             title="#️⃣ Channel created",
-            description=f"**Channel:** {event.channel.mention} `({event.channel.type.name})`\n**Moderator:** `{moderator}` {f'`({moderator.id})`' if moderator else ''}",  # type: ignore
+            description=f"**Channel:** {event.channel.mention} `({event.channel.type.name})`\n**Moderator:** `{display_user(moderator)}`",  # type: ignore
             color=const.EMBED_GREEN,
         )
-        await log("channels", embed, event.guild_id)
+        await log(LogEvent.CHANNELS, embed, event.guild_id)
 
 
 @userlog.listener(hikari.GuildChannelUpdateEvent, bind=True)
@@ -650,23 +693,21 @@ async def channel_update(plugin: SnedPlugin, event: hikari.GuildChannelUpdateEve
 
         embed = hikari.Embed(
             title="#️⃣ Channel updated",
-            description=f"Channel {event.channel.mention} was updated by `{moderator}` {f'`({moderator.id})`' if moderator else ''}.\n**Changes:**\n```ansi\n{diff}```",
+            description=f"Channel {event.channel.mention} was updated by `{display_user(moderator)}`.\n**Changes:**\n```ansi\n{diff}```",
             color=const.EMBED_BLUE,
         )
-        await log("channels", embed, event.guild_id)
+        await log(LogEvent.CHANNELS, embed, event.guild_id)
 
 
 @userlog.listener(hikari.GuildUpdateEvent, bind=True)
 async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> None:
     entry = await find_auditlog_data(event.guild_id, event_type=hikari.AuditLogEventType.GUILD_UPDATE)
 
+    moderator = None
     if event.old_guild:
         if entry:
             assert entry.user_id is not None
-            moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Discord"
-            moderator = moderator or "Discord"
-        else:
-            moderator = "Discord"
+            moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
 
         if (
             event.old_guild.premium_subscription_count != event.guild.premium_subscription_count
@@ -707,10 +748,10 @@ async def guild_update(plugin: SnedPlugin, event: hikari.GuildUpdateEvent) -> No
 
         embed = hikari.Embed(
             title="🖊️ Guild updated",
-            description=f"Guild settings have been updated by `{moderator}`.\n**Changes:**\n```ansi\n{diff}```",
+            description=f"Guild settings have been updated by `{display_user(moderator)}`.\n**Changes:**\n```ansi\n{diff}```",
             color=const.EMBED_BLUE,
         )
-        await log("guild_settings", embed, event.guild_id)
+        await log(LogEvent.GUILD_SETTINGS, embed, event.guild_id)
 
 
 @userlog.listener(hikari.BanDeleteEvent, bind=True)
@@ -720,10 +761,10 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
     )
     if entry:
         assert entry.user_id is not None
-        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
+        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         reason: t.Optional[str] = entry.reason or "No reason provided"
     else:
-        moderator = "Unknown"
+        moderator = None
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
 
     if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
@@ -733,10 +774,10 @@ async def member_ban_remove(plugin: SnedPlugin, event: hikari.BanDeleteEvent) ->
 
     embed = hikari.Embed(
         title="🔨 User unbanned",
-        description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:** ```{reason}```",
+        description=f"**Offender:** `{display_user(event.user)}`\n**Moderator:** `{display_user(moderator)}`\n**Reason:** ```{reason}```",
         color=const.EMBED_GREEN,
     )
-    await log("ban", embed, event.guild_id)
+    await log(LogEvent.BAN, embed, event.guild_id)
 
     await JournalEntry(
         user_id=event.user.id,
@@ -755,10 +796,10 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
     )
     if entry:
         assert entry.user_id is not None
-        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
+        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         reason: t.Optional[str] = entry.reason or "No reason provided"
     else:
-        moderator = "Unknown"
+        moderator = None
         reason = "Unable to view audit logs! Please ensure the bot has the necessary permissions to view them!"
 
     if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
@@ -768,10 +809,10 @@ async def member_ban_add(plugin: SnedPlugin, event: hikari.BanCreateEvent) -> No
 
     embed = hikari.Embed(
         title="🔨 User banned",
-        description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:**```{reason}```",
+        description=f"**Offender:** `{display_user(event.user)}`\n**Moderator: **`{display_user(moderator)}`\n**Reason:**```{reason}```",
         color=const.ERROR_COLOR,
     )
-    await log("ban", embed, event.guild_id)
+    await log(LogEvent.BAN, embed, event.guild_id)
 
     await JournalEntry(
         user_id=event.user.id,
@@ -794,7 +835,7 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
 
     if entry:  # This is a kick
         assert entry.user_id is not None
-        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id) if entry else "Unknown"
+        moderator = plugin.app.cache.get_member(event.guild_id, entry.user_id)
         reason: t.Optional[str] = entry.reason or "No reason provided"
 
         if isinstance(moderator, hikari.Member) and moderator.id == plugin.app.user_id:
@@ -804,10 +845,10 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
 
         embed = hikari.Embed(
             title="🚪👈 User was kicked",
-            description=f"**Offender:** `{event.user} ({event.user.id})`\n**Moderator:**`{moderator}`\n**Reason:**```{reason}```",
+            description=f"**Offender:** `{display_user(event.user)}`\n**Moderator:**`{display_user(moderator)}`\n**Reason:**```{reason}```",
             color=const.ERROR_COLOR,
         )
-        await log("kick", embed, event.guild_id)
+        await log(LogEvent.KICK, embed, event.guild_id)
 
         await JournalEntry(
             user_id=event.user.id,
@@ -821,10 +862,10 @@ async def member_delete(plugin: SnedPlugin, event: hikari.MemberDeleteEvent) -> 
 
     embed = hikari.Embed(
         title="🚪 User left",
-        description=f"**User:** `{event.user} ({event.user.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
+        description=f"**User:** `{display_user(event.user)}`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
         color=const.ERROR_COLOR,
     ).set_thumbnail(event.user.display_avatar_url)
-    await log("member_leave", embed, event.guild_id)
+    await log(LogEvent.MEMBER_LEAVE, embed, event.guild_id)
 
 
 @userlog.listener(hikari.MemberCreateEvent, bind=True)
@@ -832,7 +873,7 @@ async def member_create(plugin: SnedPlugin, event: hikari.MemberCreateEvent) -> 
     embed = (
         hikari.Embed(
             title="🚪 User joined",
-            description=f"**User:** `{event.member} ({event.member.id})`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
+            description=f"**User:** `{display_user(event.member)}`\n**User count:** `{len(plugin.app.cache.get_members_view_for_guild(event.guild_id))}`",
             color=const.EMBED_GREEN,
         )
         .add_field(
@@ -842,7 +883,7 @@ async def member_create(plugin: SnedPlugin, event: hikari.MemberCreateEvent) -> 
         )
         .set_thumbnail(event.member.display_avatar_url)
     )
-    await log("member_join", embed, event.guild_id)
+    await log(LogEvent.MEMBER_JOIN, embed, event.guild_id)
 
 
 @userlog.listener(hikari.MemberUpdateEvent, bind=True)
@@ -888,10 +929,10 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
         if comms_disabled_until is None:
             embed = hikari.Embed(
                 title="🔉 User timeout removed",
-                description=f"**User:** `{member} ({member.id})` \n**Moderator:** `{moderator}` \n**Reason:** ```{reason}```",
+                description=f"**User:** `{display_user(member)}` \n**Moderator:** `{display_user(moderator)}` \n**Reason:** ```{reason}```",
                 color=const.EMBED_GREEN,
             )
-            await log("timeout", embed, event.guild_id)
+            await log(LogEvent.TIMEOUT, embed, event.guild_id)
 
             await JournalEntry(
                 user_id=event.user.id,
@@ -907,8 +948,8 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
 
         embed = hikari.Embed(
             title="🔇 User timed out",
-            description=f"""**User:** `{member} ({member.id})`
-**Moderator:** `{moderator}` 
+            description=f"""**User:** `{display_user(member)}`
+**Moderator:** `{display_user(moderator)}`
 **Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style='R')})
 **Reason:** ```{reason}```""",
             color=const.ERROR_COLOR,
@@ -923,16 +964,16 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
             created_at=helpers.utcnow(),
         ).update()
 
-        await log("timeout", embed, event.guild_id)
+        await log(LogEvent.TIMEOUT, embed, event.guild_id)
 
     elif old_member.nickname != member.nickname:
         """Nickname change handling"""
         embed = hikari.Embed(
             title="🖊️ Nickname changed",
-            description=f"**User:** `{member} ({member.id})`\nNickname before: `{old_member.nickname}`\nNickname after: `{member.nickname}`",
+            description=f"**User:** `{display_user(member)}`\nNickname before: `{old_member.nickname}`\nNickname after: `{member.nickname}`",
             color=const.EMBED_BLUE,
         )
-        await log("nickname", embed, event.guild_id)
+        await log(LogEvent.NICKNAME, embed, event.guild_id)
 
     elif old_member.role_ids != member.role_ids:
         # Check difference in roles between the two
@@ -969,29 +1010,29 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
         if add_diff:
             embed = hikari.Embed(
                 title="🖊️ Member roles updated",
-                description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role added:** <@&{add_diff[0]}>",
+                description=f"**User:** `{display_user(member)}`\n**Moderator:** `{display_user(moderator)}`\n**Role added:** <@&{add_diff[0]}>",
                 color=const.EMBED_BLUE,
             )
-            await log("roles", embed, event.guild_id)
+            await log(LogEvent.ROLES, embed, event.guild_id)
 
         elif rem_diff:
             embed = hikari.Embed(
                 title="🖊️ Member roles updated",
-                description=f"**User:** `{member} ({member.id})`\n**Moderator:** `{moderator}`\n**Role removed:** <@&{rem_diff[0]}>",
+                description=f"**User:** `{display_user(member)}`\n**Moderator:** `{display_user(moderator)}`\n**Role removed:** <@&{rem_diff[0]}>",
                 color=const.EMBED_BLUE,
             )
-            await log("roles", embed, event.guild_id)
+            await log(LogEvent.ROLES, embed, event.guild_id)
 
 
 @userlog.listener(WarnCreateEvent, bind=True)
 async def warn_create(plugin: SnedPlugin, event: WarnCreateEvent) -> None:
     embed = hikari.Embed(
         title="⚠️ Warning issued",
-        description=f"**{event.member}** has been warned by **{event.moderator}**.\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
+        description=f"**Offender:** `{display_user(event.member)}`\n**Moderator:** `{display_user(event.moderator)}`\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
         color=const.WARN_COLOR,
     )
 
-    await log("warn", embed, event.guild_id)
+    await log(LogEvent.WARN, embed, event.guild_id)
 
     await JournalEntry(
         user_id=event.member.id,
@@ -1007,11 +1048,11 @@ async def warn_create(plugin: SnedPlugin, event: WarnCreateEvent) -> None:
 async def warn_remove(plugin: SnedPlugin, event: WarnRemoveEvent) -> None:
     embed = hikari.Embed(
         title="⚠️ Warning removed",
-        description=f"A warning was removed from **{event.member}** by **{event.moderator}**.\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
+        description=f"**Recipient:** `{display_user(event.member)}`\n**Moderator:** `{display_user(event.moderator)}`\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
         color=const.EMBED_GREEN,
     )
 
-    await log("warn", embed, event.guild_id)
+    await log(LogEvent.WARN, embed, event.guild_id)
 
     await JournalEntry(
         user_id=event.member.id,
@@ -1027,11 +1068,11 @@ async def warn_remove(plugin: SnedPlugin, event: WarnRemoveEvent) -> None:
 async def warns_clear(plugin: SnedPlugin, event: WarnsClearEvent) -> None:
     embed = hikari.Embed(
         title="⚠️ Warnings cleared",
-        description=f"Warnings cleared for **{event.member}** by **{event.moderator}**.\n**Reason:** ```{event.reason}```",
+        description=f"**Recipient:** `{display_user(event.member)}`\n**Moderator:** `{display_user(event.moderator)}`\n**Warns:** {event.warn_count}\n**Reason:** ```{event.reason}```",
         color=const.EMBED_GREEN,
     )
 
-    await log("warn", embed, event.guild_id)
+    await log(LogEvent.WARN, embed, event.guild_id)
 
     await JournalEntry(
         user_id=event.member.id,
@@ -1060,56 +1101,50 @@ async def flag_message(plugin: SnedPlugin, event: AutoModMessageFlagEvent) -> No
 
     embed = hikari.Embed(
         title="❗🚩 Message flagged",
-        description=f"**{user}** `({user.id})` was flagged by auto-moderator for suspicious behaviour.\n**Reason:**```{reason}```\n**Content:** ```{content}```\n\n[Jump to message!]({event.message.make_link(event.guild_id)})",
+        description=f"`{display_user(user)}` was flagged by auto-moderator for suspicious behaviour.\n**Reason:**```{reason}```\n**Content:** ```{content}```\n\n[Jump to message!]({event.message.make_link(event.guild_id)})",
         color=const.ERROR_COLOR,
     )
-    await log("flags", embed, event.guild_id)
+    await log(LogEvent.FLAGS, embed, event.guild_id)
 
 
 @userlog.listener(MassBanEvent)
 async def massban_execute(event: MassBanEvent) -> None:
     log_embed = hikari.Embed(
-        title="🔨 Smartban concluded",
-        description=f"Banned **{event.successful}/{event.total}** users.\n**Moderator:** `{event.moderator} ({event.moderator.id})`\n**Reason:** ```{event.reason}```",
+        title="🔨 Massban concluded",
+        description=f"Banned **{event.successful}/{event.total}** users.\n**Moderator:** `{display_user(event.moderator)}`\n**Reason:** ```{event.reason}```",
         color=const.ERROR_COLOR,
     )
-    await log("ban", log_embed, event.guild_id, file=event.logfile, bypass=True)
+    await log(LogEvent.BAN, log_embed, event.guild_id, file=event.logfile, bypass=True)
 
 
 @userlog.listener(RoleButtonCreateEvent)
 async def rolebutton_create(event: RoleButtonCreateEvent) -> None:
-    moderator = f"{event.moderator} ({event.moderator.id})" if event.moderator else "Unknown"
-
     log_embed = hikari.Embed(
         title="❇️ Rolebutton Added",
-        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{display_user(event.moderator)}`",
         color=const.EMBED_GREEN,
     )
-    await log("roles", log_embed, event.guild_id)
+    await log(LogEvent.ROLES, log_embed, event.guild_id)
 
 
 @userlog.listener(RoleButtonDeleteEvent)
 async def rolebutton_delete(event: RoleButtonDeleteEvent) -> None:
-    moderator = f"{event.moderator} ({event.moderator.id})" if event.moderator else "Unknown"
-
     log_embed = hikari.Embed(
         title="🗑️ Rolebutton Deleted",
-        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{display_user(event.moderator)}`",
         color=const.ERROR_COLOR,
     )
-    await log("roles", log_embed, event.guild_id)
+    await log(LogEvent.ROLES, log_embed, event.guild_id)
 
 
 @userlog.listener(RoleButtonUpdateEvent)
 async def rolebutton_update(event: RoleButtonUpdateEvent) -> None:
-    moderator = f"{event.moderator} ({event.moderator.id})" if event.moderator else "Unknown"
-
     log_embed = hikari.Embed(
         title="🖊️ Rolebutton Updated",
-        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{moderator}`",
+        description=f"**ID:** {event.rolebutton.id}\n**Channel:** <#{event.rolebutton.channel_id}>\n**Role:** <@&{event.rolebutton.role_id}>\n**Moderator:** `{display_user(event.moderator)}`",
         color=const.EMBED_BLUE,
     )
-    await log("roles", log_embed, event.guild_id)
+    await log(LogEvent.ROLES, log_embed, event.guild_id)
 
 
 def load(bot: SnedBot) -> None:

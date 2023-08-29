@@ -5,7 +5,6 @@ from .errors import *
 from .events import *
 from .journal import *
 from .plugin import *
-from .settings import *
 from .starboard import *
 from .tag import *
 from .timer import *
