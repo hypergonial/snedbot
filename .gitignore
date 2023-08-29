@@ -133,9 +133,13 @@ config.py
 
 # DB backup files
 *.pgdmp
+db/backup/
 
 # Dolphin directory meta files
 .directory
 
 # VS Code
-.vscode
+.vscode/
+
+# ruff
+.ruff_cache/
