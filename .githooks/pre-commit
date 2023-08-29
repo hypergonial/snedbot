@@ -1,6 +1,5 @@
 #!/bin/sh
 
 REPO_PATH=$(/usr/bin/git rev-parse --show-toplevel)
-/usr/bin/python3 -m black $REPO_PATH --line-length 120 --target-version py310
-/usr/bin/python3 -m ruff $REPO_PATH --fix
+/usr/bin/python3 -m nox
 /usr/bin/git update-index --again :/:
