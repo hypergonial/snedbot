@@ -128,7 +128,7 @@ async def send_test_notice(ctx: SnedSlashContext, recipients: hikari.Attachment)
 @lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
 @lightbulb.option(
     "recipients",
-    "A list of users and keys to send the notice to, one user per line. Format: username:KEY, max 25 users.",
+    "A list of users to send keys to, one entry per line. Format: username:KEY, max 25 users.",
     type=hikari.Attachment,
 )
 @lightbulb.command(
