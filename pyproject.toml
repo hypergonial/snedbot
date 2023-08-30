@@ -18,7 +18,7 @@ ignore_missing_imports = true
 name = "snedbot"
 version = "0.1.0" # I do not actually update this, lol
 description = "Your friendly neighbourhood multi-purpose Discord bot."
-authors = ["HyperGH <46067571+HyperGH@users.noreply.github.com>"]
+authors = ["hypergonial <46067571+hypergonial@users.noreply.github.com>"]
 license = "GNU GPL-v3"
 
 [tool.poetry.dependencies]
@@ -32,7 +32,7 @@ uvloop = {version = "==0.17.0", platform="linux"}
 aiodns = "~=3.0"
 Brotli = "~=1.0"
 ciso8601 = "~=2.3"
-kosu = {git = "https://github.com/HyperGH/kosu.git", branch="main"}
+kosu = {git = "https://github.com/hypergonial/kosu.git", branch="main"}
 hikari-lightbulb = "~=2.3.3"
 hikari-miru = "~=3.1.2"
 
