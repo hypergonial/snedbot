@@ -579,7 +579,9 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         channel = self.value.channels[0] if self.value.channels else None
         userlog = self.app.get_plugin("Logging")
         assert userlog is not None
-        await userlog.d.actions.set_log_channel(log_event, self.last_context.guild_id, channel.id if channel else None)
+        await userlog.d.actions.set_log_channel(
+            LogEvent(log_event), self.last_context.guild_id, channel.id if channel else None
+        )
 
         await self.settings_logging()
 
