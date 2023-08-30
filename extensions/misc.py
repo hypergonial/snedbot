@@ -188,8 +188,8 @@ async def about(ctx: SnedSlashContext) -> None:
 **• Online since:** {helpers.format_dt(ctx.app.start_time, style='R')}
 **• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
 **• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
-**• Terms of Service:** [Click here!](https://github.com/HyperGH/snedbot_v2/blob/main/tos.md)
-**• Privacy Policy:** [Click here!](https://github.com/HyperGH/snedbot_v2/blob/main/privacy.md)\n
+**• Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot_v2/blob/main/tos.md)
+**• Privacy Policy:** [Click here!](https://github.com/hypergonial/snedbot_v2/blob/main/privacy.md)\n
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
             color=const.EMBED_BLUE,
         )
@@ -269,7 +269,7 @@ async def support(ctx: SnedSlashContext) -> None:
 @lightbulb.command("source", "Provides a link to the source-code of the bot.")
 @lightbulb.implements(lightbulb.SlashCommand)
 async def source(ctx: SnedSlashContext) -> None:
-    await ctx.respond("<https://github.com/HyperGH/snedbot>")
+    await ctx.respond("<https://github.com/hypergonial/snedbot>")
 
 
 @misc.command
@@ -524,7 +524,7 @@ def unload(bot: SnedBot) -> None:
     bot.remove_plugin(misc)
 
 
-# Copyright (C) 2022-present HyperGH
+# Copyright (C) 2022-present hypergonial
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

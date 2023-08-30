@@ -26,7 +26,7 @@ EMOJI_PREV = "<:prev:956672875111260160>"
 EMOJI_NEXT = "<:next:956672907185123359>"
 EMOJI_LAST = "<:last:956672908082708480>"
 
-# Copyright (C) 2022-present HyperGH
+# Copyright (C) 2022-present hypergonial
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

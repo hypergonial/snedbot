@@ -135,7 +135,7 @@ class DatabaseUser(DatabaseModel):
         return await JournalEntry.fetch_journal(self.id, self.guild_id)
 
 
-# Copyright (C) 2022-present HyperGH
+# Copyright (C) 2022-present hypergonial
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

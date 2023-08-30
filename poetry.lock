@@ -865,7 +865,7 @@ attrs = ">=21.4.0"
 
 [package.source]
 type = "git"
-url = "https://github.com/HyperGH/kosu.git"
+url = "https://github.com/hypergonial/kosu.git"
 reference = "main"
 resolved_reference = "b6f61df107eb767277fc7190a101829765265061"
 

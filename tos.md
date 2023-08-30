@@ -4,7 +4,7 @@ By using Sned, directly or indirectly, the user agrees to the following points.
 ## DEFINITIONS
 - "Users" refers to any individual that directly utilizes Sned. Either via command interaction with Sned through Discord, and/or any form of communication whereas the user talks/texts to the Sned bot.
 
-- "Us/We/Our" refers to the team behind Sned. The team is currently comprised of one member (HyperGH) who programs the bot, aids users with support and help in regards to Sned.
+- "Us/We/Our" refers to the team behind Sned. The team is currently comprised of one member (hypergonial) who programs the bot, aids users with support and help in regards to Sned.
 
 - "Data" refers to any user entered information provided to Sned. This information includes data such as timezones, reminders, tags, moderation journals, Discord user information, and other public data.
 

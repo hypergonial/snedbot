@@ -27,7 +27,7 @@ def get_perm_str(perm: hikari.Permissions) -> str:
     return perm.name.replace("_", " ").title()
 
 
-# Copyright (C) 2022-present HyperGH
+# Copyright (C) 2022-present hypergonial
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

@@ -18,6 +18,9 @@ from models.plugin import SnedPlugin
 from utils import helpers
 from utils.ratelimiter import BucketType
 
+INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
+URL_REGEX = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
+
 logger = logging.getLogger(__name__)
 
 automod = SnedPlugin("Auto-Moderation", include_datastore=True)
@@ -271,6 +274,7 @@ async def punish(
         return
 
 
+# TODO: Seperate detections into seperate functions
 @automod.listener(hikari.GuildMessageCreateEvent, bind=True)
 @automod.listener(hikari.GuildMessageUpdateEvent, bind=True)
 async def scan_messages(
@@ -340,9 +344,7 @@ async def scan_messages(
                 )
 
     if policies["invites"]["state"] != AutoModState.DISABLED.value:
-        invite_regex = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
-
-        if invite_regex.findall(message.content):
+        if INVITE_REGEX.findall(message.content):
             return await punish(
                 message,
                 policies,
@@ -352,8 +354,7 @@ async def scan_messages(
 
     if isinstance(event, hikari.GuildMessageCreateEvent):
         if policies["link_spam"]["state"] != AutoModState.DISABLED.value:
-            link_regex = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
-            link_matches = link_regex.findall(message.content)
+            link_matches = URL_REGEX.findall(message.content)
             if len(link_matches) > 7:
                 return await punish(
                     message,
@@ -362,18 +363,16 @@ async def scan_messages(
                     reason="having too many links in a single message",
                 )
 
-            if not link_matches:
-                return
+            if link_matches:
+                await link_spam_ratelimiter.acquire(message)
 
-            await link_spam_ratelimiter.acquire(message)
-
-            if link_spam_ratelimiter.is_rate_limited(message):
-                return await punish(
-                    message,
-                    policies,
-                    AutomodActionType.LINK_SPAM,
-                    reason="posting links too quickly",
-                )
+                if link_spam_ratelimiter.is_rate_limited(message):
+                    return await punish(
+                        message,
+                        policies,
+                        AutomodActionType.LINK_SPAM,
+                        reason="posting links too quickly",
+                    )
 
         if policies["caps"]["state"] != AutoModState.DISABLED.value and len(message.content) > 15:
             chars = [char for char in message.content if char.isalnum()]
@@ -395,22 +394,20 @@ async def scan_messages(
             kosu.Attribute(kosu.AttributeName.THREAT),
         ]
         try:
-            logger.info(f"Perspective is analyzing message:\n{message.content}")
             resp: kosu.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
         except kosu.PerspectiveException as e:
-            logger.info(f"Perspective failed to analyze a message: {str(e)}")
-            return
-        scores = {score.name.name: score.summary.value for score in resp.attribute_scores}
+            logger.debug(f"Perspective failed to analyze a message: {str(e)}")
+        else:
+            scores = {score.name.name: score.summary.value for score in resp.attribute_scores}
 
-        for score, value in scores.items():
-            if value > policies["perspective"]["persp_bounds"][score]:
-                logger.info(f"Perspective detected toxic content with certainty {value} of kind {score}")
-                return await punish(
-                    message,
-                    policies,
-                    AutomodActionType.PERSPECTIVE,
-                    reason=f"toxic content detected by Perspective ({score.replace('_', ' ').lower()}: {round(value*100)}%)",
-                )
+            for score, value in scores.items():
+                if value > policies["perspective"]["persp_bounds"][score]:
+                    return await punish(
+                        message,
+                        policies,
+                        AutomodActionType.PERSPECTIVE,
+                        reason=f"toxic content detected by Perspective ({score.replace('_', ' ').lower()}: {round(value*100)}%)",
+                    )
 
 
 def load(bot: SnedBot) -> None:
@@ -421,7 +418,7 @@ def unload(bot: SnedBot) -> None:
     bot.remove_plugin(automod)
 
 
-# Copyright (C) 2022-present HyperGH
+# Copyright (C) 2022-present hypergonial
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

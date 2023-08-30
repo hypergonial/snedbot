@@ -10,8 +10,8 @@ updates:
     schedule:
       interval: daily
     assignees:
-      - HyperGH
+      - hypergonial
     reviewers:
-      - HyperGH
+      - hypergonial
     rebase-strategy: auto
     target-branch: main
