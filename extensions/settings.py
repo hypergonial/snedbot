@@ -14,6 +14,7 @@ from miru.abc import ViewItem
 import models
 from etc import const
 from etc.settings_static import *
+from extensions.userlog import LogEvent
 from models.bot import SnedBot
 from models.checks import bot_has_permissions
 from models.context import SnedSlashContext
@@ -660,7 +661,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         elif state in ["flag", "notice"]:
             userlog = self.app.get_plugin("Logging")
             assert userlog is not None
-            channel_id = await userlog.d.actions.get_log_channel_id("flags", self.last_context.guild_id)
+            channel_id = await userlog.d.actions.get_log_channel_id(LogEvent.FLAGS, self.last_context.guild_id)
             if not channel_id:
                 embed.add_field(
                     name="⚠️ Warning:",
