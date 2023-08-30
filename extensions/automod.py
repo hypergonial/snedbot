@@ -19,7 +19,11 @@ from utils import helpers
 from utils.ratelimiter import BucketType
 
 INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
+"""Used to detect and handle Discord invites."""
 URL_REGEX = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+")
+"""Used to detect and handle link spam."""
+DISCORD_FORMATTING_REGEX = re.compile(r"<\S+>")
+"""Remove Discord-specific formatting. Performance is key so some false-positives are acceptable here."""
 
 logger = logging.getLogger(__name__)
 
@@ -393,6 +397,13 @@ async def scan_messages(
             kosu.Attribute(kosu.AttributeName.INSULT),
             kosu.Attribute(kosu.AttributeName.THREAT),
         ]
+
+        # Remove custom emojis, mentions, and other Discord-specific formatting
+        analysis_str = DISCORD_FORMATTING_REGEX.sub("", message.content).strip()
+
+        if len(analysis_str) < 3:
+            return
+
         try:
             resp: kosu.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
         except kosu.PerspectiveException as e:
