@@ -395,15 +395,16 @@ async def scan_messages(
             kosu.Attribute(kosu.AttributeName.THREAT),
         ]
         try:
-            assert plugin.app.perspective is not None
+            logger.info(f"Perspective is analyzing message:\n{message.content}")
             resp: kosu.AnalysisResponse = await plugin.app.perspective.analyze(message.content, persp_attribs)
         except kosu.PerspectiveException as e:
-            logger.debug(f"Perspective failed to analyze a message: {str(e)}")
+            logger.info(f"Perspective failed to analyze a message: {str(e)}")
             return
         scores = {score.name.name: score.summary.value for score in resp.attribute_scores}
 
         for score, value in scores.items():
             if value > policies["perspective"]["persp_bounds"][score]:
+                logger.info(f"Perspective detected toxic content with certainty {value} of kind {score}")
                 return await punish(
                     message,
                     policies,
