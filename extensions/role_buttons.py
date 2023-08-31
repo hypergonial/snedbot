@@ -11,7 +11,7 @@ from models import SnedBot, SnedSlashContext
 from models.plugin import SnedPlugin
 from models.rolebutton import RoleButton, RoleButtonMode
 from utils import helpers
-from utils.ratelimiter import BucketType, RateLimiter
+from utils.ratelimiter import MemberBucket, RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ BUTTON_MODES = {
     "Remove": RoleButtonMode.REMOVE_ONLY,
 }
 
-role_button_ratelimiter = RateLimiter(2, 1, BucketType.MEMBER, wait=False)
+role_button_ratelimiter = RateLimiter(2, 1, MemberBucket, wait=False)
 
 
 class RoleButtonConfirmType(enum.Enum):

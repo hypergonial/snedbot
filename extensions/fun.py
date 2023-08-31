@@ -23,8 +23,9 @@ from models.checks import bot_has_permissions
 from models.context import SnedContext, SnedUserContext
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator, AuthorOnlyView
-from utils import BucketType, RateLimiter, helpers
+from utils import GlobalBucket, RateLimiter, helpers
 from utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryException, UrbanEntry
+from utils.ratelimiter import UserBucket
 from utils.rpn import InvalidExpressionError, Solver
 
 ANIMAL_EMOJI_MAPPING: dict[str, str] = {
@@ -37,7 +38,10 @@ ANIMAL_EMOJI_MAPPING: dict[str, str] = {
     "racoon": "🦝",
 }
 
-animal_ratelimiter = RateLimiter(60, 45, BucketType.GLOBAL, wait=False)
+ANIMAL_RATELIMITER = RateLimiter(60, 45, GlobalBucket, wait=False)
+COMF_LIMITER = RateLimiter(60, 5, UserBucket, wait=False)
+VESZTETTEM_LIMITER = RateLimiter(1800, 1, GlobalBucket, wait=False)
+COMF_PROGRESS_BAR_WIDTH = 20
 
 logger = logging.getLogger(__name__)
 
@@ -903,8 +907,8 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
 @lightbulb.command("animal", "Shows a random picture of the selected animal.", pass_options=True)
 @lightbulb.implements(lightbulb.SlashCommand)
 async def animal(ctx: SnedSlashContext, animal: str) -> None:
-    await animal_ratelimiter.acquire(ctx)
-    if animal_ratelimiter.is_rate_limited(ctx):
+    await ANIMAL_RATELIMITER.acquire(ctx)
+    if ANIMAL_RATELIMITER.is_rate_limited(ctx):
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Ratelimited",
@@ -983,25 +987,18 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
         await ctx.respond(embed=embed)
 
 
-vesztettem_limiter = RateLimiter(1800, 1, BucketType.GLOBAL, wait=False)
-
-
 @fun.listener(hikari.GuildMessageCreateEvent)
 async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
     if event.guild_id not in (Config().DEBUG_GUILDS or (1012448659029381190,)) or not event.is_human:
         return
 
     if event.content and "vesztettem" in event.content.lower():
-        await vesztettem_limiter.acquire(event.message)
+        await VESZTETTEM_LIMITER.acquire(event.message)
 
-        if vesztettem_limiter.is_rate_limited(event.message):
+        if VESZTETTEM_LIMITER.is_rate_limited(event.message):
             return
 
         await event.message.respond("Vesztettem")
-
-
-comf_ratelimiter = RateLimiter(60, 5, BucketType.USER, wait=False)
-COMF_PROGRESS_BAR_WIDTH = 20
 
 
 @fun.command
@@ -1011,8 +1008,8 @@ COMF_PROGRESS_BAR_WIDTH = 20
 async def comf(ctx: SnedSlashContext) -> None:
     assert ctx.member is not None
 
-    await comf_ratelimiter.acquire(ctx)
-    if comf_ratelimiter.is_rate_limited(ctx):
+    await COMF_LIMITER.acquire(ctx)
+    if COMF_LIMITER.is_rate_limited(ctx):
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Ratelimited",

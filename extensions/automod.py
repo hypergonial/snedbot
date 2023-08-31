@@ -16,7 +16,7 @@ from models.bot import SnedBot
 from models.events import AutoModMessageFlagEvent
 from models.plugin import SnedPlugin
 from utils import helpers
-from utils.ratelimiter import BucketType
+from utils.ratelimiter import MemberBucket
 
 INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
 """Used to detect and handle Discord invites."""
@@ -25,12 +25,12 @@ URL_REGEX = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0
 DISCORD_FORMATTING_REGEX = re.compile(r"<\S+>")
 """Remove Discord-specific formatting. Performance is key so some false-positives are acceptable here."""
 
-SPAM_RATELIMITER = utils.RateLimiter(10, 8, bucket=BucketType.MEMBER, wait=False)
-PUNISH_RATELIMITER = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
-ATTACH_SPAM_RATELIMITER = utils.RateLimiter(30, 2, bucket=BucketType.MEMBER, wait=False)
-LINK_SPAM_RATELIMITER = utils.RateLimiter(30, 2, bucket=BucketType.MEMBER, wait=False)
-ESCALATE_PREWARN_RATELIMITER = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
-ESCALATE_RATELIMITER = utils.RateLimiter(30, 1, bucket=BucketType.MEMBER, wait=False)
+SPAM_RATELIMITER = utils.RateLimiter(10, 8, bucket=MemberBucket, wait=False)
+PUNISH_RATELIMITER = utils.RateLimiter(30, 1, bucket=MemberBucket, wait=False)
+ATTACH_SPAM_RATELIMITER = utils.RateLimiter(30, 2, bucket=MemberBucket, wait=False)
+LINK_SPAM_RATELIMITER = utils.RateLimiter(30, 2, bucket=MemberBucket, wait=False)
+ESCALATE_PREWARN_RATELIMITER = utils.RateLimiter(30, 1, bucket=MemberBucket, wait=False)
+ESCALATE_RATELIMITER = utils.RateLimiter(30, 1, bucket=MemberBucket, wait=False)
 
 logger = logging.getLogger(__name__)
 
