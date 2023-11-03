@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 starboard = SnedPlugin("Starboard")
 
 IMAGE_URL_REGEX = re.compile(
-    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)([.]jpe?g|png|gif|bmp|webp)[-a-zA-Z0-9@:%._\+~#=?&]*"
+    r"https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)(?:[.]jpe?g|png|gif|bmp|webp)[-a-zA-Z0-9@:%._\+~#=?&]*"
 )
 
 STAR_MAPPING = {
@@ -28,32 +28,19 @@ STAR_MAPPING = {
 }
 
 
-def get_image_url(content: str) -> str | None:
+def get_image_urls(content: str) -> list[str]:
     """Return a list of image URLs found in the message content."""
-
-    matches: re.Match[str] | None = re.search(IMAGE_URL_REGEX, content)
-
-    if not matches:
-        return None
-
-    return content[matches.span()[0] : matches.span()[1]]
+    return IMAGE_URL_REGEX.findall(content)
 
 
-def get_attachment_url(message: hikari.Message) -> str | None:
+def get_img_attach_urls(message: hikari.Message) -> list[str]:
     """Return a list of image attachment URLs found in the message."""
 
     if not message.attachments:
-        return
+        return []
 
     attach_urls = [attachment.url for attachment in message.attachments]
-    string = " ".join(attach_urls)
-
-    matches: re.Match[str] | None = re.search(IMAGE_URL_REGEX, string)
-
-    if not matches:
-        return None
-
-    return string[matches.span()[0] : matches.span()[1]]
+    return [url for url in attach_urls if IMAGE_URL_REGEX.fullmatch(url)]
 
 
 def create_starboard_payload(
@@ -83,39 +70,49 @@ def create_starboard_payload(
     guild_id = hikari.Snowflake(guild)
     member = starboard.app.cache.get_member(guild_id, message.author.id)
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
+
     content = f"{emoji} **{stars}{' (Forced)' if force_starred else ''}** <#{message.channel_id}>"
-    embed = (
-        hikari.Embed(description=message.content, color=0xFFC20C)
+
+    # A url must be set for all embeds to make the image carousel work
+    head_embed = (
+        hikari.Embed(description=message.content, color=0xFFC20C, url="https://example.com")
         .set_author(
             name=member.display_name if member else "Unknown", icon=member.display_avatar_url if member else None
         )
         .set_footer(f"ID: {message.id}")
     )
-    attachments = message.attachments
 
-    if image_urls := get_attachment_url(message):
-        embed.set_image(image_urls)
-        attachments = [attachment for attachment in attachments if attachment.url != image_urls]
+    image_urls: list[str] = []
 
-    elif message.content:
-        if image_urls := get_image_url(message.content):
-            embed.set_image(image_urls)
+    if message.attachments and (attach_urls := get_img_attach_urls(message)):
+        image_urls += attach_urls
+
+    if message.content and (content_urls := get_image_urls(message.content)):
+        image_urls += content_urls
+
+    # Remove duplicate attachments
+    attachments = [attachment for attachment in message.attachments if attachment.url not in image_urls[:10]]
 
     if attachments:
-        embed.add_field(
+        head_embed.add_field(
             "Attachments",
             "\n".join([f"[{attachment.filename[:100]}]({attachment.url})" for attachment in attachments][:5]),
         )
 
     if message.referenced_message:
-        embed.add_field(
+        head_embed.add_field(
             "Replying to",
             f"[{message.referenced_message.author}]({message.referenced_message.make_link(guild_id)})",
         )
 
-    embed.add_field("Original Message", f"[Jump!]({message.make_link(guild_id)})")
+    head_embed.add_field("Original Message", f"[Jump!]({message.make_link(guild_id)})")
 
-    return {"content": content, "embed": embed}
+    if image_urls:
+        head_embed.set_image(image_urls[0])
+
+    tail_embeds = [hikari.Embed(url="https://example.com").set_image(image_url) for image_url in image_urls[1:][:10]]
+
+    return {"content": content, "embeds": [head_embed] + tail_embeds}
 
 
 async def star_message(
