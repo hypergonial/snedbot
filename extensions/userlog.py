@@ -177,7 +177,9 @@ async def get_log_channel_ids_view(guild_id: int) -> dict[str, int | None]:
 
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
 
-    log_channels: dict[str, int | None] = json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else {}
+    log_channels: dict[str, int | None] = (
+        json.loads(records[0]["log_channels"]) if records and records[0]["log_channels"] else {}
+    )
 
     for log_event in LogEvent:
         if log_event.value not in log_channels.keys():
