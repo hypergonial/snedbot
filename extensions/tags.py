@@ -31,6 +31,7 @@ class TagEditorModal(miru.Modal):
             self.add_item(
                 miru.TextInput(
                     label="Tag Name",
+                    custom_id="name",
                     placeholder="Enter a tag name...",
                     required=True,
                     min_length=3,
@@ -41,6 +42,7 @@ class TagEditorModal(miru.Modal):
         self.add_item(
             miru.TextInput(
                 label="Tag Content",
+                custom_id="content",
                 style=hikari.TextInputStyle.PARAGRAPH,
                 placeholder="Enter tag content, supports markdown formatting...",
                 required=True,
@@ -56,12 +58,8 @@ class TagEditorModal(miru.Modal):
         if not ctx.values:
             return
 
-        for item, value in ctx.values.items():
-            assert isinstance(item, miru.TextInput)
-            if item.label == "Tag Name":
-                self.tag_name = value
-            elif item.label == "Tag Content":
-                self.tag_content = value
+        self.tag_name = ctx.get_value_by_id("name", default="")
+        self.tag_content = ctx.get_value_by_id("content")
 
 
 @tags.command
