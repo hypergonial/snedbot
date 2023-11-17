@@ -23,7 +23,7 @@ license = "GNU GPL-v3"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
-dateparser = "^1.1.8"
+dateparser = "^1.2.0"
 psutil = "^5.9.6"
 Pillow = "^10.0.1"
 asyncpg = "^0.28.0"
