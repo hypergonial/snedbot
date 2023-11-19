@@ -2,12 +2,29 @@ import asyncio
 import inspect
 import logging
 import traceback
+import typing as t
 
 
 class IntervalLoop:
+    """A simple interval loop that runs a coroutine at a specified interval.
+
+    Parameters
+    ----------
+    callback : Callable[..., Awaitable[None]]
+        The coroutine to run at the specified interval.
+    seconds : float, optional
+        The number of seconds to wait before running the coroutine again.
+    minutes : float, optional
+        The number of minutes to wait before running the coroutine again.
+    hours : float, optional
+        The number of hours to wait before running the coroutine again.
+    days : float, optional
+        The number of days to wait before running the coroutine again.
+    """
+
     def __init__(
         self,
-        callback,
+        callback: t.Callable[..., t.Awaitable[None]],
         seconds: float | None = None,
         minutes: float | None = None,
         hours: float | None = None,
@@ -31,6 +48,8 @@ class IntervalLoop:
             raise TypeError("Expected a coroutine function.")
 
     async def _loopy_loop(self, *args, **kwargs) -> None:
+        """Main loop logic"""
+
         while not self._stop_next:
             try:
                 await self._coro(*args, **kwargs)
