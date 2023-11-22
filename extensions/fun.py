@@ -560,7 +560,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: str | None
 @fun.command
 @lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.set_max_concurrency(1, lightbulb.ChannelBucket)
-@lightbulb.add_checks(bot_has_permissions(hikari.Permissions.ADD_REACTIONS))
+@lightbulb.add_checks(bot_has_permissions(hikari.Permissions.ADD_REACTIONS, hikari.Permissions.VIEW_CHANNEL))
 @lightbulb.option("length", "The amount of words provided.", required=False, type=int, min_value=1, max_value=15)
 @lightbulb.option(
     "difficulty", "The difficulty of the words provided.", choices=["easy", "medium", "hard"], required=False
@@ -577,7 +577,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
     text = " ".join([random.choice(words) for _ in range(0, length)])
     file.close()
 
-    await ctx.respond(
+    resp = await ctx.respond(
         embed=hikari.Embed(
             title=f"🏁 Typeracing begins {helpers.format_dt(helpers.utcnow() + datetime.timedelta(seconds=10), style='R')}",
             description="Prepare your keyboard of choice!",
@@ -585,7 +585,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
         )
     )
 
-    await asyncio.sleep(10.0)
+    await asyncio.sleep(9.0)  # We sleep for less to roughly account for network delay
 
     def draw_text() -> BytesIO:
         font = Path(ctx.app.base_dir, "etc", "fonts", "roboto-slab.ttf")
@@ -597,9 +597,12 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
         text_font = ImageFont.truetype(str(font), 40)
 
         # Resize image for text
-        textwidth, textheight = draw.textsize(display_text, outline)
+        lines = display_text.splitlines()
+        logger.info(lines)
+        textwidth = draw.textlength(lines[0], font=outline)
         margin = 20
-        img = img.resize((textwidth + margin, textheight + margin))
+
+        img = img.resize((int(textwidth) + margin, len(lines) * (42 + margin)))
         draw = ImageDraw.Draw(img)
 
         draw.text((margin / 2, margin / 2), display_text, font=text_font, fill="white")
@@ -617,6 +620,13 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
         attachment=hikari.Bytes(buffer.getvalue(), "sned_typerace.png"),
     )
 
+    await resp.edit(
+        embed=hikari.Embed(
+            title=f"🏁 Typeracing began {helpers.format_dt(helpers.utcnow(), style='R')}",
+            color=const.EMBED_BLUE,
+        )
+    )
+
     end_trigger = asyncio.Event()
     start = helpers.utcnow()
     winners = {}
@@ -627,12 +637,15 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
         if not message.content:
             return False
 
-        if ctx.channel_id == message.channel_id and text.lower() == message.content.lower():
+        if ctx.channel_id != message.channel_id:
+            return False
+
+        if text.lower() == message.content.lower():
             winners[message.author] = (helpers.utcnow() - start).total_seconds()
             asyncio.create_task(message.add_reaction("✅"))
             end_trigger.set()
 
-        elif ctx.channel_id == message.channel_id and lev.distance(text.lower(), message.content.lower()) < 5:
+        elif lev.distance(text.lower(), message.content.lower()) < 5:
             asyncio.create_task(message.add_reaction("❌"))
 
         return False
@@ -651,30 +664,29 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
                 color=const.ERROR_COLOR,
             )
         )
+        return
 
-    else:
-        await ctx.respond(
-            embed=hikari.Embed(
-                title="🏁 First Place",
-                description=f"**{list(winners.keys())[0]}** finished first, everyone else has **15 seconds** to submit their reply!",
-                color=const.EMBED_GREEN,
-            )
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="🏁 First Place",
+            description=f"**{list(winners.keys())[0]}** finished first, everyone else has **15 seconds** to submit their reply!",
+            color=const.EMBED_GREEN,
         )
-        await asyncio.sleep(15.0)
-
-        desc = "**Participants:**\n"
-        for winner in winners:
-            desc = f"{desc}**#{list(winners.keys()).index(winner)+1}** **{winner}** `{round(winners[winner], 1)}` seconds - `{round((len(text) / 5) / (winners[winner] / 60))}`WPM\n"
-
-        await ctx.respond(
-            embed=hikari.Embed(
-                title="🏁 Typeracing results",
-                description=desc,
-                color=const.EMBED_GREEN,
-            )
-        )
-
+    )
+    await asyncio.sleep(15.0)
     msg_listener.cancel()
+
+    desc = "**Participants:**\n"
+    for winner in winners:
+        desc = f"{desc}**#{list(winners.keys()).index(winner)+1}** **{winner}** `{round(winners[winner], 1)}` seconds - `{round((len(text) / 5) / (winners[winner] / 60))}`WPM\n"
+
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="🏁 Typeracing results",
+            description=desc,
+            color=const.EMBED_GREEN,
+        )
+    )
 
 
 @fun.command
