@@ -224,7 +224,7 @@ Click one of the buttons below to get started!""",
         )
 
         buttons = [
-            BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enable", disabled=not channel),
+            BooleanButton(state=records[0]["is_enabled"] if channel else False, label="Enabled", disabled=not channel),
             OptionButton(label="Set Channel", emoji=const.EMOJI_CHANNEL, style=hikari.ButtonStyle.SECONDARY),
             OptionButton(label="Change Roles", emoji=const.EMOJI_MENTION, style=hikari.ButtonStyle.SECONDARY),
         ]
@@ -374,7 +374,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             color=const.EMBED_BLUE,
         )
         buttons = [
-            BooleanButton(state=is_enabled, label="Enable", disabled=not starboard_channel),
+            BooleanButton(state=is_enabled, label="Enabled", disabled=not starboard_channel),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Set Channel", emoji=const.EMOJI_CHANNEL),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Limit", emoji="⭐"),
             OptionButton(style=hikari.ButtonStyle.SECONDARY, label="Exclusions"),
@@ -397,7 +397,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         if not self.value:
             return
 
-        if self.value.boolean is not hikari.UNDEFINED and self.value.text == "Enable":
+        if self.value.boolean is not hikari.UNDEFINED and self.value.text == "Enabled":
             settings.is_enabled = self.value.boolean
 
         elif self.value.text == "Limit":
