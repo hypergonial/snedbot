@@ -308,7 +308,7 @@ async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
     assert ctx.guild_id is not None
 
     try:
-        await ctx.app.scheduler.cancel_timer(id, ctx.guild_id)
+        await ctx.app.scheduler.cancel_timer(id, ctx.guild_id, ctx.author.id)
     except ValueError:
         await ctx.respond(
             embed=hikari.Embed(
@@ -352,7 +352,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
     reminders = []
 
     for record in records:
-        time = datetime.datetime.fromtimestamp(record.get("expires"))
+        time = datetime.datetime.fromtimestamp(record["expires"])
         notes = json.loads(record["notes"])["message"].replace("\n", " ")
         if len(notes) > 50:
             notes = notes[:47] + "..."

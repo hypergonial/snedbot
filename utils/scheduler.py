@@ -5,7 +5,7 @@ import datetime
 import enum
 import logging
 import re
-import typing
+import typing as t
 
 import dateparser
 import hikari
@@ -17,7 +17,7 @@ from utils.tasks import IntervalLoop
 logger = logging.getLogger(__name__)
 
 
-if typing.TYPE_CHECKING:
+if t.TYPE_CHECKING:
     from models.bot import SnedBot
 
 
@@ -205,12 +205,12 @@ class Scheduler:
 
         if record:
             timer = Timer(
-                id=record.get("id"),
-                guild_id=hikari.Snowflake(record.get("guild_id")),
-                user_id=hikari.Snowflake(record.get("user_id")),
-                channel_id=hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
+                id=record["id"],
+                guild_id=hikari.Snowflake(record["guild_id"]),
+                user_id=hikari.Snowflake(record["user_id"]),
+                channel_id=hikari.Snowflake(record["channel_id"]) if record.get("channel_id") else None,
                 event=TimerEvent(record.get("event")),
-                expires=record.get("expires"),
+                expires=record["expires"],
                 notes=record.get("notes"),
             )
             return timer
@@ -292,7 +292,12 @@ class Scheduler:
                 self._current_task.cancel()
             self._current_task = asyncio.create_task(self._dispatch_timers())
 
-    async def get_timer(self, entry_id: int, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> Timer:
+    async def get_timer(
+        self,
+        entry_id: int,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
+    ) -> Timer:
         """Retrieve a currently pending timer.
 
         Parameters
@@ -301,6 +306,8 @@ class Scheduler:
             The ID of the timer object.
         guild : hikari.SnowflakeishOr[hikari.PartialGuild]
             The guild this timer belongs to.
+        user : hikari.SnowflakeishOr[hikari.PartialUser], optional
+            The user this timer belongs to, by default None
 
         Returns
         -------
@@ -314,20 +321,30 @@ class Scheduler:
         """
 
         guild_id = hikari.Snowflake(guild)
-        record = await self.bot.db.fetchrow(
-            """SELECT * FROM timers WHERE id = $1 AND guild_id = $2 LIMIT 1""",
-            entry_id,
-            guild_id,
-        )
+        user_id = hikari.Snowflake(user) if user else None
+
+        if user_id:
+            record = await self.bot.db.fetchrow(
+                """SELECT * FROM timers WHERE id = $1 AND guild_id = $2 AND user_id = $3 LIMIT 1""",
+                entry_id,
+                guild_id,
+                user_id,
+            )
+        else:
+            record = await self.bot.db.fetchrow(
+                """SELECT * FROM timers WHERE id = $1 AND guild_id = $2 LIMIT 1""",
+                entry_id,
+                guild_id,
+            )
 
         if record:
             timer = Timer(
-                record.get("id"),
-                hikari.Snowflake(record.get("guild_id")),
-                hikari.Snowflake(record.get("user_id")),
-                hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
+                record["id"],
+                hikari.Snowflake(record["guild_id"]),
+                hikari.Snowflake(record["user_id"]),
+                hikari.Snowflake(record["channel_id"]) if record.get("channel_id") else None,
                 TimerEvent(record.get("event")),
-                record.get("expires"),
+                record["expires"],
                 record.get("notes"),
             )
             return timer
@@ -386,12 +403,12 @@ class Scheduler:
         )
         record = records[0]
         timer = Timer(
-            record.get("id"),
-            hikari.Snowflake(record.get("guild_id")),
-            hikari.Snowflake(record.get("user_id")),
-            hikari.Snowflake(record.get("channel_id")) if record.get("channel_id") else None,
+            record["id"],
+            hikari.Snowflake(record["guild_id"]),
+            hikari.Snowflake(record["user_id"]),
+            hikari.Snowflake(record["channel_id"]) if record.get("channel_id") else None,
             TimerEvent(record.get("event")),
-            record.get("expires"),
+            record["expires"],
             record.get("notes"),
         )
 
@@ -408,7 +425,12 @@ class Scheduler:
 
         return timer
 
-    async def cancel_timer(self, entry_id: int, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> Timer:
+    async def cancel_timer(
+        self,
+        entry_id: int,
+        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
+    ) -> Timer:
         """Prematurely cancel a timer before expiry. Returns the cancelled timer.
 
         Parameters
@@ -428,7 +450,7 @@ class Scheduler:
 
         guild_id = hikari.Snowflake(guild)
         try:
-            timer = await self.get_timer(entry_id, guild_id)
+            timer = await self.get_timer(entry_id, guild_id, user)
         except ValueError:
             raise
         else:
