@@ -1,8 +1,3 @@
-[tool.black]
-line-length = 120
-target-version = ["py311"]
-include = ".*py$"
-
 [tool.ruff]
 exclude = ["examples", "docs", "build"]
 select = ["E", "F", "I"]
@@ -22,23 +17,21 @@ authors = ["hypergonial <46067571+hypergonial@users.noreply.github.com>"]
 license = "GNU GPL-v3"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
+python = ">=3.11,<3.13"
 dateparser = "^1.1.8"
 psutil = "^5.9.6"
 Pillow = "^10.0.1"
 asyncpg = "^0.28.0"
 Levenshtein = "^0.23.0"
-uvloop = {version = "==0.17.0", platform="linux"}
+uvloop = {version = "==0.18.0", platform="linux"}
 aiodns = "~=3.1.1"
 Brotli = "~=1.0"
 ciso8601 = "~=2.3"
-kosu = {git = "https://github.com/hypergonial/kosu.git", branch="main"}
-hikari-lightbulb = "~=2.3.3"
-hikari-miru = "~=3.2.2"
+kosu = {git = "https://github.com/hypergonial/kosu.git"}
+hikari-lightbulb = "~=2.3.5"
+hikari-miru = "~=3.3.1"
 
 [tool.poetry.dev-dependencies]
-black = "^23.3"
-isort = "^5.12.0"
 nox = "^2023.4.22"
 ruff = "^0.1.5"
 
