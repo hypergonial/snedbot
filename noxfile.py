@@ -22,7 +22,7 @@ def format_fix(session: nox.Session):
 @nox.session()
 def format(session: nox.Session):
     session.install("-U", "ruff")
-    session.run("python", "-m", "black", *SCRIPT_PATHS, "--check")
+    session.run("python", "-m", "ruff", *SCRIPT_PATHS, "--check")
     session.run("python", "-m", "ruff", "format", *SCRIPT_PATHS, "--check")
 
 
