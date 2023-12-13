@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import enum
+import typing as t
 
 import asyncpg
 import attr
@@ -63,7 +64,7 @@ class JournalEntry(DatabaseModel):
         return f"{helpers.format_dt(self.created_at, style='d')} **{ENTRY_TYPE_VERB_MAPPING.get(self.entry_type, '')} by {author_mention}**: {content}"
 
     @classmethod
-    def from_record(cls, record: asyncpg.Record) -> JournalEntry:
+    def from_record(cls, record: asyncpg.Record) -> t.Self:
         """Create a new instance of JournalEntry from an asyncpg.Record.
 
         Parameters
@@ -89,7 +90,7 @@ class JournalEntry(DatabaseModel):
     @classmethod
     async def fetch(
         cls, id: int, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> JournalEntry | None:
+    ) -> t.Self | None:
         """Fetch a journal entry from the database.
 
         Parameters
@@ -119,7 +120,7 @@ class JournalEntry(DatabaseModel):
     @classmethod
     async def fetch_journal(
         cls, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> list[JournalEntry]:
+    ) -> list[t.Self]:
         """Fetch a user's journal from the database.
 
         Parameters

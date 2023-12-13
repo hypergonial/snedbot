@@ -77,7 +77,7 @@ class RoleButton(DatabaseModel):
         return self._custom_id
 
     @classmethod
-    async def fetch(cls, id: int) -> RoleButton | None:
+    async def fetch(cls, id: int) -> t.Self | None:
         """Fetch a rolebutton stored in the database by ID.
 
         Parameters
@@ -160,7 +160,7 @@ class RoleButton(DatabaseModel):
         mode: RoleButtonMode,
         label: str | None = None,
         moderator: hikari.PartialUser | None = None,
-    ) -> RoleButton:
+    ) -> t.Self:
         """Create a new rolebutton with the provided parameters.
 
         Parameters
