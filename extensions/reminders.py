@@ -367,7 +367,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
         hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=const.EMBED_BLUE)
         for content in reminders
     ]
-    # TODO: wtf
+    # FIXME: wtf typing
     navigator = AuthorOnlyNavigator(ctx, pages=pages, timeout=600)  # type: ignore
     await navigator.send(ctx.interaction)
 

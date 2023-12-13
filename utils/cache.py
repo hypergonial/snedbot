@@ -44,7 +44,7 @@ class DatabaseCache:
         """
         )
         for record in records:
-            self._cache[record.get("tablename")] = []
+            self._cache[record["tablename"]] = []
         logger.info("Cache initialized!")
         self.is_ready = True
 

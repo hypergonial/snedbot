@@ -30,7 +30,7 @@ class Tag(DatabaseModel):
     @classmethod
     async def fetch(
         cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild], add_use: bool = False
-    ) -> Tag | None:
+    ) -> t.Self | None:
         """Fetches a tag from the database.
 
         Parameters
@@ -60,13 +60,13 @@ class Tag(DatabaseModel):
             return
 
         return cls(
-            guild_id=hikari.Snowflake(record.get("guild_id")),
-            name=record.get("tagname"),
-            owner_id=hikari.Snowflake(record.get("owner_id")),
-            creator_id=hikari.Snowflake(record.get("creator_id")) if record.get("creator_id") else None,
+            guild_id=hikari.Snowflake(record["guild_id"]),
+            name=record["tagname"],
+            owner_id=hikari.Snowflake(record["owner_id"]),
+            creator_id=hikari.Snowflake(record["creator_id"]) if record.get("creator_id") else None,
             aliases=record.get("aliases"),
-            content=record.get("content"),
-            uses=record.get("uses"),
+            content=record["content"],
+            uses=record["uses"],
         )
 
     @classmethod
@@ -140,7 +140,7 @@ class Tag(DatabaseModel):
         cls,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         owner: hikari.SnowflakeishOr[hikari.PartialUser] | None = None,
-    ) -> list[Tag]:
+    ) -> list[t.Self]:
         """Fetch all tags that belong to a guild, and optionally a user.
 
         Parameters
@@ -170,13 +170,13 @@ class Tag(DatabaseModel):
 
         return [
             cls(
-                guild_id=hikari.Snowflake(record.get("guild_id")),
-                name=record.get("tagname"),
-                owner_id=hikari.Snowflake(record.get("owner_id")),
-                creator_id=hikari.Snowflake(record.get("creator_id")) if record.get("creator_id") else None,
+                guild_id=hikari.Snowflake(record["guild_id"]),
+                name=record["tagname"],
+                owner_id=hikari.Snowflake(record["owner_id"]),
+                creator_id=hikari.Snowflake(record["creator_id"]) if record.get("creator_id") else None,
                 aliases=record.get("aliases"),
-                content=record.get("content"),
-                uses=record.get("uses"),
+                content=record["content"],
+                uses=record["uses"],
             )
             for record in records
         ]

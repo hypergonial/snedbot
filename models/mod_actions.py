@@ -335,7 +335,7 @@ class ModActions:
                 return
 
             for record in records:
-                await self.app.scheduler.cancel_timer(record.get("id"), event.guild_id)
+                await self.app.scheduler.cancel_timer(record["id"], event.guild_id)
 
     async def tempban_expire(self, event: TimerCompleteEvent) -> None:
         """Handle tempban timer expiry and unban user."""
@@ -639,7 +639,7 @@ class ModActions:
                 "tempban",
             )
             if record:
-                await self.app.scheduler.cancel_timer(record.get("id"), moderator.guild_id)
+                await self.app.scheduler.cancel_timer(record["id"], moderator.guild_id)
 
             if soft:
                 await self.app.rest.unban_user(moderator.guild_id, user.id, reason="Automatic unban by softban.")

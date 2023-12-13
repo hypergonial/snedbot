@@ -103,7 +103,7 @@ async def _has_permissions(ctx: SnedApplicationContext, *, perms: hikari.Permiss
         if isinstance(channel, hikari.GuildThreadChannel):
             channel = ctx.app.cache.get_guild_channel(channel.parent_id)
 
-        assert isinstance(channel, hikari.GuildChannel)
+        assert isinstance(channel, hikari.PermissibleGuildChannel)
         member_perms = lightbulb.utils.permissions_in(channel, ctx.member)
 
     missing_perms = ~member_perms & perms
@@ -140,7 +140,7 @@ async def _bot_has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -
 
         if isinstance(channel, hikari.GuildThreadChannel):
             channel = ctx.app.cache.get_guild_channel(channel.parent_id)
-        assert isinstance(channel, hikari.GuildChannel)
+        assert isinstance(channel, hikari.PermissibleGuildChannel)
         bot_perms = lightbulb.utils.permissions_in(channel, member)
 
     missing_perms = ~bot_perms & perms

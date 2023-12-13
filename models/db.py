@@ -121,7 +121,7 @@ class Database:
         """Acquire a database connection from the connection pool."""
         con = await self.pool.acquire()
         try:
-            yield con
+            yield con  # type: ignore
         finally:
             await self.pool.release(con)
 
@@ -213,7 +213,7 @@ class Database:
         DatabaseStateConflictError
             The application is not connected to the database server.
         """
-        return await self.pool.fetchrow(query, *args, timeout=timeout)
+        return await self.pool.fetchrow(query, *args, timeout=timeout)  # type: ignore
 
     async def fetchval(self, query: str, *args, column: int = 0, timeout: float | None = None) -> t.Any:
         """Run a query and return a value in the first row that matched query parameters.

@@ -81,7 +81,7 @@ class JournalEntry(DatabaseModel):
             user_id=hikari.Snowflake(record["user_id"]),
             guild_id=hikari.Snowflake(record["guild_id"]),
             content=record.get("content"),
-            author_id=hikari.Snowflake(record.get("author_id")) if record.get("author_id") else None,
+            author_id=hikari.Snowflake(record["author_id"]) if record.get("author_id") else None,
             created_at=datetime.datetime.fromtimestamp(record["created_at"]),
             entry_type=JournalEntryType(record["entry_type"]),
         )

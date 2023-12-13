@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import typing as t
 
 import hikari
 import miru
@@ -95,15 +96,15 @@ class RoleButton(DatabaseModel):
             return None
 
         return cls(
-            id=record.get("entry_id"),
-            guild_id=hikari.Snowflake(record.get("guild_id")),
-            channel_id=hikari.Snowflake(record.get("channel_id")),
-            message_id=hikari.Snowflake(record.get("msg_id")),
-            emoji=hikari.Emoji.parse(record.get("emoji")),
-            label=record.get("label"),
-            style=hikari.ButtonStyle[record.get("style")],
-            mode=RoleButtonMode(record.get("mode")),
-            role_id=record.get("role_id"),
+            id=record["entry_id"],
+            guild_id=hikari.Snowflake(record["guild_id"]),
+            channel_id=hikari.Snowflake(record["channel_id"]),
+            message_id=hikari.Snowflake(record["msg_id"]),
+            emoji=hikari.Emoji.parse(record["emoji"]),
+            label=record["label"],
+            style=hikari.ButtonStyle[record["style"]],
+            mode=RoleButtonMode(record["mode"]),
+            role_id=record["role_id"],
             add_title=record.get("add_title"),
             add_description=record.get("add_desc"),
             remove_title=record.get("remove_title"),
@@ -111,7 +112,7 @@ class RoleButton(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[RoleButton]:
+    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[t.Self]:
         """Fetch all rolebuttons that belong to a given guild.
 
         Parameters
@@ -131,15 +132,15 @@ class RoleButton(DatabaseModel):
 
         return [
             cls(
-                id=record.get("entry_id"),
-                guild_id=hikari.Snowflake(record.get("guild_id")),
-                channel_id=hikari.Snowflake(record.get("channel_id")),
-                message_id=hikari.Snowflake(record.get("msg_id")),
-                emoji=hikari.Emoji.parse(record.get("emoji")),
+                id=record["entry_id"],
+                guild_id=hikari.Snowflake(record["guild_id"]),
+                channel_id=hikari.Snowflake(record["channel_id"]),
+                message_id=hikari.Snowflake(record["msg_id"]),
+                emoji=hikari.Emoji.parse(record["emoji"]),
                 label=record.get("label"),
-                style=hikari.ButtonStyle[record.get("style")],
-                mode=RoleButtonMode(record.get("mode")),
-                role_id=record.get("role_id"),
+                style=hikari.ButtonStyle[record["style"]],
+                mode=RoleButtonMode(record["mode"]),
+                role_id=record["role_id"],
                 add_title=record.get("add_title"),
                 add_description=record.get("add_desc"),
                 remove_title=record.get("remove_title"),
@@ -193,7 +194,7 @@ class RoleButton(DatabaseModel):
         """
 
         record = await cls._db.fetchrow("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC""")
-        id = record.get("entry_id") + 1 if record else 1
+        id = record["entry_id"] + 1 if record else 1
         role_id = hikari.Snowflake(role)
 
         button = miru.Button(

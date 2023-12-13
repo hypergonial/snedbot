@@ -47,7 +47,7 @@ class StarboardSettings(DatabaseModel):
         records = await cls._app.db_cache.get(table="starboard", guild_id=hikari.Snowflake(guild), limit=1)
         if not records:
             return cls(guild_id=hikari.Snowflake(guild))
-        return cls.from_record(records[0])
+        return cls.from_record(records[0])  # type: ignore
 
     async def update(self) -> None:
         """Update the starboard settings in the database, or insert them if they do not yet exist."""
@@ -107,7 +107,7 @@ class StarboardEntry(DatabaseModel):
         )
         if not records:
             return None
-        return cls.from_record(records[0])
+        return cls.from_record(records[0])  # type: ignore
 
     async def update(self) -> None:
         """Update the starboard entry in the database, or insert it if it does not yet exist."""

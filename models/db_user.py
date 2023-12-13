@@ -60,7 +60,7 @@ class DatabaseUser(DatabaseModel):
     @classmethod
     async def fetch(
         cls, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> DatabaseUser:
+    ) -> t.Self:
         """Fetch a user from the database. If not present, returns a default DatabaseUser object.
 
         Parameters
@@ -86,15 +86,15 @@ class DatabaseUser(DatabaseModel):
             return cls(hikari.Snowflake(user), hikari.Snowflake(guild), flags=DatabaseUserFlag.NONE, warns=0)
 
         return cls(
-            id=hikari.Snowflake(record.get("user_id")),
-            guild_id=hikari.Snowflake(record.get("guild_id")),
-            flags=DatabaseUserFlag(record.get("flags")),
-            warns=record.get("warns"),
-            data=json.loads(record.get("data")) if record.get("data") else {},
+            id=hikari.Snowflake(record["user_id"]),
+            guild_id=hikari.Snowflake(record["guild_id"]),
+            flags=DatabaseUserFlag(record["flags"]),
+            warns=record["warns"],
+            data=json.loads(record["data"]) if record.get("data") else {},
         )
 
     @classmethod
-    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[DatabaseUser]:
+    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[t.Self]:
         """Fetch all stored user data that belongs to the specified guild.
 
         Parameters
@@ -115,11 +115,11 @@ class DatabaseUser(DatabaseModel):
 
         return [
             cls(
-                id=hikari.Snowflake(record.get("user_id")),
-                guild_id=hikari.Snowflake(record.get("guild_id")),
-                flags=DatabaseUserFlag(record.get("flags")),
-                warns=record.get("warns"),
-                data=json.loads(record.get("data")) if record.get("data") else {},
+                id=hikari.Snowflake(record["user_id"]),
+                guild_id=hikari.Snowflake(record["guild_id"]),
+                flags=DatabaseUserFlag(record["flags"]),
+                warns=record["warns"],
+                data=json.loads(record["data"]) if record.get("data") else {},
             )
             for record in records
         ]
