@@ -188,8 +188,8 @@ async def about(ctx: SnedSlashContext) -> None:
 **• Online since:** {helpers.format_dt(ctx.app.start_time, style='R')}
 **• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
 **• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
-**• Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot_v2/blob/main/tos.md)
-**• Privacy Policy:** [Click here!](https://github.com/hypergonial/snedbot_v2/blob/main/privacy.md)\n
+**• Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/tos.md)
+**• Privacy Policy:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/privacy.md)\n
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
             color=const.EMBED_BLUE,
         )
