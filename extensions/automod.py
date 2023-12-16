@@ -632,18 +632,29 @@ async def scan_messages(
 
     policies = await get_policies(message.guild_id)
 
-    all(
-        (
-            await detect_mass_mentions(message, policies),
-            await detect_spam(message, policies),
-            await detect_attach_spam(message, policies),
-            await detect_bad_words(message, policies),
-            await detect_caps(message, policies),
-            await detect_invites(message, policies),
-            await detect_link_spam(message, policies),
-            await detect_perspective(message, policies),
+    if isinstance(event, hikari.GuildMessageUpdateEvent):
+        all(
+            (
+                await detect_mass_mentions(message, policies),
+                await detect_bad_words(message, policies),
+                await detect_caps(message, policies),
+                await detect_invites(message, policies),
+                await detect_perspective(message, policies),
+            )
         )
-    )
+    else:
+        all(
+            (
+                await detect_mass_mentions(message, policies),
+                await detect_spam(message, policies),
+                await detect_attach_spam(message, policies),
+                await detect_bad_words(message, policies),
+                await detect_caps(message, policies),
+                await detect_invites(message, policies),
+                await detect_link_spam(message, policies),
+                await detect_perspective(message, policies),
+            )
+        )
 
 
 def load(bot: SnedBot) -> None:
