@@ -4,12 +4,14 @@ import datetime
 import enum
 import typing as t
 
-import asyncpg
 import attr
 import hikari
 
 from models.db import DatabaseModel
 from utils import helpers
+
+if t.TYPE_CHECKING:
+    import asyncpg
 
 
 class JournalEntryType(enum.IntEnum):
@@ -143,8 +145,7 @@ class JournalEntry(DatabaseModel):
         return [cls.from_record(record) for record in records]
 
     async def update(self) -> None:
-        """
-        Update the journal entry in the database.
+        """Update the journal entry in the database.
 
         If an entry with this ID does not yet exist, one will be created.
 

@@ -67,6 +67,8 @@ class SnedContext(lightbulb.Context):
             Optional keyword-only payload to send if the user confirmed, by default None
         cancel_payload : Optional[Dict[str, Any]], optional
             Optional keyword-only payload to send if the user cancelled, by default None
+        timeout : int, optional
+            The default timeout to use for the confirm prompt, by default 120
         edit : bool
             If True, tries editing the initial response or the provided message.
         message : Optional[hikari.Message], optional
@@ -82,7 +84,6 @@ class SnedContext(lightbulb.Context):
             Boolean determining if the user confirmed the action or not.
             None if no response was given before timeout.
         """
-
         view = ConfirmView(self, timeout, confirm_payload, cancel_payload)
 
         kwargs.pop("components", None)
@@ -156,8 +157,8 @@ class SnedContext(lightbulb.Context):
 
     async def mod_respond(self, *args, **kwargs) -> lightbulb.ResponseProxy:
         """Respond to the command while taking into consideration the current moderation command settings.
-        This should not be used outside the moderation plugin, and may fail if it is not loaded."""
-
+        This should not be used outside the moderation plugin, and may fail if it is not loaded.
+        """
         if self.guild_id:
             is_ephemeral = bool((await self.app.mod.get_settings(self.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
             flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE

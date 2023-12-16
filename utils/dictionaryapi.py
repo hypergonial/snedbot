@@ -19,11 +19,11 @@ MW_AUTOCOMPLETE_URL = "https://www.merriam-webster.com/lapi/v1/mwol-search/autoc
 MW_SEARCH_URL = "https://www.dictionaryapi.com/api/v3/references/collegiate/json/{word}?key={key}"
 
 
-class UrbanException(Exception):
+class UrbanError(Exception):
     """Base exception for Urban Dictionary API errors."""
 
 
-class DictionaryException(Exception):
+class DictionaryError(Exception):
     """An exception raised if the connection to the Dictionary API fails."""
 
 
@@ -165,7 +165,7 @@ class DictionaryClient:
 
         async with self.session.get(URBAN_API_SEARCH_URL.format(term=word)) as resp:
             if resp.status != 200:
-                raise UrbanException(f"Failed to get urban entries for {word}: {resp.status}: {resp.reason}")
+                raise UrbanError(f"Failed to get urban entries for {word}: {resp.status}: {resp.reason}")
             data = await resp.json()
 
             if data["list"]:
@@ -192,7 +192,6 @@ class DictionaryClient:
         DictionaryException
             Failed to communicate with the Dictionary API.
         """
-
         if not word:
             return ["Start typing a word to get started..."]
 
@@ -201,9 +200,7 @@ class DictionaryClient:
 
         async with self.session.get(MW_AUTOCOMPLETE_URL.format(word=word)) as resp:
             if resp.status != 200:
-                raise DictionaryException(
-                    f"Failed to communicate with the dictionary API: {resp.status}: {resp.reason}"
-                )
+                raise DictionaryError(f"Failed to communicate with the dictionary API: {resp.status}: {resp.reason}")
 
             results: list[str] = [
                 doc.get("word") for doc in (await resp.json())["docs"] if doc.get("ref") == "owl-combined"
@@ -230,15 +227,12 @@ class DictionaryClient:
         DictionaryException
             Failed to communicate with the Dictionary API.
         """
-
         if words := self._mw_entry_cache.get(word, None):
             return words
 
         async with self.session.get(MW_SEARCH_URL.format(word=word, key=self._api_key)) as resp:
             if resp.status != 200:
-                raise DictionaryException(
-                    f"Failed to communicate with the dictionary API: {resp.status}: {resp.reason}"
-                )
+                raise DictionaryError(f"Failed to communicate with the dictionary API: {resp.status}: {resp.reason}")
             payload = await resp.json()
 
             if payload and isinstance(payload[0], dict):

@@ -381,7 +381,7 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
 
     if tag:
         members = ctx.app.cache.get_members_view_for_guild(ctx.guild_id)
-        if tag.owner_id not in members.keys() or (
+        if tag.owner_id not in members or (
             helpers.includes_permissions(
                 lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
             )

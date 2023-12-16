@@ -139,14 +139,13 @@ async def embed(ctx: SnedSlashContext) -> None:
         )
         return
 
-    if ctx.interaction.app_permissions:
-        if not helpers.includes_permissions(
-            ctx.interaction.app_permissions,
-            hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL,
-        ):
-            raise lightbulb.BotMissingRequiredPermission(
-                perms=hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.SEND_MESSAGES
-            )
+    if ctx.interaction.app_permissions and not helpers.includes_permissions(
+        ctx.interaction.app_permissions,
+        hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL,
+    ):
+        raise lightbulb.BotMissingRequiredPermission(
+            perms=hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.SEND_MESSAGES
+        )
 
     await ctx.app.rest.create_message(ctx.channel_id, embed=embed)
     await ctx.respond(
@@ -248,7 +247,7 @@ async def invite(ctx: SnedSlashContext) -> None:
 async def setnick(ctx: SnedSlashContext, nickname: str | None = None) -> None:
     assert ctx.guild_id is not None
 
-    nickname = nickname[:32] if nickname and not nickname.casefold() == "none" else None
+    nickname = nickname[:32] if nickname and nickname.casefold() != "none" else None
 
     await ctx.app.rest.edit_my_member(
         ctx.guild_id, nickname=nickname, reason=f"Nickname changed via /setnick by {ctx.author}"
@@ -392,7 +391,7 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
     if not modal.last_context:
         return
 
-    content = list(modal.last_context.values.values())[0]
+    content = next(iter(modal.last_context.values.values()))
     await message.edit(content=content)
 
     await modal.last_context.respond(

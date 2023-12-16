@@ -77,24 +77,23 @@ async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> dict[str, 
     dict[str, t.Any]
         The guild's auto-moderation policies.
     """
-
     guild_id = hikari.Snowflake(guild)
 
     records = await automod.app.db_cache.get(table="mod_config", guild_id=guild_id)
 
     policies = json.loads(records[0]["automod_policies"]) if records else default_automod_policies
 
-    for key in default_automod_policies.keys():
+    for key in default_automod_policies:
         if key not in policies:
             policies[key] = default_automod_policies[key]
 
-        for nested_key in default_automod_policies[key].keys():
+        for nested_key in default_automod_policies[key]:
             if nested_key not in policies[key]:
                 policies[key][nested_key] = default_automod_policies[key][nested_key]
 
     invalid = []
-    for key in policies.keys():
-        if key not in default_automod_policies.keys():
+    for key in policies:
+        if key not in default_automod_policies:
             invalid.append(key)
 
     for key in invalid:
@@ -107,8 +106,7 @@ automod.d.actions.get_policies = get_policies
 
 
 def can_automod_punish(me: hikari.Member, offender: hikari.Member) -> bool:
-    """
-    Determine if automod can punish a member.
+    """Determine if automod can punish a member.
     This checks all required permissions and if the member is a cool person or not.
 
     Parameters
@@ -141,6 +139,7 @@ def can_automod_punish(me: hikari.Member, offender: hikari.Member) -> bool:
     return True
 
 
+# TODO: Split this
 async def punish(
     message: hikari.PartialMessage,
     policies: dict[str, t.Any],
@@ -341,8 +340,8 @@ async def detect_mass_mentions(message: hikari.PartialMessage, policies: dict[st
     Returns
     -------
     bool
-        Whether or not the analysis should proceed to the next check."""
-
+    Whether or not the analysis should proceed to the next check.
+    """
     if policies["mass_mentions"]["state"] != AutoModState.DISABLED.value and message.user_mentions:
         assert message.author
         mentions = sum(user.id != message.author.id and not user.is_bot for user in message.user_mentions.values())
@@ -591,7 +590,7 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
         try:
             resp: kosu.AnalysisResponse = await automod.app.perspective.analyze(message.content, persp_attribs)
         except kosu.PerspectiveException as e:
-            logger.debug(f"Perspective failed to analyze a message: {str(e)}")
+            logger.debug(f"Perspective failed to analyze a message: {e}")
         else:
             scores = {score.name.name: score.summary.value for score in resp.attribute_scores}
 
@@ -614,7 +613,6 @@ async def scan_messages(
     plugin: SnedPlugin, event: hikari.GuildMessageCreateEvent | hikari.GuildMessageUpdateEvent
 ) -> None:
     """Scan messages for all possible offences."""
-
     message = event.message
 
     if not message.author:

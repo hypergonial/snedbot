@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import typing as t
 
-import asyncpg
 import attr
 import hikari
 
 from .db import DatabaseModel
+
+if t.TYPE_CHECKING:
+    import asyncpg
 
 
 @attr.define()
@@ -31,7 +33,6 @@ class StarboardSettings(DatabaseModel):
     @classmethod
     def from_record(cls, record: asyncpg.Record) -> StarboardSettings:
         """Create an instance of StarboardSettings from an asyncpg.Record."""
-
         return cls(
             guild_id=record["guild_id"],
             channel_id=record["channel_id"],
@@ -43,7 +44,6 @@ class StarboardSettings(DatabaseModel):
     @classmethod
     async def fetch(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> StarboardSettings:
         """Fetch the starboard settings for a guild from the database. If they do not exist, return default values."""
-
         records = await cls._app.db_cache.get(table="starboard", guild_id=hikari.Snowflake(guild), limit=1)
         if not records:
             return cls(guild_id=hikari.Snowflake(guild))
@@ -51,7 +51,6 @@ class StarboardSettings(DatabaseModel):
 
     async def update(self) -> None:
         """Update the starboard settings in the database, or insert them if they do not yet exist."""
-
         await self._db.execute(
             """INSERT INTO starboard 
             (guild_id, channel_id, star_limit, is_enabled, excluded_channels) 
@@ -89,7 +88,6 @@ class StarboardEntry(DatabaseModel):
     @classmethod
     def from_record(cls, record: asyncpg.Record) -> StarboardEntry:
         """Create an instance of StarboardEntry from an asyncpg.Record."""
-
         return cls(
             guild_id=record["guild_id"],
             channel_id=record["channel_id"],
@@ -101,7 +99,6 @@ class StarboardEntry(DatabaseModel):
     @classmethod
     async def fetch(cls, original_message: hikari.SnowflakeishOr[hikari.PartialMessage]) -> StarboardEntry | None:
         """Fetch the starboard entry for a message from the database, if one exists."""
-
         records = await cls._app.db_cache.get(
             table="starboard_entries", orig_msg_id=hikari.Snowflake(original_message), limit=1
         )
@@ -111,7 +108,6 @@ class StarboardEntry(DatabaseModel):
 
     async def update(self) -> None:
         """Update the starboard entry in the database, or insert it if it does not yet exist."""
-
         await self._db.execute(
             """INSERT INTO starboard_entries 
             (guild_id, channel_id, orig_msg_id, entry_msg_id, force_starred) 
@@ -128,7 +124,6 @@ class StarboardEntry(DatabaseModel):
 
     async def delete(self) -> None:
         """Delete the starboard entry from the database."""
-
         await self._db.execute(
             "DELETE FROM starboard_entries WHERE guild_id = $1 AND orig_msg_id = $2",
             self.guild_id,

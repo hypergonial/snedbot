@@ -18,8 +18,8 @@ def _guild_only(ctx: SnedContext) -> bool:
 @lightbulb.Check  # type: ignore
 async def is_above_target(ctx: SnedContext) -> bool:
     """Check if the targeted user is above the bot's top role or not.
-    Used in the moderation extension."""
-
+    Used in the moderation extension.
+    """
     if not hasattr(ctx.options, "user"):
         return True
 
@@ -50,8 +50,8 @@ async def is_above_target(ctx: SnedContext) -> bool:
 @lightbulb.Check  # type: ignore
 async def is_invoker_above_target(ctx: SnedContext) -> bool:
     """Check if the targeted user is above the invoker's top role or not.
-    Used in the moderation extension."""
-
+    Used in the moderation extension.
+    """
     if not hasattr(ctx.options, "user"):
         return True
 

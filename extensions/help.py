@@ -6,11 +6,11 @@ import hikari
 import lightbulb
 
 import etc.const as const
-from models.context import SnedSlashContext
 from models.plugin import SnedPlugin
 
 if t.TYPE_CHECKING:
     from models import SnedBot
+    from models.context import SnedSlashContext
 
 
 help = SnedPlugin("Help")

@@ -5,11 +5,11 @@ import copy
 import datetime
 import json
 import typing as t
+from contextlib import suppress
 
 import hikari
 import lightbulb
 import miru
-from miru.abc import ViewItem
 
 import models
 from etc import const
@@ -17,18 +17,22 @@ from etc.settings_static import *
 from extensions.userlog import LogEvent
 from models.bot import SnedBot
 from models.checks import bot_has_permissions
-from models.context import SnedSlashContext
 from models.mod_actions import ModerationFlags
 from models.plugin import SnedPlugin
 from models.settings import *
 from models.starboard import StarboardSettings
 from utils import helpers
 
+if t.TYPE_CHECKING:
+    from miru.abc import ViewItem
+
+    from models.context import SnedSlashContext
+
 settings = SnedPlugin("Settings")
 
 
 class SettingsView(models.AuthorOnlyView):
-    """God objects go brr >_<"""
+    """God objects go brr >_<."""
 
     def __init__(
         self,
@@ -69,7 +73,8 @@ class SettingsView(models.AuthorOnlyView):
 
     async def wait_until_done(self) -> None:
         """Wait until a DoneButton is pressed.
-        Check `self.value.is_done` to ensure this did not unblock due to the view stopping or some other reason."""
+        Check `self.value.is_done` to ensure this did not unblock due to the view stopping or some other reason.
+        """
         await self._done_event.wait()
 
     # Transitions
@@ -102,9 +107,7 @@ class SettingsView(models.AuthorOnlyView):
             self.add_item(DoneButton(parent, **kwargs))
 
     async def error_screen(self, embed: hikari.Embed, parent: str, **kwargs) -> None:
-        """
-        Show an error screen with only a back button, and wait for input on it.
-        """
+        """Show an error screen with only a back button, and wait for input on it."""
         assert self.last_context
         self.clear_items()
         self.add_item(BackButton(parent=parent, **kwargs))
@@ -122,22 +125,17 @@ class SettingsView(models.AuthorOnlyView):
         for item in self.children:
             item.disabled = True
 
-        try:
+        with suppress(hikari.NotFoundError):
             await self.last_context.edit_response(components=self, flags=self.flags)
-        except hikari.NotFoundError:
-            pass
 
     async def quit_settings(self) -> None:
         """Exit settings menu."""
-
         assert self.last_context
         for item in self.children:
             item.disabled = True
 
-        try:
+        with suppress(hikari.NotFoundError):
             await self.last_context.edit_response(components=self, flags=self.flags)
-        except hikari.NotFoundError:
-            pass
 
         self.value = SettingValue()
         self._done_event.set()
@@ -148,7 +146,6 @@ class SettingsView(models.AuthorOnlyView):
 
     async def settings_main(self, initial: bool = False) -> None:
         """Show and handle settings main menu."""
-
         embed = hikari.Embed(
             title="Sned Configuration",
             description="""**Welcome to settings!**
@@ -489,7 +486,6 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
     async def settings_logging(self) -> None:
         """Show and handle Logging menu."""
-
         assert (
             isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
         )
@@ -586,8 +582,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         await self.settings_logging()
 
     async def settings_automod(self) -> None:
-        """Open and handle automoderation main menu"""
-
+        """Open and handle automoderation main menu."""
         assert (
             isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
         )
@@ -604,7 +599,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         )
 
         options = []
-        for key in policies.keys():
+        for key in policies:
             embed.add_field(
                 name=policy_strings[key]["name"],
                 value=policies[key]["state"].capitalize(),
@@ -622,8 +617,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         await self.settings_automod_policy(self.value.text)
 
     async def settings_automod_policy(self, policy: str | None = None) -> None:
-        """Settings for an automoderation policy"""
-
+        """Settings for an automoderation policy."""
         assert (
             isinstance(self.app, SnedBot) and self.last_context is not None and self.last_context.guild_id is not None
         )
@@ -696,9 +690,8 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 if key == "state":
                     continue
 
-                if predicate := predicates.get(key):
-                    if not predicate(state):
-                        continue
+                if (predicate := predicates.get(key)) and not predicate(state):
+                    continue
 
                 if key in ["excluded_channels", "excluded_roles"]:
                     continue
@@ -707,10 +700,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     policy_data[key]
                     if not isinstance(policy_data[key], dict)
                     else "\n".join(
-                        [
-                            f"{polkey.replace('_', ' ').title()}: `{str(value)}`"
-                            for polkey, value in policy_data[key].items()
-                        ]
+                        [f"{polkey.replace('_', ' ').title()}: `{value}`" for polkey, value in policy_data[key].items()]
                     )
                 )
                 value = value if not isinstance(policy_data[key], list) else ", ".join(policy_data[key])
@@ -807,7 +797,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
             "excluded_roles": str,
         }
 
-        action = [key for key in actions if opt in actions[key]][0]
+        action = next(key for key in actions if opt in actions[key])
 
         if opt == "state":  # State changing is a special case, ignore action
             options = [
@@ -817,7 +807,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     description=policy_states[state]["description"],
                     emoji=policy_states[state]["emoji"],
                 )
-                for state in policy_states.keys()
+                for state in policy_states
                 if policy not in policy_states[state]["excludes"]
             ]
             self.select_screen(

@@ -19,9 +19,7 @@ class TimerEvent(enum.Enum):
 
 @attr.define()
 class Timer:
-    """
-    Represents a timer object.
-    """
+    """Represents a timer object."""
 
     id: int
     """The ID of this timer."""

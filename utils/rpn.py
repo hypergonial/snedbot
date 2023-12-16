@@ -135,7 +135,7 @@ class Solver:
 
         Parameters
         ----------
-        op : str
+        c : str
             The current operand.
         stack : List[str]
             The stack of operands.

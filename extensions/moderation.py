@@ -196,7 +196,7 @@ async def purge(ctx: SnedSlashContext) -> None:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Invalid regex passed",
-                    description=f"Failed parsing regex: ```{str(error)}```",
+                    description=f"Failed parsing regex: ```{error}```",
                     color=const.ERROR_COLOR,
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,
@@ -839,7 +839,7 @@ async def massban(ctx: SnedSlashContext) -> None:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Invalid regex passed",
-                    description=f"Failed parsing regex: ```{str(error)}```",
+                    description=f"Failed parsing regex: ```{error}```",
                     color=const.ERROR_COLOR,
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,

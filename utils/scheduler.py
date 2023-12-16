@@ -29,8 +29,7 @@ class ConversionMode(enum.IntEnum):
 
 
 class Scheduler:
-    """
-    All timer-related functionality, including time conversion from strings,
+    """All timer-related functionality, including time conversion from strings,
     creation, scheduling & dispatching of timers.
     Essentially the internal scheduler of the bot.
     """
@@ -43,17 +42,13 @@ class Scheduler:
         self._is_started: bool = False
 
     def start(self) -> None:
-        """
-        Start the scheduler.
-        """
+        """Start the scheduler."""
         self._timer_loop.start()
         self._is_started = True
         logger.info("Scheduler startup complete.")
 
     def restart(self) -> None:
-        """
-        Restart the scheduler.
-        """
+        """Restart the scheduler."""
         self._is_started = False
         if self._current_task is not None:
             self._current_task.cancel()
@@ -65,9 +60,7 @@ class Scheduler:
         logger.info("Scheduler restart complete.")
 
     def stop(self) -> None:
-        """
-        Stop the scheduler.
-        """
+        """Stop the scheduler."""
         self._is_started = False
         self._timer_loop.cancel()
         if self._current_task is not None:
@@ -93,6 +86,8 @@ class Scheduler:
             The user whose preferences will be used in the case of timezones, by default None
         force_mode : str | None, optional
             If specified, forces either 'relative' or 'absolute' conversion, by default None
+        conversion_mode : ConversionMode | None, optional
+            The conversion mode to use, by default None
         future_time : bool, optional
             If True and the time specified is in the past, raise an error, by default False
 
@@ -224,7 +219,6 @@ class Scheduler:
         timer : Timer
             The timer to be called.
         """
-
         await self.bot.db.execute("""DELETE FROM timers WHERE id = $1""", timer.id)
 
         self._current_timer = None
@@ -234,9 +228,7 @@ class Scheduler:
         logger.info(f"Dispatched TimerCompleteEvent for {timer.event.value} (ID: {timer.id})")
 
     async def _dispatch_timers(self):
-        """
-        A task that loops, waits for, and calls pending timers.
-        """
+        """A task that loops, waits for, and calls pending timers."""
         try:
             while self.bot.is_ready and self._is_started:
                 timer = await self.get_latest_timer(days=30)
@@ -319,7 +311,6 @@ class Scheduler:
         ValueError
             The timer was not found.
         """
-
         guild_id = hikari.Snowflake(guild)
         user_id = hikari.Snowflake(user) if user else None
 
@@ -439,6 +430,8 @@ class Scheduler:
             The ID of the timer to be cancelled.
         guild : hikari.SnowflakeishOr[hikari.PartialGuild]
             The guild the timer belongs to.
+        user : hikari.SnowflakeishOr[hikari.PartialUser], optional
+            The user to filter the timer by, by default None
 
         Returns
         -------
@@ -466,9 +459,7 @@ class Scheduler:
             return timer
 
     async def _wait_for_active_timers(self) -> None:
-        """
-        Check every hour to see if new timers meet criteria in the database.
-        """
+        """Check every hour to see if new timers meet criteria in the database."""
         await self.bot.wait_until_started()
 
         if self._current_task is None:

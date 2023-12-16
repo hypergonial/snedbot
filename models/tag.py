@@ -15,9 +15,7 @@ if t.TYPE_CHECKING:
 
 @attr.define()
 class Tag(DatabaseModel):
-    """
-    Represents a tag object.
-    """
+    """Represents a tag object."""
 
     guild_id: hikari.Snowflake
     name: str
@@ -213,7 +211,6 @@ class Tag(DatabaseModel):
         Tag
             The created tag object.
         """
-
         await cls._db.execute(
             """
             INSERT INTO tags (guild_id, tagname, creator_id, owner_id, aliases, content)
@@ -240,7 +237,6 @@ class Tag(DatabaseModel):
 
     async def update(self) -> None:
         """Update the tag's attributes and sync it up to the database."""
-
         await self._db.execute(
             """INSERT INTO tags (guild_id, tagname, owner_id, aliases, content)
         VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, tagname) DO

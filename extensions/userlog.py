@@ -15,7 +15,6 @@ import hikari
 import lightbulb
 
 from etc import const, get_perm_str
-from models import SnedBot
 from models.events import (
     AutoModMessageFlagEvent,
     MassBanEvent,
@@ -29,6 +28,9 @@ from models.events import (
 from models.journal import JournalEntry, JournalEntryType
 from models.plugin import SnedPlugin
 from utils import helpers
+
+if t.TYPE_CHECKING:
+    from models import SnedBot
 
 BOT_REASON_REGEX = re.compile(r"(?P<name>.*)\s\((?P<id>\d+)\):\s(?P<reason>.*)")
 TIMEOUT_REGEX = re.compile(
@@ -90,9 +92,7 @@ userlog.d.frozen_guilds = []
 
 @attr.define()
 class UserLike:
-    """
-    A wrapper for user-like objects, for easier printing
-    """
+    """A wrapper for user-like objects, for easier printing."""
 
     id: hikari.Snowflake
     username: str
@@ -103,11 +103,10 @@ class UserLike:
 
 @attr.define()
 class ParsedBotReason:
-    """
-    A wrapper for parsing bot reasons following the format:
+    """A wrapper for parsing bot reasons following the format:
 
     <name> (<id>): <reason>
-    """
+    """  # noqa: D415
 
     reason: str | None
     """The extracted reason string"""
@@ -116,9 +115,7 @@ class ParsedBotReason:
 
     @classmethod
     def from_reason(cls, reason: str | None) -> ParsedBotReason:
-        """
-        Parse a reason string and return a StripBotReason object
-        """
+        """Parse a reason string and return a StripBotReason object."""
         match = BOT_REASON_REGEX.match(str(reason))
 
         if not match:
@@ -128,9 +125,7 @@ class ParsedBotReason:
 
 
 def display_user(user: hikari.UndefinedNoneOr[hikari.PartialUser | UserLike]) -> str:
-    """
-    A helper function for displaying user-like objects generically.
-    """
+    """A helper function for displaying user-like objects generically."""
     if not user:
         return "Unknown"
 
@@ -171,10 +166,7 @@ userlog.d.actions["get_log_channel_id"] = get_log_channel_id
 
 
 async def get_log_channel_ids_view(guild_id: int) -> dict[str, int | None]:
-    """
-    Return a mapping of log_event:channel_id
-    """
-
+    """Return a mapping of log_event:channel_id."""
     records = await userlog.app.db_cache.get(table="log_config", guild_id=guild_id, limit=1)
 
     log_channels: dict[str, int | None] = (
@@ -182,7 +174,7 @@ async def get_log_channel_ids_view(guild_id: int) -> dict[str, int | None]:
     )
 
     for log_event in LogEvent:
-        if log_event.value not in log_channels.keys():
+        if log_event.value not in log_channels:
             log_channels[log_event.value] = None
 
     return log_channels
@@ -283,7 +275,7 @@ userlog.d.actions["log"] = log
 
 
 async def _iter_queue() -> None:
-    """Iter queue and bulk-send embeds"""
+    """Iter queue and bulk-send embeds."""
     try:
         while True:
             for channel_id, embeds in userlog.d.queue.items():
@@ -345,6 +337,8 @@ async def find_auditlog_data(
 
     Parameters
     ----------
+    guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        The guild to search in.
     event : hikari.Event
         The event that triggered this search.
     event_type : hikari.AuditLogEventType
@@ -362,7 +356,6 @@ async def find_auditlog_data(
     ValueError
         The passed event has no guild attached to it, or was not found in cache.
     """
-
     # Stuff that is observed to just take too goddamn long to appear in AuditLogs
     takes_an_obscene_amount_of_time = [hikari.AuditLogEventType.MESSAGE_BULK_DELETE]
 
@@ -378,11 +371,9 @@ async def find_auditlog_data(
 
 
 async def get_perms_diff(old_role: hikari.Role, role: hikari.Role) -> str | None:
-    """
-    A helper function for displaying role updates.
+    """A helper function for displaying role updates.
     Returns a string containing the differences between two roles.
     """
-
     old_perms = old_role.permissions
     new_perms = role.permissions
     perms_diff = ""
@@ -409,8 +400,7 @@ T = t.TypeVar("T")
 
 
 async def get_diff(guild_id: int, old_object: T, object: T, attrs: dict[str, str]) -> str | None:
-    """
-    A helper function for displaying differences between certain attributes
+    """A helper function for displaying differences between certain attributes
     Returns a formatted string containing the differences.
     The two objects are expected to share the same attributes.
     """
@@ -423,7 +413,7 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: dict[str, str
     green = "[1;32m" if is_colored else ""
     reset = "[0m" if is_colored else ""
 
-    for attribute in attrs.keys():
+    for attribute in attrs:
         old = getattr(old_object, attribute, hikari.UNDEFINED)
         new = getattr(object, attribute, hikari.UNDEFINED)
 
@@ -459,9 +449,7 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: dict[str, str
 
 
 def create_log_content(message: hikari.PartialMessage, max_length: int | None = None) -> str:
-    """
-    Process missing-content markers for messages before sending to logs
-    """
+    """Process missing-content markers for messages before sending to logs."""
     contents = message.content
     if message.attachments:
         contents = f"{contents}\n//The message contained one or more attachments."

@@ -374,9 +374,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
 
 @reminders.listener(events.TimerCompleteEvent, bind=True)
 async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
-    """
-    Listener for expired reminders
-    """
+    """Listener for expired reminders."""
     if event.timer.event != TimerEvent.REMINDER:
         return
 

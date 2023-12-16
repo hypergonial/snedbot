@@ -28,7 +28,6 @@ async def search_fandom(site: str, query: str) -> str | None:
     Optional[str]
         A formatted string ready to display to the end user. `None` if no results were found.
     """
-
     async with fandom.app.session.get(yarl.URL(FANDOM_QUERY_URL.format(query=query, site=site))) as response:
         if response.status == 200:
             results = await response.json()

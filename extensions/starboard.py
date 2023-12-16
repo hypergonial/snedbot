@@ -35,7 +35,6 @@ def get_image_urls(content: str) -> list[str]:
 
 def get_img_attach_urls(message: hikari.Message) -> list[str]:
     """Return a list of image attachment URLs found in the message."""
-
     if not message.attachments:
         return []
 
@@ -112,7 +111,7 @@ def create_starboard_payload(
 
     tail_embeds = [hikari.Embed(url="https://example.com").set_image(image_url) for image_url in image_urls[1:][:10]]
 
-    return {"content": content, "embeds": [head_embed] + tail_embeds}
+    return {"content": content, "embeds": [head_embed, *tail_embeds]}
 
 
 async def star_message(
@@ -132,12 +131,13 @@ async def star_message(
         The channel where the message should be starred.
     guild : hikari.SnowflakeishOr[hikari.PartialGuild]
         The guild the message and channel are located.
+    settings : StarboardSettings
+        The settings for the starboard.
     stars : int
         The amount of stars the message is supposed to have when posted.
     force_starred : bool, optional
         Whether the message is forcefully starred or not.
     """
-
     if not settings.channel_id or not settings.is_enabled:
         return
 
@@ -183,7 +183,6 @@ async def on_reaction(
     plugin: SnedPlugin, event: hikari.GuildReactionAddEvent | hikari.GuildReactionDeleteEvent
 ) -> None:
     """Listen for reactions & star messages where appropriate."""
-
     if not event.is_for_emoji("⭐") or not plugin.app.is_started:
         return
 

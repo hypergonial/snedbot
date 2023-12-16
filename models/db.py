@@ -132,6 +132,8 @@ class Database:
         ----------
         query : str
             The SQL query to run.
+        args : Tuple[t.Any]
+            The arguments for the SQL query.
         timeout : Optional[float], optional
             The timeout in seconds, by default None
 
@@ -154,6 +156,8 @@ class Database:
         ----------
         query : str
             The SQL query to be ran.
+        args : Tuple[t.Any]
+            The arguments for the SQL query.
         timeout : Optional[float], optional
             The timeout in seconds, by default None
 
@@ -174,10 +178,10 @@ class Database:
 
         Parameters
         ----------
-        query : str
+        command : str
             The SQL query to run.
         args : Tuple[t.Any]
-            Tuples of arguments to execute.
+            The arguments for the SQL query.
         timeout : Optional[float], optional
             The timeout in seconds, by default None
 
@@ -200,6 +204,8 @@ class Database:
         ----------
         query : str
             The SQL query to be ran.
+        args : Tuple[t.Any]
+            The arguments for the SQL query.
         timeout : float, optional
             The timeout in seconds, by default None
 
@@ -222,6 +228,10 @@ class Database:
         ----------
         query : str
             The SQL query to be ran.
+        args : Tuple[t.Any]
+            The arguments for the SQL query.
+        column : int, optional
+            The column to return, by default 0
         timeout : float, optional
             The timeout in seconds, by default None
 
@@ -343,8 +353,8 @@ class Database:
 
     async def update_schema(self) -> None:
         """Update the database schema and apply any pending migrations.
-        This also creates the initial schema structure if one does not exist."""
-
+        This also creates the initial schema structure if one does not exist.
+        """
         async with self.acquire() as con:
             with open(os.path.join(self._app.base_dir, "db", "schema.sql")) as file:
                 await con.execute(file.read())

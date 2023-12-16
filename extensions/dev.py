@@ -5,6 +5,7 @@ import shlex
 import subprocess
 import textwrap
 import traceback
+from contextlib import suppress
 
 import hikari
 import lightbulb
@@ -70,9 +71,7 @@ async def send_paginated(
     prefix: str = "",
     suffix: str = "",
 ) -> None:
-    """
-    Send command output paginated if appropriate.
-    """
+    """Send command output paginated if appropriate."""
     text = str(text)
     channel_id = None
     if not isinstance(messageable, hikari.User):
@@ -113,10 +112,7 @@ async def send_paginated(
 
 
 async def run_shell(ctx: SnedPrefixContext, code: str) -> None:
-    """
-    Run code in shell and return output to Discord.
-    """
-
+    """Run code in shell and return output to Discord."""
     code = str(code).replace("```py", "").replace("`", "").strip()
 
     await ctx.app.rest.trigger_typing(ctx.channel_id)
@@ -336,10 +332,9 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     path = os.path.join(ctx.app.base_dir, "db", "backups", "dev_pg_restore_snapshot.pgdmp")
     with open(path, "wb") as file:
         file.write((await ctx.attachments[0].read()))
-    try:
+
+    with suppress(hikari.HikariError):
         await ctx.event.message.delete()
-    except hikari.HikariError:
-        pass
 
     await ctx.app.db_cache.stop()
 

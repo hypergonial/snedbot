@@ -9,18 +9,14 @@ from etc import const
 
 
 class StopSelect(miru.TextSelect):
-    """
-    A select that stops the view after interaction.
-    """
+    """A select that stops the view after interaction."""
 
     async def callback(self, context: miru.Context) -> None:
         self.view.stop()
 
 
 class AuthorOnlyView(miru.View):
-    """
-    A navigator that only works for the user who invoked it.
-    """
+    """A navigator that only works for the user who invoked it."""
 
     def __init__(self, lctx: lightbulb.Context, *, timeout: Optional[float] = 120, autodefer: bool = True) -> None:
         super().__init__(timeout=timeout, autodefer=autodefer)
@@ -60,9 +56,7 @@ class SnedNavigator(nav.NavigatorView):
 
 
 class AuthorOnlyNavigator(SnedNavigator):
-    """
-    A navigator that only works for the user who invoked it.
-    """
+    """A navigator that only works for the user who invoked it."""
 
     def __init__(
         self,

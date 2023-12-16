@@ -22,9 +22,7 @@ class DatabaseUserFlag(enum.Flag):
 
 @attr.define()
 class DatabaseUser(DatabaseModel):
-    """
-    Represents user data stored inside the database.
-    """
+    """Represents user data stored inside the database."""
 
     id: hikari.Snowflake
     """The ID of this user."""
@@ -38,12 +36,11 @@ class DatabaseUser(DatabaseModel):
     warns: int = 0
     """The count of warnings stored for this user."""
 
-    data: dict[str, t.Any] = {}
+    data: dict[str, t.Any] = attr.field(factory=dict)
     """Miscellaneous data stored for this user. Must be JSON serializable."""
 
     async def update(self) -> None:
         """Update or insert this user into the database."""
-
         await self._db.execute(
             """
             INSERT INTO users (user_id, guild_id, flags, warns,data) 
@@ -75,7 +72,6 @@ class DatabaseUser(DatabaseModel):
         DatabaseUser
             An object representing stored user data.
         """
-
         record = await cls._db.fetchrow(
             """SELECT * FROM users WHERE user_id = $1 AND guild_id = $2""",
             hikari.Snowflake(user),
@@ -107,7 +103,6 @@ class DatabaseUser(DatabaseModel):
         List[DatabaseUser]
             A list of objects representing stored user data.
         """
-
         records = await cls._db.fetch("""SELECT * FROM users WHERE guild_id = $1""", hikari.Snowflake(guild))
 
         if not records:

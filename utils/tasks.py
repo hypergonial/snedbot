@@ -48,8 +48,7 @@ class IntervalLoop:
             raise TypeError("Expected a coroutine function.")
 
     async def _loopy_loop(self, *args, **kwargs) -> None:
-        """Main loop logic"""
-
+        """Main loop logic."""
         while not self._stop_next:
             try:
                 await self._coro(*args, **kwargs)
@@ -68,18 +67,14 @@ class IntervalLoop:
         self.cancel()
 
     def start(self, *args, **kwargs) -> None:
-        """
-        Start looping the task at the specified interval.
-        """
+        """Start looping the task at the specified interval."""
         if self._task and not self._task.done():
             raise RuntimeError("Task is already running!")
 
         self._task = asyncio.create_task(self._loopy_loop(*args, **kwargs))
 
     def cancel(self) -> None:
-        """
-        Cancel the looping of the task.
-        """
+        """Cancel the looping of the task."""
         if not self._task:
             return
 
@@ -87,9 +82,7 @@ class IntervalLoop:
         self._task = None
 
     def stop(self) -> None:
-        """
-        Gracefully stop the looping of the task.
-        """
+        """Gracefully stop the looping of the task."""
         if self._task and not self._task.done():
             self._stop_next = True
 

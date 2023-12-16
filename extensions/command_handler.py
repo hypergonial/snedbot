@@ -4,13 +4,13 @@ import asyncio
 import datetime
 import logging
 import traceback
+from typing import TYPE_CHECKING
 
 import hikari
 import lightbulb
 
 from etc import const
 from etc.perms_str import get_perm_str
-from models import SnedContext
 from models.bot import SnedBot
 from models.context import SnedPrefixContext, SnedSlashContext
 from models.errors import (
@@ -22,6 +22,9 @@ from models.errors import (
 )
 from models.plugin import SnedPlugin
 from utils import helpers
+
+if TYPE_CHECKING:
+    from models import SnedContext
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +45,6 @@ async def log_exc_to_channel(
     event : hikari.ExceptionEvent, optional
         The event to use for additional information, by default None
     """
-
     error_lines = error_str.split("\n")
     paginator = lightbulb.utils.StringPaginator(max_chars=2000, prefix="```py\n", suffix="```")
     if ctx:
@@ -258,9 +260,10 @@ async def application_command_error_handler(event: lightbulb.CommandErrorEvent) 
 @ch.listener(lightbulb.SlashCommandCompletionEvent)
 @ch.listener(lightbulb.MessageCommandCompletionEvent)
 async def application_command_completion_handler(event: lightbulb.events.CommandCompletionEvent):
-    if event.context.author.id in event.context.app.owner_ids:  # Ignore cooldowns for owner c:
-        if cm := event.command.cooldown_manager:
-            await cm.reset_cooldown(event.context)
+    if event.context.author.id in event.context.app.owner_ids and (
+        cm := event.command.cooldown_manager
+    ):  # Ignore cooldowns for owner c:
+        await cm.reset_cooldown(event.context)
 
 
 @ch.listener(lightbulb.PrefixCommandErrorEvent)

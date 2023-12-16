@@ -4,13 +4,13 @@ import logging
 import os
 import random
 from enum import IntEnum
-from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
 from textwrap import fill
+from typing import TYPE_CHECKING
 
 import hikari
-import Levenshtein as lev
+import Levenshtein as lev  # noqa: N813
 import lightbulb
 import miru
 from miru.ext import nav
@@ -24,9 +24,12 @@ from models.context import SnedContext, SnedUserContext
 from models.plugin import SnedPlugin
 from models.views import AuthorOnlyNavigator, AuthorOnlyView
 from utils import GlobalBucket, RateLimiter, helpers
-from utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryException, UrbanEntry
+from utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryError, UrbanEntry
 from utils.ratelimiter import UserBucket
 from utils.rpn import InvalidExpressionError, Solver
+
+if TYPE_CHECKING:
+    from fractions import Fraction
 
 ANIMAL_EMOJI_MAPPING: dict[str, str] = {
     "dog": "🐶",
@@ -45,17 +48,14 @@ COMF_PROGRESS_BAR_WIDTH = 20
 
 logger = logging.getLogger(__name__)
 
-if api_key := os.getenv("DICTIONARYAPI_API_KEY"):
-    dictionary_client = DictionaryClient(api_key)
-else:
-    dictionary_client = None
+dictionary_client = DictionaryClient(key) if (key := os.getenv("DICTIONARYAPI_API_KEY")) else None
 
 
 @lightbulb.Check  # type: ignore
 def has_dictionary_client(_: SnedContext) -> bool:
     if dictionary_client:
         return True
-    raise DictionaryException("Dictionary API key not set.")
+    raise DictionaryError("Dictionary API key not set.")
 
 
 fun = SnedPlugin("Fun")
@@ -63,9 +63,7 @@ fun = SnedPlugin("Fun")
 
 @fun.set_error_handler()
 async def handle_errors(event: lightbulb.CommandErrorEvent) -> bool:
-    if isinstance(event.exception, lightbulb.CheckFailure) and isinstance(
-        event.exception.__cause__, DictionaryException
-    ):
+    if isinstance(event.exception, lightbulb.CheckFailure) and isinstance(event.exception.__cause__, DictionaryError):
         await event.context.respond(
             embed=hikari.Embed(
                 title="❌ No Dictionary API key provided",
@@ -308,9 +306,7 @@ class TicTacToeView(miru.View):
         )
 
     def check_blocked(self) -> bool:
-        """
-        Check if the board is blocked
-        """
+        """Check if the board is blocked."""
         blocked_list = [False, False, False, False]
 
         # TODO: Replace this old garbage
@@ -365,10 +361,7 @@ class TicTacToeView(miru.View):
         return False
 
     def check_winner(self) -> WinState | None:
-        """
-        Check if there is a winner
-        """
-
+        """Check if there is a winner."""
         # Check rows
         for row in self.board:
             value = sum(row)
@@ -483,7 +476,7 @@ class DictionaryNavigator(AuthorOnlyNavigator):
 @lightbulb.implements(lightbulb.SlashCommand)
 async def calc(ctx: SnedSlashContext, expr: str | None = None, display: str = "decimal") -> None:
     if not expr:
-        view = CalculatorView(ctx, True if display == "fractional" else False)
+        view = CalculatorView(ctx, display == "fractional")
         resp = await ctx.respond("```-```", components=view)
         await view.start(resp)
         return
@@ -571,11 +564,10 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
     length = length or 5
     difficulty = difficulty or "medium"
 
-    file = open(Path(ctx.app.base_dir, "etc", "text", f"words_{difficulty}.txt"), "r")
-    words = [word.strip() for word in file.readlines()]
+    with open(Path(ctx.app.base_dir, "etc", "text", f"words_{difficulty}.txt"), "r") as file:
+        words = [word.strip() for word in file.readlines()]
 
-    text = " ".join([random.choice(words) for _ in range(0, length)])
-    file.close()
+        text = " ".join([random.choice(words) for _ in range(0, length)])
 
     resp = await ctx.respond(
         embed=hikari.Embed(
@@ -642,11 +634,11 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
 
         if text.lower() == message.content.lower():
             winners[message.author] = (helpers.utcnow() - start).total_seconds()
-            asyncio.create_task(message.add_reaction("✅"))
+            asyncio.create_task(message.add_reaction("✅"))  # noqa: RUF006
             end_trigger.set()
 
         elif lev.distance(text.lower(), message.content.lower()) < 5:
-            asyncio.create_task(message.add_reaction("❌"))
+            asyncio.create_task(message.add_reaction("❌"))  # noqa: RUF006
 
         return False
 
@@ -669,7 +661,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
     await ctx.respond(
         embed=hikari.Embed(
             title="🏁 First Place",
-            description=f"**{list(winners.keys())[0]}** finished first, everyone else has **15 seconds** to submit their reply!",
+            description=f"**{next(iter(winners.keys()))}** finished first, everyone else has **15 seconds** to submit their reply!",
             color=const.EMBED_GREEN,
         )
     )
@@ -677,8 +669,9 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
     msg_listener.cancel()
 
     desc = "**Participants:**\n"
+    winner_keys = list(winners.keys())
     for winner in winners:
-        desc = f"{desc}**#{list(winners.keys()).index(winner)+1}** **{winner}** `{round(winners[winner], 1)}` seconds - `{round((len(text) / 5) / (winners[winner] / 60))}`WPM\n"
+        desc = f"{desc}**#{winner_keys.index(winner)+1}** **{winner}** `{round(winners[winner], 1)}` seconds - `{round((len(text) / 5) / (winners[winner] / 60))}`WPM\n"
 
     await ctx.respond(
         embed=hikari.Embed(
@@ -787,14 +780,15 @@ async def avatar_context(ctx: SnedUserContext, target: hikari.User | hikari.Memb
 @lightbulb.implements(lightbulb.SlashCommand)
 async def funfact(ctx: SnedSlashContext) -> None:
     fun_path = Path(ctx.app.base_dir, "etc", "text", "funfacts.txt")
-    fun_facts = open(fun_path, "r").readlines()
-    await ctx.respond(
-        embed=hikari.Embed(
-            title="🤔 Did you know?",
-            description=f"{random.choice(fun_facts)}",
-            color=const.EMBED_BLUE,
+    with open(fun_path, "r") as file:
+        fun_facts = file.readlines()
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🤔 Did you know?",
+                description=f"{random.choice(fun_facts)}",
+                color=const.EMBED_BLUE,
+            )
         )
-    )
 
 
 @fun.command
@@ -803,14 +797,15 @@ async def funfact(ctx: SnedSlashContext) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def penguinfact(ctx: SnedSlashContext) -> None:
     penguin_path = Path(ctx.app.base_dir, "etc", "text", "penguinfacts.txt")
-    penguin_facts = open(penguin_path, "r").readlines()
-    await ctx.respond(
-        embed=hikari.Embed(
-            title="🐧 Penguin Fact",
-            description=f"{random.choice(penguin_facts)}",
-            color=const.EMBED_BLUE,
+    with open(penguin_path, "r") as file:
+        penguin_facts = file.readlines()
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="🐧 Penguin Fact",
+                description=f"{random.choice(penguin_facts)}",
+                color=const.EMBED_BLUE,
+            )
         )
-    )
 
 
 def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
@@ -960,14 +955,15 @@ async def animal(ctx: SnedSlashContext, animal: str) -> None:
 @lightbulb.implements(lightbulb.SlashCommand)
 async def eightball(ctx: SnedSlashContext, question: str) -> None:
     ball_path = Path(ctx.app.base_dir, "etc", "text", "8ball.txt")
-    answers = open(ball_path, "r").readlines()
-    await ctx.respond(
-        embed=hikari.Embed(
-            title=f"🎱 {question}",
-            description=f"{random.choice(answers)}",
-            color=const.EMBED_BLUE,
+    with open(ball_path, "r") as file:
+        answers = file.readlines()
+        await ctx.respond(
+            embed=hikari.Embed(
+                title=f"🎱 {question}",
+                description=f"{random.choice(answers)}",
+                color=const.EMBED_BLUE,
+            )
         )
-    )
 
 
 @fun.command

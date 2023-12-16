@@ -7,7 +7,7 @@ import hikari
 
 
 async def backup_database() -> hikari.File:
-    """Attempts to back up the database via pg_dump into the db_backup directory"""
+    """Attempts to back up the database via pg_dump into the db_backup directory."""
     logging.info("Performing daily database backup...")
 
     username: str = os.getenv("POSTGRES_USER") or "postgres"

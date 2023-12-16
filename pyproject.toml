@@ -1,8 +1,24 @@
 [tool.ruff]
 exclude = ["examples", "docs", "build"]
-select = ["E", "F", "I"]
-ignore = ["F405", "F403", "E501"]
-fixable = ["I"]
+select = [
+    "E", 
+    "F", 
+    "I", 
+    "TCH", 
+    "N", 
+    "D2",
+    "D3",
+    "D415",
+    "D417",
+    "D418",
+    "D419",
+    "Q",
+    "RSE",
+    "SIM",
+    "RUF",
+]
+ignore = ["F405", "F403", "E501", "D203", "D205", "D213", "RUF001"]
+fixable = ["I", "TCH", "D"]
 line-length = 120
 target-version = "py311"
 

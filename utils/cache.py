@@ -15,8 +15,7 @@ if t.TYPE_CHECKING:
 
 
 class DatabaseCache:
-    """
-    A class aimed squarely at making caching of values easier to handle, and
+    """A class aimed squarely at making caching of values easier to handle, and
     centralize it. It tries lazy-loading a dict whenever requesting data,
     or setting it.
     """
@@ -30,9 +29,7 @@ class DatabaseCache:
         return re.sub(r"\W|^(?=\d)", "_", kwarg)
 
     async def start(self) -> None:
-        """
-        Initialize the database cache. This should be called after the database is set up.
-        """
+        """Initialize the database cache. This should be called after the database is set up."""
         self.is_ready = False
         self._cache = {}
         DatabaseModel._db_cache = self
@@ -50,9 +47,7 @@ class DatabaseCache:
 
     # Leaving this as async for potential future functionality
     async def stop(self) -> None:
-        """
-        Disable the cache and wipe all of it's contents.
-        """
+        """Disable the cache and wipe all of it's contents."""
         self.is_ready = False
         self._cache = {}
 
@@ -103,9 +98,7 @@ class DatabaseCache:
             return rows
 
     async def refresh(self, table: str, **kwargs) -> None:
-        """
-        Discards and reloads a specific part of the cache, should be called after modifying database values.
-        """
+        """Discards and reloads a specific part of the cache, should be called after modifying database values."""
         if not self.is_ready:
             return
 
@@ -125,15 +118,13 @@ class DatabaseCache:
             self._cache[table].append(dict(record))
 
     async def wipe(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
-        """
-        Discards the entire cache for a guild.
-        """
+        """Discards the entire cache for a guild."""
         if not self.is_ready:
             return
 
         guild_id = hikari.Snowflake(guild)
 
-        for table in self._cache.keys():
+        for table in self._cache:
             for i, row in enumerate(self._cache[table]):
                 if row.get("guild_id") == guild_id:
                     self._cache[table].pop(i)

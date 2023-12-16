@@ -4,6 +4,7 @@ import logging
 import os
 import pathlib
 import typing as t
+from contextlib import suppress
 
 import aiohttp
 import hikari
@@ -50,7 +51,7 @@ async def is_not_blacklisted(ctx: SnedContext) -> bool:
 
 
 class SnedBot(lightbulb.BotApp):
-    """A customized subclass of lightbulb.BotApp
+    """A customized subclass of lightbulb.BotApp.
 
     Parameters
     ----------
@@ -131,7 +132,9 @@ class SnedBot(lightbulb.BotApp):
     @property
     def is_ready(self) -> bool:
         """Indicates if the application is ready to accept instructions or not.
-        Alias for BotApp.is_alive"""
+
+        Alias for BotApp.is_alive
+        """
         return self.is_alive
 
     @property
@@ -198,9 +201,7 @@ class SnedBot(lightbulb.BotApp):
         return self._start_time
 
     def start_listeners(self) -> None:
-        """
-        Start all listeners located in this class.
-        """
+        """Start all listeners located in this class."""
         self.subscribe(hikari.StartingEvent, self.on_starting)
         self.subscribe(hikari.StartedEvent, self.on_started)
         self.subscribe(hikari.GuildAvailableEvent, self.on_guild_available)
@@ -212,9 +213,7 @@ class SnedBot(lightbulb.BotApp):
         self.subscribe(hikari.GuildLeaveEvent, self.on_guild_leave)
 
     async def wait_until_started(self) -> None:
-        """
-        Wait until the bot has started up
-        """
+        """Wait until the bot has started up."""
         await asyncio.wait_for(self._started.wait(), timeout=None)
 
     async def get_slash_context(
@@ -325,7 +324,6 @@ class SnedBot(lightbulb.BotApp):
                 return
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
-        """Guild join behaviour"""
         await self.db.register_guild(event.guild_id)
 
         if event.guild.system_channel_id is None:
@@ -341,7 +339,7 @@ class SnedBot(lightbulb.BotApp):
 
         assert isinstance(channel, hikari.TextableGuildChannel)
 
-        try:
+        with suppress(hikari.ForbiddenError):
             await channel.send(
                 embed=hikari.Embed(
                     title="Beep Boop!",
@@ -349,12 +347,9 @@ class SnedBot(lightbulb.BotApp):
                     color=0xFEC01D,
                 ).set_thumbnail(me.avatar_url)
             )
-        except hikari.ForbiddenError:
-            pass
         logging.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")
 
     async def on_guild_leave(self, event: hikari.GuildLeaveEvent) -> None:
-        """Guild removal behaviour"""
         await self.db.wipe_guild(event.guild_id, keep_record=False)
         logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
 

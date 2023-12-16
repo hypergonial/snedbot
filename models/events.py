@@ -5,25 +5,20 @@ import typing as t
 import attr
 import hikari
 
-from models.timer import Timer
-
 if t.TYPE_CHECKING:
     from models.bot import SnedBot
     from models.rolebutton import RoleButton
+    from models.timer import Timer
 
 
 class SnedEvent(hikari.Event):
-    """
-    Base event for any custom event implemented by this application.
-    """
+    """Base event for any custom event implemented by this application."""
 
     ...
 
 
 class SnedGuildEvent(SnedEvent):
-    """
-    Base event for any custom event that occurs within the context of a guild.
-    """
+    """Base event for any custom event that occurs within the context of a guild."""
 
     app: SnedBot
     """The currently running application."""
@@ -72,9 +67,7 @@ class SnedGuildEvent(SnedEvent):
 
 @attr.define()
 class TimerCompleteEvent(SnedGuildEvent):
-    """
-    Dispatched when a scheduled timer has expired.
-    """
+    """Dispatched when a scheduled timer has expired."""
 
     app: SnedBot
     timer: Timer
@@ -84,9 +77,7 @@ class TimerCompleteEvent(SnedGuildEvent):
 
 @attr.define()
 class MassBanEvent(SnedGuildEvent):
-    """
-    Dispatched when a massban occurs.
-    """
+    """Dispatched when a massban occurs."""
 
     app: SnedBot
     _guild_id: hikari.Snowflakeish
@@ -104,9 +95,7 @@ class MassBanEvent(SnedGuildEvent):
 
 @attr.define()
 class WarnEvent(SnedGuildEvent):
-    """
-    Base class for all warning events.
-    """
+    """Base class for all warning events."""
 
     app: SnedBot
     _guild_id: hikari.Snowflakeish
@@ -122,36 +111,22 @@ class WarnEvent(SnedGuildEvent):
 
 @attr.define()
 class WarnCreateEvent(WarnEvent):
-    """
-    Dispatched when a user is warned.
-    """
-
-    ...
+    """Dispatched when a user is warned."""
 
 
 @attr.define()
 class WarnRemoveEvent(WarnEvent):
-    """
-    Dispatched when a warning is removed from a user.
-    """
-
-    ...
+    """Dispatched when a warning is removed from a user."""
 
 
 @attr.define()
 class WarnsClearEvent(WarnEvent):
-    """
-    Dispatched when warnings are cleared for a user.
-    """
-
-    ...
+    """Dispatched when warnings are cleared for a user."""
 
 
 @attr.define()
 class AutoModMessageFlagEvent(SnedGuildEvent):
-    """
-    Dispatched when a message is flagged by auto-mod.
-    """
+    """Dispatched when a message is flagged by auto-mod."""
 
     app: SnedBot
     message: hikari.PartialMessage
@@ -165,9 +140,7 @@ class AutoModMessageFlagEvent(SnedGuildEvent):
 
 @attr.define()
 class RoleButtonEvent(SnedGuildEvent):
-    """
-    Base class for all rolebutton-related events.
-    """
+    """Base class for all rolebutton-related events."""
 
     app: SnedBot
     _guild_id: hikari.Snowflakeish
@@ -179,29 +152,17 @@ class RoleButtonEvent(SnedGuildEvent):
 
 @attr.define()
 class RoleButtonCreateEvent(RoleButtonEvent):
-    """
-    Dispatched when a new rolebutton is created.
-    """
-
-    ...
+    """Dispatched when a new rolebutton is created."""
 
 
 @attr.define()
 class RoleButtonDeleteEvent(RoleButtonEvent):
-    """
-    Dispatched when a rolebutton is deleted.
-    """
-
-    ...
+    """Dispatched when a rolebutton is deleted."""
 
 
 @attr.define()
 class RoleButtonUpdateEvent(RoleButtonEvent):
-    """
-    Dispatched when a rolebutton is updated.
-    """
-
-    ...
+    """Dispatched when a rolebutton is updated."""
 
 
 # Copyright (C) 2022-present hypergonial

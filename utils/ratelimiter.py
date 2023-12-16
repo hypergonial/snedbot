@@ -9,7 +9,9 @@ import typing as t
 from collections import deque
 
 import attr
-import hikari
+
+if t.TYPE_CHECKING:
+    import hikari
 
 
 class ContextLike(t.Protocol):
@@ -30,7 +32,7 @@ class ContextLike(t.Protocol):
 
 @attr.define()
 class BucketData:
-    """Handles the ratelimiting of a single bucket data. (E.g. a single user or a channel.)"""
+    """Handles the ratelimiting of a single bucket data. (E.g. a single user or a channel)."""
 
     reset_at: float
     """The time at which the bucket resets."""
@@ -110,7 +112,7 @@ class Bucket(abc.ABC):
 
     @abc.abstractmethod
     def get_key(self, ctx: ContextLike) -> str:
-        """Get key for ratelimiter bucket"""
+        """Get key for ratelimiter bucket."""
 
     def is_rate_limited(self, ctx: ContextLike) -> bool:
         """Returns a boolean determining if the ratelimiter is ratelimited or not."""

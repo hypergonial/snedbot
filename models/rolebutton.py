@@ -90,7 +90,6 @@ class RoleButton(DatabaseModel):
         Optional[RoleButton]
             The resolved rolebutton object, if found.
         """
-
         record = await cls._db.fetchrow("""SELECT * FROM button_roles WHERE entry_id = $1""", id)
         if not record:
             return None
@@ -125,7 +124,6 @@ class RoleButton(DatabaseModel):
         List[RoleButton]
             A list of rolebuttons belonging to the specified guild.
         """
-
         records = await cls._db.fetch("""SELECT * FROM button_roles WHERE guild_id = $1""", hikari.Snowflake(guild))
         if not records:
             return []
@@ -192,7 +190,6 @@ class RoleButton(DatabaseModel):
         hikari.ForbiddenError
             Failed to edit the provided message to add the rolebutton.
         """
-
         record = await cls._db.fetchrow("""SELECT entry_id FROM button_roles ORDER BY entry_id DESC""")
         id = record["entry_id"] + 1 if record else 1
         role_id = hikari.Snowflake(role)
@@ -252,7 +249,6 @@ class RoleButton(DatabaseModel):
         hikari.ForbiddenError
             Failed to edit or fetch the message the button belongs to.
         """
-
         message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
 
         view = miru.View.from_message(message)
@@ -302,7 +298,6 @@ class RoleButton(DatabaseModel):
         hikari.ForbiddenError
             Failed to edit or fetch the message the button belongs to.
         """
-
         try:
             message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
         except hikari.NotFoundError:

@@ -4,6 +4,7 @@ import datetime
 import re
 import typing as t
 import unicodedata
+from contextlib import suppress
 
 import hikari
 import lightbulb
@@ -11,12 +12,12 @@ import pytz
 
 from etc import const
 from models import errors
-from models.context import SnedApplicationContext, SnedContext
 from models.db_user import DatabaseUser
-from models.journal import JournalEntry
 
 if t.TYPE_CHECKING:
     from models import SnedBot
+    from models.context import SnedApplicationContext, SnedContext
+    from models.journal import JournalEntry
 
 MESSAGE_LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)channels[\/][0-9]{1,}[\/][0-9]{1,}[\/][0-9]{1,}"
@@ -42,9 +43,9 @@ BADGE_EMOJI_MAPPING = {
 
 
 def format_dt(time: datetime.datetime, style: str | None = None) -> str:
-    """
-    Convert a datetime into a Discord timestamp.
-    For styling see this link: https://discord.com/developers/docs/reference#message-formatting-timestamp-styles
+    """Convert a datetime into a Discord timestamp.
+
+    For styling see this link: https://discord.com/developers/docs/reference#message-formatting-timestamp-styles.
     """
     valid_styles = ["t", "T", "d", "D", "f", "F", "R"]
 
@@ -58,9 +59,7 @@ def format_dt(time: datetime.datetime, style: str | None = None) -> str:
 
 
 def utcnow() -> datetime.datetime:
-    """
-    A short-hand function to return a timezone-aware utc datetime.
-    """
+    """A short-hand function to return a timezone-aware utc datetime."""
     return datetime.datetime.now(datetime.timezone.utc)
 
 
@@ -79,7 +78,6 @@ async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser])
     datetime.datetime
         The current time in the user's timezone of preference.
     """
-
     records = await bot.db_cache.get(table="preferences", user_id=hikari.Snowflake(user), limit=1)
     timezone = records[0].get("timezone") if records else "UTC"
     assert timezone is not None
@@ -89,9 +87,7 @@ async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser])
 
 
 def add_embed_footer(embed: hikari.Embed, invoker: hikari.Member) -> hikari.Embed:
-    """
-    Add a note about the command invoker in the embed passed.
-    """
+    """Add a note about the command invoker in the embed passed."""
     avatar_url = invoker.display_avatar_url
 
     embed.set_footer(text=f"Requested by {invoker}", icon=avatar_url)
@@ -178,7 +174,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 
     if ctx.member.id in ctx.app.owner_ids:
         records = await ctx.app.db_cache.get(table="blacklist", guild_id=0, user_id=user.id, limit=1)
-        is_blacklisted = True if records and records[0]["user_id"] == user.id else False
+        is_blacklisted = bool(records) and records[0]["user_id"] == user.id
         embed.description = f"{embed.description}\n**• Blacklisted:** `{is_blacklisted}`"
 
     return embed
@@ -186,7 +182,6 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 
 def includes_permissions(permissions: hikari.Permissions, should_include: hikari.Permissions) -> bool:
     """Check if permissions includes should_includes."""
-
     if permissions & hikari.Permissions.ADMINISTRATOR:
         return True
 
@@ -217,9 +212,7 @@ def normalize_string(string: str, strict: bool = False) -> str:
 
 
 def is_above(me: hikari.Member, member: hikari.Member) -> bool:
-    """
-    Returns True if me's top role's position is higher than the specified member's.
-    """
+    """Returns True if me's top role's position is higher than the specified member's."""
     me_top_role = me.get_top_role()
     member_top_role = member.get_top_role()
 
@@ -234,10 +227,7 @@ def is_above(me: hikari.Member, member: hikari.Member) -> bool:
 def can_harm(
     me: hikari.Member, member: hikari.Member, permission: hikari.Permissions, *, raise_error: bool = False
 ) -> bool:
-    """
-    Returns True if "member" can be harmed by "me", also checks if "me" has "permission".
-    """
-
+    """Returns True if "member" can be harmed by "me", also checks if "me" has "permission"."""
     perms = lightbulb.utils.permissions_for(me)
 
     if not includes_permissions(perms, permission):
@@ -262,26 +252,16 @@ def can_harm(
 
 
 def is_url(string: str, *, fullmatch: bool = True) -> bool:
-    """
-    Returns True if the provided string is an URL, otherwise False.
-    """
-
-    if fullmatch and LINK_REGEX.fullmatch(string):
-        return True
-    elif not fullmatch and LINK_REGEX.match(string):
+    """Returns True if the provided string is an URL, otherwise False."""
+    if fullmatch and LINK_REGEX.fullmatch(string) or not fullmatch and LINK_REGEX.match(string):
         return True
 
     return False
 
 
 def is_invite(string: str, *, fullmatch: bool = True) -> bool:
-    """
-    Returns True if the provided string is a Discord invite, otherwise False.
-    """
-
-    if fullmatch and INVITE_REGEX.fullmatch(string):
-        return True
-    elif not fullmatch and INVITE_REGEX.match(string):
+    """Returns True if the provided string is a Discord invite, otherwise False."""
+    if fullmatch and INVITE_REGEX.fullmatch(string) or not fullmatch and INVITE_REGEX.match(string):
         return True
 
     return False
@@ -289,7 +269,8 @@ def is_invite(string: str, *, fullmatch: bool = True) -> bool:
 
 def is_member(user: hikari.PartialUser) -> bool:  # Such useful
     """Determine if the passed object is a member or not, otherwise raise an error.
-    Basically equivalent to `assert isinstance(user, hikari.Member)` but with a fancier error."""
+    Basically equivalent to `assert isinstance(user, hikari.Member)` but with a fancier error.
+    """
     if isinstance(user, hikari.Member):
         return True
 
@@ -316,7 +297,6 @@ async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> 
     lightbulb.BotMissingRequiredPermission
         The application is missing required permissions to acquire the message.
     """
-
     assert ctx.guild_id is not None
 
     if not MESSAGE_LINK_REGEX.fullmatch(message_link):
@@ -372,17 +352,13 @@ async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> 
 
 
 async def maybe_delete(message: hikari.PartialMessage) -> None:
-    try:
+    with suppress(hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         await message.delete()
-    except (hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
-        pass
 
 
 async def maybe_edit(message: hikari.PartialMessage, *args, **kwargs) -> None:
-    try:
+    with suppress(hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         await message.edit(*args, **kwargs)
-    except (hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
-        pass
 
 
 def format_reason(
@@ -419,7 +395,6 @@ def format_reason(
 
 def build_journal_pages(entries: list[JournalEntry]) -> list[hikari.Embed]:
     """Build a list of embeds to send to a user containing journal entries, with pagination."""
-
     paginator = lightbulb.utils.StringPaginator(max_chars=1500)
     [paginator.add_line(f"`#{entry.id}` {entry.display_content}") for entry in entries]
 

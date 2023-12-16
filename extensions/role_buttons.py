@@ -91,8 +91,7 @@ class RoleButtonConfirmModal(miru.Modal):
 
 @role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
 async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteractionCreateEvent) -> None:
-    """Statelessly listen for rolebutton interactions"""
-
+    """Statelessly listen for rolebutton interactions."""
     if not event.interaction.custom_id.startswith("RB:"):
         return
 
@@ -378,7 +377,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
             )
             return
 
-        if role.position >= top_role.position and not guild.owner_id == ctx.member.id:
+        if role.position >= top_role.position and guild.owner_id != ctx.member.id:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Role Hierarchy Error",
@@ -490,7 +489,7 @@ async def rolebutton_add(
         )
         return
 
-    if role.position >= top_role.position and not guild.owner_id == ctx.member.id:
+    if role.position >= top_role.position and guild.owner_id != ctx.member.id:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Role Hierarchy Error",

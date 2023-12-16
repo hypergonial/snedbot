@@ -4,6 +4,7 @@ import datetime
 import enum
 import logging
 import typing as t
+from contextlib import suppress
 
 import attr
 import hikari
@@ -63,7 +64,8 @@ MAX_TIMEOUT_SECONDS = 2246400  # Duration of segments to break timeouts up to
 
 class ModActions:
     """Class containing all moderation actions that can be performed by the bot.
-    It also handles miscallaneous moderation tasks such as tempban timers, timeout chunks & more."""
+    It also handles miscallaneous moderation tasks such as tempban timers, timeout chunks & more.
+    """
 
     def __init__(self, bot: SnedBot) -> None:
         self.app = bot
@@ -99,9 +101,7 @@ class ModActions:
         action_type: ActionType,
         reason: str | None = None,
     ) -> None:
-        """
-        Actions that need to be executed before a moderation action takes place.
-        """
+        """Actions that need to be executed before a moderation action takes place."""
         helpers.format_reason(reason, max_length=1500)
         guild_id = hikari.Snowflake(guild)
         settings = await self.get_settings(guild_id)
@@ -136,14 +136,11 @@ class ModActions:
         action_type: ActionType,
         reason: str | None = None,
     ) -> None:
-        """
-        Actions that need to be executed after a moderation action took place.
-        """
+        """Actions that need to be executed after a moderation action took place."""
         pass
 
     async def handle_mod_buttons(self, event: miru.ComponentInteractionCreateEvent) -> None:
         """Handle buttons related to moderation quick-actions."""
-
         # Format: ACTION:<user_id>:<moderator_id>
         if not event.custom_id.startswith(("UNBAN:", "JOURNAL:")):
             return
@@ -214,15 +211,11 @@ class ModActions:
             if item.custom_id == event.custom_id:
                 item.disabled = True
 
-        try:
+        with suppress(hikari.ForbiddenError, hikari.NotFoundError):
             await event.message.edit(components=view)
-        except (hikari.ForbiddenError, hikari.NotFoundError):
-            pass
 
     async def timeout_extend(self, event: TimerCompleteEvent) -> None:
-        """
-        Extends timeouts longer than 28 days by breaking them into multiple chunks.
-        """
+        """Extends timeouts longer than 28 days by breaking them into multiple chunks."""
         timer = event.timer
 
         if timer.event != TimerEvent.TIMEOUT_EXTEND:
@@ -272,9 +265,7 @@ class ModActions:
                 await db_user.update()
 
     async def reapply_timeout_extensions(self, event: hikari.MemberCreateEvent):
-        """
-        Reapply timeout if a member left between two timeout extension cycles.
-        """
+        """Reapply timeout if a member left between two timeout extension cycles."""
         me = self.app.cache.get_member(event.guild_id, self.app.user_id)
         assert me is not None
 
@@ -314,9 +305,7 @@ class ModActions:
             )
 
     async def remove_timeout_extensions(self, event: hikari.MemberUpdateEvent):
-        """
-        Remove all timeout extensions if a user's timeout was removed.
-        """
+        """Remove all timeout extensions if a user's timeout was removed."""
         if not event.old_member:
             return
 
@@ -339,7 +328,6 @@ class ModActions:
 
     async def tempban_expire(self, event: TimerCompleteEvent) -> None:
         """Handle tempban timer expiry and unban user."""
-
         if event.timer.event != TimerEvent.TEMPBAN:
             return
 
@@ -547,7 +535,6 @@ class ModActions:
         reason : str | None, optional
             The reason for the timeout removal, by default None
         """
-
         reason = helpers.format_reason(reason, moderator)
 
         await member.edit(communication_disabled_until=None, reason=reason)
