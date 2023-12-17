@@ -1,12 +1,12 @@
 import hikari
 import lightbulb
 import yarl
-from etc import const
-from models.bot import SnedBot
-from models.context import SnedSlashContext
-from models.plugin import SnedPlugin
 
-from config import Config
+from src.config import Config
+from src.etc import const
+from src.models.bot import SnedBot
+from src.models.context import SnedSlashContext
+from src.models.plugin import SnedPlugin
 
 fandom = SnedPlugin("Fandom")
 

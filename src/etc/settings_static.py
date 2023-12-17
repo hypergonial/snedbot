@@ -1,6 +1,7 @@
 import hikari
 import miru
-from models.mod_actions import ModerationFlags
+
+from src.models.mod_actions import ModerationFlags
 
 # Static values for the settings extension
 

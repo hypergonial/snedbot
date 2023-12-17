@@ -3,9 +3,10 @@ import operator
 
 import hikari
 import lightbulb
-from models.context import SnedApplicationContext, SnedContext
-from models.errors import BotRoleHierarchyError, RoleHierarchyError
-from utils import helpers
+
+from src.models.context import SnedApplicationContext, SnedContext
+from src.models.errors import BotRoleHierarchyError, RoleHierarchyError
+from src.utils import helpers
 
 
 def _guild_only(ctx: SnedContext) -> bool:

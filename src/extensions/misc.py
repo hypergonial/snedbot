@@ -7,13 +7,14 @@ import lightbulb
 import miru
 import psutil
 import pytz
-from etc import const
-from models import SnedBot
-from models.checks import bot_has_permissions
-from models.context import SnedMessageContext, SnedSlashContext
-from models.plugin import SnedPlugin
-from utils import helpers
-from utils.scheduler import ConversionMode
+
+from src.etc import const
+from src.models import SnedBot
+from src.models.checks import bot_has_permissions
+from src.models.context import SnedMessageContext, SnedSlashContext
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
+from src.utils.scheduler import ConversionMode
 
 logger = logging.getLogger(__name__)
 

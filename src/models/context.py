@@ -5,9 +5,9 @@ import typing as t
 import hikari
 import lightbulb
 import miru
-from models.mod_actions import ModerationFlags
 
-from .views import AuthorOnlyView
+from src.models.mod_actions import ModerationFlags
+from src.models.views import AuthorOnlyView
 
 __all__ = ["SnedContext", "SnedSlashContext", "SnedMessageContext", "SnedUserContext", "SnedPrefixContext"]
 

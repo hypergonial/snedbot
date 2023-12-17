@@ -7,10 +7,11 @@ import typing as t
 
 import hikari
 import lightbulb
-from models import JournalEntry, JournalEntryType
+
+from src.models import JournalEntry, JournalEntryType
 
 if t.TYPE_CHECKING:
-    from models.db import Database
+    from src.models.db import Database
 
 NOTE_REGEX = re.compile(
     r"<t:(?P<timestamp>\d+):\w>: (?P<emoji>.+) \*\*(?P<verb>.+) (?:by|for) (?P<username>.+):\*\* (?P<content>.*)"
@@ -72,9 +73,9 @@ async def _migrate_notes(db: Database) -> None:
     records = await db.fetch("SELECT * FROM users")
 
     for record in records:
-        notes: list[str] = record.get("notes")
-        user_id: int = record.get("user_id")
-        guild_id: int = record.get("guild_id")
+        notes: list[str] = record["notes"]
+        user_id: int = record["user_id"]
+        guild_id: int = record["guild_id"]
         if not notes:
             continue
         for note in notes:

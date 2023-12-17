@@ -5,7 +5,7 @@ import typing as t
 import hikari
 
 if t.TYPE_CHECKING:
-    from models.bot import SnedBot
+    from src.models.bot import SnedBot
 
 import logging
 

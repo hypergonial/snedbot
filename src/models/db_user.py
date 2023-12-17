@@ -6,8 +6,9 @@ import typing as t
 
 import attr
 import hikari
-from models.db import DatabaseModel
-from models.journal import JournalEntry
+
+from src.models.db import DatabaseModel
+from src.models.journal import JournalEntry
 
 
 class DatabaseUserFlag(enum.Flag):

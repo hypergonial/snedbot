@@ -8,7 +8,7 @@ import miru
 from miru.abc import ModalItem, ViewItem
 
 if t.TYPE_CHECKING:
-    from extensions.settings import SettingsView
+    from src.extensions.settings import SettingsView
 
 
 @attr.define()

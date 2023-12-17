@@ -5,7 +5,7 @@ import typing as t
 import lightbulb
 
 if t.TYPE_CHECKING:
-    from models.bot import SnedBot
+    from src.models.bot import SnedBot
 
 
 class SnedPlugin(lightbulb.Plugin):

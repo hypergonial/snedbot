@@ -4,13 +4,14 @@ import logging
 import hikari
 import lightbulb
 import miru
-import models
-from etc import const
-from models import SnedBot, SnedSlashContext
-from models.plugin import SnedPlugin
-from models.rolebutton import RoleButton, RoleButtonMode
-from utils import helpers
-from utils.ratelimiter import MemberBucket, RateLimiter
+
+import src.models as models
+from src.etc import const
+from src.models import SnedBot, SnedSlashContext
+from src.models.plugin import SnedPlugin
+from src.models.rolebutton import RoleButton, RoleButtonMode
+from src.utils import helpers
+from src.utils.ratelimiter import MemberBucket, RateLimiter
 
 logger = logging.getLogger(__name__)
 

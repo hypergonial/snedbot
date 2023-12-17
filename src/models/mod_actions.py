@@ -10,18 +10,19 @@ import attr
 import hikari
 import lightbulb
 import miru
-from etc import const
 from miru.abc import ViewItem
-from models.db_user import DatabaseUser, DatabaseUserFlag
-from models.errors import DMFailedError, RoleHierarchyError
-from models.events import TimerCompleteEvent, WarnCreateEvent, WarnRemoveEvent, WarnsClearEvent
-from models.journal import JournalEntry
-from models.timer import TimerEvent
-from models.views import AuthorOnlyNavigator
-from utils import helpers
+
+from src.etc import const
+from src.models.db_user import DatabaseUser, DatabaseUserFlag
+from src.models.errors import DMFailedError, RoleHierarchyError
+from src.models.events import TimerCompleteEvent, WarnCreateEvent, WarnRemoveEvent, WarnsClearEvent
+from src.models.journal import JournalEntry
+from src.models.timer import TimerEvent
+from src.models.views import AuthorOnlyNavigator
+from src.utils import helpers
 
 if t.TYPE_CHECKING:
-    from models.bot import SnedBot
+    from src.models.bot import SnedBot
 
 logger = logging.getLogger(__name__)
 

@@ -6,9 +6,9 @@ import attr
 import hikari
 
 if t.TYPE_CHECKING:
-    from models.bot import SnedBot
-    from models.rolebutton import RoleButton
-    from models.timer import Timer
+    from src.models.bot import SnedBot
+    from src.models.rolebutton import RoleButton
+    from src.models.timer import Timer
 
 
 class SnedEvent(hikari.Event):

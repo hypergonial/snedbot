@@ -2,10 +2,11 @@ import logging
 
 import hikari
 import lightbulb
-from etc import const, get_perm_str
-from models import SnedSlashContext
-from models.bot import SnedBot
-from models.plugin import SnedPlugin
+
+from src.etc import const, get_perm_str
+from src.models import SnedSlashContext
+from src.models.bot import SnedBot
+from src.models.plugin import SnedPlugin
 
 logger = logging.getLogger(__name__)
 

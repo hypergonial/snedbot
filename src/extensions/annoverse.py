@@ -1,12 +1,12 @@
-import etc.const as const
 import hikari
 import lightbulb
-from models.bot import SnedBot
-from models.context import SnedContext
-from models.plugin import SnedPlugin
-from utils import helpers
 
-from config import Config
+import src.etc.const as const
+from src.config import Config
+from src.models.bot import SnedBot
+from src.models.context import SnedContext
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
 
 annoverse = SnedPlugin("Annoverse")
 annoverse.default_enabled_guilds = Config().DEBUG_GUILDS or (372128553031958529,)

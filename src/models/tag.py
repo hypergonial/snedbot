@@ -6,10 +6,11 @@ from itertools import chain
 
 import attr
 import hikari
-from models.db import DatabaseModel
+
+from src.models.db import DatabaseModel
 
 if t.TYPE_CHECKING:
-    from models.context import SnedContext
+    from src.models.context import SnedContext
 
 
 @attr.define()

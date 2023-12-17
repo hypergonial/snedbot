@@ -10,9 +10,10 @@ from contextlib import suppress
 import hikari
 import lightbulb
 import miru
-import models
-from etc import const
-from etc.settings_static import (
+
+import src.models as models
+from src.etc import const
+from src.etc.settings_static import (
     log_event_strings,
     mod_flags_strings,
     policy_fields,
@@ -21,12 +22,12 @@ from etc.settings_static import (
     policy_text_inputs,
     settings_help,
 )
-from extensions.userlog import LogEvent
-from models.bot import SnedBot
-from models.checks import bot_has_permissions
-from models.mod_actions import ModerationFlags
-from models.plugin import SnedPlugin
-from models.settings import (
+from src.extensions.userlog import LogEvent
+from src.models.bot import SnedBot
+from src.models.checks import bot_has_permissions
+from src.models.mod_actions import ModerationFlags
+from src.models.plugin import SnedPlugin
+from src.models.settings import (
     BackButton,
     BooleanButton,
     DoneButton,
@@ -39,12 +40,13 @@ from models.settings import (
     QuitButton,
     SettingValue,
 )
-from models.starboard import StarboardSettings
-from utils import helpers
+from src.models.starboard import StarboardSettings
+from src.utils import helpers
 
 if t.TYPE_CHECKING:
     from miru.abc import ViewItem
-    from models.context import SnedSlashContext
+
+    from src.models.context import SnedSlashContext
 
 settings = SnedPlugin("Settings")
 

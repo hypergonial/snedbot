@@ -10,12 +10,13 @@ from contextlib import suppress
 import hikari
 import lightbulb
 import miru
-from etc import const
 from miru.ext import nav
-from models import AuthorOnlyNavigator, SnedPrefixContext
-from models.bot import SnedBot
-from models.plugin import SnedPlugin
-from models.views import AuthorOnlyView
+
+from src.etc import const
+from src.models import AuthorOnlyNavigator, SnedPrefixContext
+from src.models.bot import SnedBot
+from src.models.plugin import SnedPlugin
+from src.models.views import AuthorOnlyView
 
 logger = logging.getLogger(__name__)
 

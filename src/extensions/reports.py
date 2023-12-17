@@ -3,12 +3,13 @@ import logging
 import hikari
 import lightbulb
 import miru
-from etc import const
-from models import SnedSlashContext
-from models.bot import SnedBot
-from models.context import SnedApplicationContext, SnedContext, SnedMessageContext, SnedUserContext
-from models.plugin import SnedPlugin
-from utils import helpers
+
+from src.etc import const
+from src.models import SnedSlashContext
+from src.models.bot import SnedBot
+from src.models.context import SnedApplicationContext, SnedContext, SnedMessageContext, SnedUserContext
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
 
 logger = logging.getLogger(__name__)
 

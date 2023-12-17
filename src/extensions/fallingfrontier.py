@@ -1,12 +1,12 @@
 import hikari
 import lightbulb
 import miru
-from etc import const
-from models.bot import SnedBot
-from models.context import SnedSlashContext
-from models.plugin import SnedPlugin
 
-from config import Config
+from src.config import Config
+from src.etc import const
+from src.models.bot import SnedBot
+from src.models.context import SnedSlashContext
+from src.models.plugin import SnedPlugin
 
 TESTER_STAGING_ROLE = 971843694896513074
 TESTER_STAGING_CHANNEL = 971844463884382259

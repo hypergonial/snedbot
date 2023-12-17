@@ -9,14 +9,15 @@ from contextlib import suppress
 import hikari
 import lightbulb
 import pytz
-from etc import const
-from models import errors
-from models.db_user import DatabaseUser
+
+from src.etc import const
+from src.models import errors
+from src.models.db_user import DatabaseUser
 
 if t.TYPE_CHECKING:
-    from models import SnedBot
-    from models.context import SnedApplicationContext, SnedContext
-    from models.journal import JournalEntry
+    from src.models import SnedBot
+    from src.models.context import SnedApplicationContext, SnedContext
+    from src.models.journal import JournalEntry
 
 MESSAGE_LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)channels[\/][0-9]{1,}[\/][0-9]{1,}[\/][0-9]{1,}"

@@ -13,20 +13,21 @@ import hikari
 import Levenshtein as lev  # noqa: N813
 import lightbulb
 import miru
-from etc import const
 from miru.ext import nav
-from models import SnedBot, SnedSlashContext
-from models.checks import bot_has_permissions
-from models.context import SnedContext, SnedUserContext
-from models.plugin import SnedPlugin
-from models.views import AuthorOnlyNavigator, AuthorOnlyView
 from PIL import Image, ImageDraw, ImageFont
-from utils import GlobalBucket, RateLimiter, helpers
-from utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryError, UrbanEntry
-from utils.ratelimiter import UserBucket
-from utils.rpn import InvalidExpressionError, Solver
 
-from config import Config
+from src.etc import const
+from src.models import SnedBot, SnedSlashContext
+from src.models.checks import bot_has_permissions
+from src.models.context import SnedContext, SnedUserContext
+from src.models.plugin import SnedPlugin
+from src.models.views import AuthorOnlyNavigator, AuthorOnlyView
+from src.utils import GlobalBucket, RateLimiter, helpers
+from src.utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryError, UrbanEntry
+from src.utils.ratelimiter import UserBucket
+from src.utils.rpn import InvalidExpressionError, Solver
+
+from ..config import Config
 
 if TYPE_CHECKING:
     from fractions import Fraction

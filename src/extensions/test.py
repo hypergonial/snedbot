@@ -5,9 +5,10 @@ import kosu
 import lightbulb
 import miru
 from miru.ext import nav
-from models import SnedSlashContext
-from models.bot import SnedBot
-from models.plugin import SnedPlugin
+
+from src.models import SnedSlashContext
+from src.models.bot import SnedBot
+from src.models.plugin import SnedPlugin
 
 logger = logging.getLogger(__name__)
 

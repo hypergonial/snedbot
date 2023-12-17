@@ -8,14 +8,15 @@ import typing as t
 import hikari
 import kosu
 import lightbulb
-import utils
-from etc import const
-from etc.settings_static import default_automod_policies, notices
-from models.bot import SnedBot
-from models.events import AutoModMessageFlagEvent
-from models.plugin import SnedPlugin
-from utils import helpers
-from utils.ratelimiter import MemberBucket
+
+import src.utils as utils
+from src.etc import const
+from src.etc.settings_static import default_automod_policies, notices
+from src.models.bot import SnedBot
+from src.models.events import AutoModMessageFlagEvent
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
+from src.utils.ratelimiter import MemberBucket
 
 INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
 """Used to detect and handle Discord invites."""

@@ -5,12 +5,13 @@ import re
 import typing as t
 
 import hikari
-from models.db import DatabaseModel
+
+from src.models.db import DatabaseModel
 
 logger = logging.getLogger(__name__)
 
 if t.TYPE_CHECKING:
-    from models import SnedBot
+    from src.models import SnedBot
 
 
 class DatabaseCache:

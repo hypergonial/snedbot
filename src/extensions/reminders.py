@@ -6,12 +6,13 @@ import typing as t
 import hikari
 import lightbulb
 import miru
-from etc import const
-from models import SnedBot, SnedSlashContext, Timer, events
-from models.plugin import SnedPlugin
-from models.timer import TimerEvent
-from models.views import AuthorOnlyNavigator
-from utils import helpers
+
+from src.etc import const
+from src.models import SnedBot, SnedSlashContext, Timer, events
+from src.models.plugin import SnedPlugin
+from src.models.timer import TimerEvent
+from src.models.views import AuthorOnlyNavigator
+from src.utils import helpers
 
 reminders = SnedPlugin(name="Reminders")
 

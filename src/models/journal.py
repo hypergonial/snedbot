@@ -6,8 +6,9 @@ import typing as t
 
 import attr
 import hikari
-from models.db import DatabaseModel
-from utils import helpers
+
+from src.models.db import DatabaseModel
+from src.utils import helpers
 
 if t.TYPE_CHECKING:
     import asyncpg

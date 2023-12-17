@@ -5,18 +5,19 @@ import re
 import hikari
 import lightbulb
 import miru
-import models
-from etc import const
-from models import errors
-from models.bot import SnedBot
-from models.checks import bot_has_permissions, is_above_target, is_invoker_above_target
-from models.context import SnedSlashContext, SnedUserContext
-from models.db_user import DatabaseUser
-from models.events import MassBanEvent
-from models.journal import JournalEntry, JournalEntryType
-from models.mod_actions import ModerationFlags
-from models.plugin import SnedPlugin
-from utils import helpers
+
+import src.models as models
+from src.etc import const
+from src.models import errors
+from src.models.bot import SnedBot
+from src.models.checks import bot_has_permissions, is_above_target, is_invoker_above_target
+from src.models.context import SnedSlashContext, SnedUserContext
+from src.models.db_user import DatabaseUser
+from src.models.events import MassBanEvent
+from src.models.journal import JournalEntry, JournalEntryType
+from src.models.mod_actions import ModerationFlags
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
 
 logger = logging.getLogger(__name__)
 

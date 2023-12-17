@@ -2,19 +2,21 @@
 
 import logging
 import os
+import pathlib
 import platform
 import re
 
-from models import SnedBot
+from src.models import SnedBot
 
 DOTENV_REGEX = re.compile(r"^(?P<identifier>[A-Za-z_]+[A-Za-z0-9_]*)=(?P<value>[^#]+)(#.*)?$")
+BASE_DIR = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
 
 if int(platform.python_version_tuple()[1]) < 10:
     logging.fatal("Python version must be 3.10 or greater! Exiting...")
     exit(1)
 
 try:
-    with open(".env") as env:
+    with open(os.path.join(BASE_DIR, ".env")) as env:
         for line in env.readlines():
             match = DOTENV_REGEX.match(line)
             if not match:
@@ -25,7 +27,7 @@ except FileNotFoundError:
     logging.info(".env file not found, using secrets from the environment instead.")
 
 try:
-    from config import Config
+    from .config import Config
 except ImportError:
     logging.fatal(
         "Failed loading configuration. Please make sure 'config.py' exists in the root directory of the project and contains valid data."

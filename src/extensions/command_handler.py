@@ -8,22 +8,23 @@ from typing import TYPE_CHECKING
 
 import hikari
 import lightbulb
-from etc import const
-from etc.perms_str import get_perm_str
-from models.bot import SnedBot
-from models.context import SnedPrefixContext, SnedSlashContext
-from models.errors import (
+
+from src.etc import const
+from src.etc.perms_str import get_perm_str
+from src.models.bot import SnedBot
+from src.models.context import SnedPrefixContext, SnedSlashContext
+from src.models.errors import (
     BotRoleHierarchyError,
     InteractionTimeOutError,
     MemberExpectedError,
     RoleHierarchyError,
     UserBlacklistedError,
 )
-from models.plugin import SnedPlugin
-from utils import helpers
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
 
 if TYPE_CHECKING:
-    from models import SnedContext
+    from src.models import SnedContext
 
 logger = logging.getLogger(__name__)
 

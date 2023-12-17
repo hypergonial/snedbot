@@ -13,8 +13,9 @@ import typing as t
 import attr
 import hikari
 import lightbulb
-from etc import const, get_perm_str
-from models.events import (
+
+from src.etc import const, get_perm_str
+from src.models.events import (
     AutoModMessageFlagEvent,
     MassBanEvent,
     RoleButtonCreateEvent,
@@ -24,12 +25,12 @@ from models.events import (
     WarnRemoveEvent,
     WarnsClearEvent,
 )
-from models.journal import JournalEntry, JournalEntryType
-from models.plugin import SnedPlugin
-from utils import helpers
+from src.models.journal import JournalEntry, JournalEntryType
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
 
 if t.TYPE_CHECKING:
-    from models import SnedBot
+    from src.models import SnedBot
 
 BOT_REASON_REGEX = re.compile(r"(?P<name>.*)\s\((?P<id>\d+)\):\s(?P<reason>.*)")
 TIMEOUT_REGEX = re.compile(

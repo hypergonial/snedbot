@@ -9,11 +9,12 @@ from contextlib import asynccontextmanager
 
 import asyncpg
 import hikari
-from models.errors import DatabaseStateConflictError
+
+from src.models.errors import DatabaseStateConflictError
 
 if t.TYPE_CHECKING:
-    from models.bot import SnedBot
-    from utils.cache import DatabaseCache
+    from src.models.bot import SnedBot
+    from src.utils.cache import DatabaseCache
 
 logger = logging.getLogger(__name__)
 

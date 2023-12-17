@@ -5,11 +5,12 @@ from itertools import chain
 import hikari
 import lightbulb
 import miru
-from etc import const
-from models import AuthorOnlyNavigator, SnedSlashContext, Tag
-from models.bot import SnedBot
-from models.plugin import SnedPlugin
-from utils import helpers
+
+from src.etc import const
+from src.models import AuthorOnlyNavigator, SnedSlashContext, Tag
+from src.models.bot import SnedBot
+from src.models.plugin import SnedPlugin
+from src.utils import helpers
 
 logger = logging.getLogger(__name__)
 

@@ -9,15 +9,16 @@ import typing as t
 
 import dateparser
 import hikari
-from models.events import TimerCompleteEvent
-from models.timer import Timer, TimerEvent
-from utils.tasks import IntervalLoop
+
+from src.models.events import TimerCompleteEvent
+from src.models.timer import Timer, TimerEvent
+from src.utils.tasks import IntervalLoop
 
 logger = logging.getLogger(__name__)
 
 
 if t.TYPE_CHECKING:
-    from models.bot import SnedBot
+    from src.models.bot import SnedBot
 
 
 class ConversionMode(enum.IntEnum):

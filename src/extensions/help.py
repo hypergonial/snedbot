@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import typing as t
 
-import etc.const as const
 import hikari
 import lightbulb
-from models.plugin import SnedPlugin
+
+import src.etc.const as const
+from src.models.plugin import SnedPlugin
 
 if t.TYPE_CHECKING:
-    from models import SnedBot
-    from models.context import SnedSlashContext
+    from src.models import SnedBot
+    from src.models.context import SnedSlashContext
 
 
 help = SnedPlugin("Help")

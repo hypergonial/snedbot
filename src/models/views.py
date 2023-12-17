@@ -1,10 +1,9 @@
-from typing import List, Optional, Union
-
 import hikari
 import lightbulb
 import miru
-from etc import const
 from miru.ext import nav
+
+from src.etc import const
 
 
 class StopSelect(miru.TextSelect):
@@ -17,7 +16,7 @@ class StopSelect(miru.TextSelect):
 class AuthorOnlyView(miru.View):
     """A navigator that only works for the user who invoked it."""
 
-    def __init__(self, lctx: lightbulb.Context, *, timeout: Optional[float] = 120, autodefer: bool = True) -> None:
+    def __init__(self, lctx: lightbulb.Context, *, timeout: float | None = 120, autodefer: bool = True) -> None:
         super().__init__(timeout=timeout, autodefer=autodefer)
         self.lctx = lctx
 
@@ -39,9 +38,9 @@ class SnedNavigator(nav.NavigatorView):
     def __init__(
         self,
         *,
-        pages: List[Union[str, hikari.Embed]],
-        buttons: Optional[List[nav.NavButton]] = None,
-        timeout: Optional[float] = 120,
+        pages: list[str | hikari.Embed],
+        buttons: list[nav.NavButton] | None = None,
+        timeout: float | None = 120.0,
         autodefer: bool = True,
     ) -> None:
         buttons = buttons or [
@@ -61,9 +60,9 @@ class AuthorOnlyNavigator(SnedNavigator):
         self,
         lctx: lightbulb.Context,
         *,
-        pages: List[Union[str, hikari.Embed]],
-        buttons: Optional[List[nav.NavButton]] = None,
-        timeout: Optional[float] = 300,
+        pages: list[str | hikari.Embed],
+        buttons: list[nav.NavButton] | None = None,
+        timeout: float | None = 300.0,
         autodefer: bool = True,
     ) -> None:
         self.lctx = lctx

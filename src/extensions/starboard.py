@@ -4,12 +4,13 @@ import typing as t
 
 import hikari
 import lightbulb
-from etc import const
-from models.bot import SnedBot
-from models.context import SnedApplicationContext, SnedMessageContext, SnedSlashContext
-from models.plugin import SnedPlugin
-from models.starboard import StarboardEntry, StarboardSettings
-from utils import helpers
+
+from src.etc import const
+from src.models.bot import SnedBot
+from src.models.context import SnedApplicationContext, SnedMessageContext, SnedSlashContext
+from src.models.plugin import SnedPlugin
+from src.models.starboard import StarboardEntry, StarboardSettings
+from src.utils import helpers
 
 logger = logging.getLogger(__name__)
 
