@@ -14,7 +14,7 @@ options.sessions = ["format_fix"]
 
 @nox.session()
 def format_fix(session: nox.Session):
-    session.install("ruff")
+    session.install("-U", "ruff")
     session.run("python", "-m", "ruff", "format", *SCRIPT_PATHS)
     session.run("python", "-m", "ruff", *SCRIPT_PATHS, "--fix")
 

@@ -23,8 +23,11 @@ line-length = 120
 target-version = "py311"
 
 [tool.mypy]
-python_version = "3.11"
-ignore_missing_imports = true
+ignore_errors = true # I use pyright only because mypy dumb
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
 
 [tool.poetry]
 name = "snedbot"
