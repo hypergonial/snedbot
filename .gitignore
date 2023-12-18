@@ -138,8 +138,5 @@ db/backup/
 # Dolphin directory meta files
 .directory
 
-# VS Code
-.vscode/
-
 # ruff
 .ruff_cache/
