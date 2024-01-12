@@ -630,13 +630,13 @@ crontrigger = ["croniter (>=2.0.1,<2.1.0)", "types-croniter (>=2.0.0,<2.1.0)"]
 
 [[package]]
 name = "hikari-miru"
-version = "3.3.1"
+version = "3.4.0"
 description = "An alternative component handler for hikari, inspired by discord.py's views."
 optional = false
 python-versions = ">=3.8.0,<3.13"
 files = [
-    {file = "hikari-miru-3.3.1.tar.gz", hash = "sha256:44633d4f3b6cb07045ade72b9c235c3690e92309bd3c19e5ca67c8a06bf5859e"},
-    {file = "hikari_miru-3.3.1-py3-none-any.whl", hash = "sha256:f42b1abd3649fc911af18b89072ad582a3a65cddc73658c76a964058e7ad6640"},
+    {file = "hikari-miru-3.4.0.tar.gz", hash = "sha256:c5ce35e0a2e720689b417ccac4080252f3d7b3c8e53c9b641e8a7bd9fdbbd95d"},
+    {file = "hikari_miru-3.4.0-py3-none-any.whl", hash = "sha256:4bc9fa1833c1a6a69baccd64603af44f015c26294d2bd16aa16db0a6b61c167b"},
 ]
 
 [package.dependencies]
@@ -1561,4 +1561,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "bade01b7abb9bb2790c36becb74356a37f143a233ca9feed8aad749aeb2e75de"
+content-hash = "f48165e15ab8f56194c03b4bdd0d93f597fd25dc219fceac5c186ee6db5867c3"
