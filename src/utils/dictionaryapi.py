@@ -142,7 +142,7 @@ class DictionaryClient:
             self._session = aiohttp.ClientSession()
         return self._session
 
-    async def get_urban_entries(self, word: str) -> list[UrbanEntry]:
+    async def fetch_urban_entries(self, word: str) -> list[UrbanEntry]:
         """Get entries for a word from the Urban dictionary.
 
         Parameters
@@ -209,7 +209,7 @@ class DictionaryClient:
 
         return results
 
-    async def get_mw_entries(self, word: str) -> list[DictionaryEntry]:
+    async def fetch_mw_entries(self, word: str) -> list[DictionaryEntry]:
         """Get entries for a word from the Merriam-Webster dictionary.
 
         Parameters

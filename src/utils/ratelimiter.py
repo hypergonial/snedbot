@@ -14,6 +14,7 @@ if t.TYPE_CHECKING:
     import hikari
 
 
+# FIXME: Destroy module
 class ContextLike(t.Protocol):
     """An object that has common attributes of a context."""
 

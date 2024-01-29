@@ -102,7 +102,7 @@ async def send_paginated(
     for line in text.split("\n"):
         paginator.add_line(format_output(line))
 
-    navmenu = OutputNav(ctx, pages=list(paginator.build_pages()), buttons=buttons, timeout=300)
+    navmenu = OutputNav(ctx, pages=list(paginator.build_pages()), items=buttons, timeout=300)
 
     if not channel_id:
         assert isinstance(messageable, hikari.User)
@@ -342,7 +342,7 @@ async def restore_db(ctx: SnedPrefixContext) -> None:
     async with ctx.app.db.acquire() as con:
         records = await con.fetch(
             """
-        SELECT * FROM pg_catalog.pg_tables 
+        SELECT * FROM pg_catalog.pg_tables
         WHERE schemaname='public'
         """
         )

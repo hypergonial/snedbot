@@ -10,6 +10,7 @@ import attr
 import hikari
 import lightbulb
 import miru
+import toolbox
 from miru.abc import ViewItem
 
 from src.etc import const
@@ -22,7 +23,7 @@ from src.models.views import AuthorOnlyNavigator
 from src.utils import helpers
 
 if t.TYPE_CHECKING:
-    from src.models.bot import SnedBot
+    from src.models.client import SnedClient
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +68,14 @@ class ModActions:
     It also handles miscallaneous moderation tasks such as tempban timers, timeout chunks & more.
     """
 
-    def __init__(self, bot: SnedBot) -> None:
-        self.app = bot
-        self.app.subscribe(TimerCompleteEvent, self.timeout_extend)
-        self.app.subscribe(hikari.MemberCreateEvent, self.reapply_timeout_extensions)
-        self.app.subscribe(hikari.MemberUpdateEvent, self.remove_timeout_extensions)
-        self.app.subscribe(TimerCompleteEvent, self.tempban_expire)
-        self.app.subscribe(miru.ComponentInteractionCreateEvent, self.handle_mod_buttons)
+    def __init__(self, client: SnedClient) -> None:
+        self._client = client
+        self._client.subscribe(TimerCompleteEvent, self.timeout_extend)
+        self._client.subscribe(hikari.MemberCreateEvent, self.reapply_timeout_extensions)
+        self._client.subscribe(hikari.MemberUpdateEvent, self.remove_timeout_extensions)
+        self._client.subscribe(TimerCompleteEvent, self.tempban_expire)
+        # TODO: Add when miru templates exist
+        self._client.subscribe(hikari.InteractionCreateEvent, self.handle_mod_buttons)
 
     async def get_settings(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> ModerationSettings:
         """Get moderation settings for a guild.
@@ -88,7 +90,7 @@ class ModActions:
         dict[str, bool]
             The guild's moderation settings.
         """
-        records = await self.app.db_cache.get(table="mod_config", guild_id=hikari.Snowflake(guild))
+        records = await self._client.db_cache.get(table="mod_config", guild_id=hikari.Snowflake(guild))
         if records:
             return ModerationSettings(flags=ModerationFlags(records[0].get("flags")))
 
@@ -115,7 +117,7 @@ class ModActions:
         }
 
         if settings.flags & ModerationFlags.DM_USERS_ON_PUNISH and isinstance(target, hikari.Member):
-            gateway_guild = self.app.cache.get_guild(guild_id)
+            gateway_guild = self._client.cache.get_guild(guild_id)
             assert isinstance(gateway_guild, hikari.GatewayGuild)
             guild_name = gateway_guild.name if gateway_guild else "Unknown server"
             try:
@@ -139,16 +141,22 @@ class ModActions:
         """Actions that need to be executed after a moderation action took place."""
         pass
 
-    async def handle_mod_buttons(self, event: miru.ComponentInteractionCreateEvent) -> None:
+    async def handle_mod_buttons(self, event: hikari.InteractionCreateEvent) -> None:
         """Handle buttons related to moderation quick-actions."""
         # Format: ACTION:<user_id>:<moderator_id>
-        if not event.custom_id.startswith(("UNBAN:", "JOURNAL:")):
+        if not isinstance(event.interaction, hikari.ComponentInteraction):
             return
 
-        moderator_id = hikari.Snowflake(event.custom_id.split(":")[2])
+        inter = event.interaction
 
-        if moderator_id != event.user.id:
-            await event.context.respond(
+        if not inter.custom_id.startswith(("UNBAN:", "JOURNAL:")):
+            return
+
+        moderator_id = hikari.Snowflake(inter.custom_id.split(":")[2])
+
+        if moderator_id != inter.user.id:
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE,
                 embed=hikari.Embed(
                     title="❌ Action prohibited",
                     description="This action is only available to the moderator who executed the command.",
@@ -158,15 +166,16 @@ class ModActions:
             )
             return
 
-        action = event.custom_id.split(":")[0]
-        user_id = hikari.Snowflake(event.custom_id.split(":")[1])
+        action = inter.custom_id.split(":")[0]
+        user_id = hikari.Snowflake(inter.custom_id.split(":")[1])
 
-        assert event.member and event.guild_id
+        assert inter.member and inter.guild_id
 
         if action == "UNBAN":
-            perms = lightbulb.utils.permissions_for(event.member)
+            perms = toolbox.calculate_permissions(inter.member)
             if not helpers.includes_permissions(perms, hikari.Permissions.BAN_MEMBERS):
-                await event.context.respond(
+                await inter.create_initial_response(
+                    hikari.ResponseType.MESSAGE_CREATE,
                     embed=hikari.Embed(
                         title="❌ Missing Permissions",
                         description="You do not have the required permissions to unban members.",
@@ -179,40 +188,43 @@ class ModActions:
             user = await event.app.rest.fetch_user(user_id)
             embed = await self.unban(
                 user,
-                event.member,
-                reason=helpers.format_reason("Unbanned via quick-action button.", moderator=event.member),
+                inter.member,
+                reason=helpers.format_reason("Unbanned via quick-action button.", moderator=inter.member),
             )
-            await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE, embed=embed, flags=hikari.MessageFlag.EPHEMERAL
+            )
 
         if action == "JOURNAL":
-            journal = await JournalEntry.fetch_journal(user_id, event.guild_id)
+            journal = await JournalEntry.fetch_journal(user_id, inter.guild_id)
 
             if journal:
                 navigator = AuthorOnlyNavigator(event.context, pages=helpers.build_journal_pages(journal))  # type: ignore
-                await navigator.send(event.interaction, ephemeral=True)
+                await (await navigator.build_response_async(self._client.miru, ephemeral=True)).create_initial_response(
+                    inter
+                )
+                self._client.miru.start_view(navigator)
 
             else:
-                await event.context.respond(
+                await inter.create_initial_response(
+                    hikari.ResponseType.MESSAGE_CREATE,
                     embed=hikari.Embed(
                         title="📒 Journal entries for this user:",
-                        description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {event.user}`",
+                        description=f"There are no journal entries for this user yet. Any moderation-actions will leave an entry here, or you can set one manually with `/journal add {inter.user}`",
                         color=const.EMBED_BLUE,
                     ),
                     flags=hikari.MessageFlag.EPHEMERAL,
                 )
 
-        if not event.message:
-            return
-
-        view = miru.View.from_message(event.message)
+        view = miru.View.from_message(inter.message)
 
         for item in view.children:
             assert isinstance(item, ViewItem)
-            if item.custom_id == event.custom_id:
+            if item.custom_id == inter.custom_id:
                 item.disabled = True
 
         with suppress(hikari.ForbiddenError, hikari.NotFoundError):
-            await event.message.edit(components=view)
+            await inter.message.edit(components=view)
 
     async def timeout_extend(self, event: TimerCompleteEvent) -> None:
         """Extends timeouts longer than 28 days by breaking them into multiple chunks."""
@@ -229,14 +241,14 @@ class ModActions:
         expiry = int(timer.notes)
 
         if member:
-            me = self.app.cache.get_member(timer.guild_id, event.app.user_id)
+            me = self._client.cache.get_member(timer.guild_id, self._client.user_id)
             assert me is not None
 
             if not helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS):
                 return
 
             if expiry - helpers.utcnow().timestamp() > MAX_TIMEOUT_SECONDS:
-                await event.app.scheduler.create_timer(
+                await self._client.scheduler.create_timer(
                     helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
                     TimerEvent.TIMEOUT_EXTEND,
                     timer.guild_id,
@@ -266,7 +278,7 @@ class ModActions:
 
     async def reapply_timeout_extensions(self, event: hikari.MemberCreateEvent):
         """Reapply timeout if a member left between two timeout extension cycles."""
-        me = self.app.cache.get_member(event.guild_id, self.app.user_id)
+        me = self._client.cache.get_member(event.guild_id, self._client.user_id)
         assert me is not None
 
         if not helpers.can_harm(me, event.member, hikari.Permissions.MODERATE_MEMBERS):
@@ -286,7 +298,7 @@ class ModActions:
             return
 
         if expiry - helpers.utcnow().timestamp() > MAX_TIMEOUT_SECONDS:
-            await self.app.scheduler.create_timer(
+            await self._client.scheduler.create_timer(
                 helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
                 TimerEvent.TIMEOUT_EXTEND,
                 event.member.guild_id,
@@ -313,7 +325,7 @@ class ModActions:
             return
 
         if event.member.communication_disabled_until() is None:
-            records = await self.app.db.fetch(
+            records = await self._client.db.fetch(
                 """SELECT id FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = $3""",
                 event.guild_id,
                 event.member.id,
@@ -324,7 +336,7 @@ class ModActions:
                 return
 
             for record in records:
-                await self.app.scheduler.cancel_timer(record["id"], event.guild_id)
+                await self._client.scheduler.cancel_timer(record["id"], event.guild_id)
 
     async def tempban_expire(self, event: TimerCompleteEvent) -> None:
         """Handle tempban timer expiry and unban user."""
@@ -375,10 +387,9 @@ class ModActions:
         except DMFailedError:
             embed.set_footer("Failed sending DM to user.")
 
-        userlog = self.app.get_plugin("Logging")
-        assert userlog is not None
-
-        await self.app.dispatch(WarnCreateEvent(self.app, member.guild_id, member, moderator, db_user.warns, reason))
+        await self._client.app.dispatch(
+            WarnCreateEvent(self._client.app, member.guild_id, member, moderator, db_user.warns, reason)
+        )
         await self.post_mod_actions(member.guild_id, member, ActionType.WARN, reason)
         return embed
 
@@ -407,7 +418,9 @@ class ModActions:
 
         reason = helpers.format_reason(reason)
 
-        await self.app.dispatch(WarnsClearEvent(self.app, member.guild_id, member, moderator, db_user.warns, reason))
+        await self._client.app.dispatch(
+            WarnsClearEvent(self._client.app, member.guild_id, member, moderator, db_user.warns, reason)
+        )
 
         return hikari.Embed(
             title="✅ Warnings cleared",
@@ -448,7 +461,9 @@ class ModActions:
 
         reason = helpers.format_reason(reason)
 
-        await self.app.dispatch(WarnRemoveEvent(self.app, member.guild_id, member, moderator, db_user.warns, reason))
+        await self._client.app.dispatch(
+            WarnRemoveEvent(self._client.app, member.guild_id, member, moderator, db_user.warns, reason)
+        )
 
         return hikari.Embed(
             title="✅ Warning removed",
@@ -484,7 +499,7 @@ class ModActions:
         raw_reason = helpers.format_reason(reason, max_length=1400)
         reason = helpers.format_reason(f"Timed out until {duration.isoformat()} - {reason}", moderator, max_length=512)
 
-        me = self.app.cache.get_member(member.guild_id, self.app.user_id)
+        me = self._client.cache.get_member(member.guild_id, self._client.user_id)
         assert me is not None
         # Raise error if cannot harm user
         helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
@@ -503,7 +518,7 @@ class ModActions:
             embed.set_footer("Failed sending DM to user.")
 
         if duration > helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS):
-            await self.app.scheduler.create_timer(
+            await self._client.scheduler.create_timer(
                 helpers.utcnow() + datetime.timedelta(seconds=MAX_TIMEOUT_SECONDS),
                 TimerEvent.TIMEOUT_EXTEND,
                 member.guild_id,
@@ -583,7 +598,7 @@ class ModActions:
         if duration and soft:
             raise RuntimeError("Ban type cannot be soft when a duration is specified.")
 
-        me = self.app.cache.get_member(moderator.guild_id, self.app.user_id)
+        me = self._client.cache.get_member(moderator.guild_id, self._client.user_id)
         assert me is not None
 
         perms = lightbulb.utils.permissions_for(me)
@@ -615,24 +630,24 @@ class ModActions:
             except DMFailedError:
                 embed.set_footer("Failed sending DM to user.")
 
-            await self.app.rest.ban_user(
+            await self._client.rest.ban_user(
                 moderator.guild_id, user.id, delete_message_seconds=days_to_delete * 86400, reason=reason
             )
 
-            record = await self.app.db.fetchrow(
+            record = await self._client.db.fetchrow(
                 """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = $3""",
                 moderator.guild_id,
                 user.id,
                 "tempban",
             )
             if record:
-                await self.app.scheduler.cancel_timer(record["id"], moderator.guild_id)
+                await self._client.scheduler.cancel_timer(record["id"], moderator.guild_id)
 
             if soft:
-                await self.app.rest.unban_user(moderator.guild_id, user.id, reason="Automatic unban by softban.")
+                await self._client.rest.unban_user(moderator.guild_id, user.id, reason="Automatic unban by softban.")
 
             elif duration:
-                await self.app.scheduler.create_timer(
+                await self._client.scheduler.create_timer(
                     expires=duration, event=TimerEvent.TEMPBAN, guild=moderator.guild_id, user=user
                 )
 
@@ -668,7 +683,7 @@ class ModActions:
         lightbulb.BotMissingRequiredPermission
             Application is missing permissions to BAN_MEMBERS.
         """
-        me = self.app.cache.get_member(moderator.guild_id, self.app.user_id)
+        me = self._client.cache.get_member(moderator.guild_id, self._client.user_id)
         assert me is not None
 
         perms = lightbulb.utils.permissions_for(me)
@@ -680,7 +695,7 @@ class ModActions:
             raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.BAN_MEMBERS)
 
         try:
-            await self.app.rest.unban_user(moderator.guild_id, user.id, reason=reason)
+            await self._client.rest.unban_user(moderator.guild_id, user.id, reason=reason)
             return hikari.Embed(
                 title="🔨 User unbanned",
                 description=f"**{user}** has been unbanned.\n**Reason:** ```{raw_reason}```",
@@ -727,7 +742,7 @@ class ModActions:
         raw_reason = reason or "No reason provided."
         reason = helpers.format_reason(reason, moderator, max_length=512)
 
-        me = self.app.cache.get_member(member.guild_id, self.app.user_id)
+        me = self._client.cache.get_member(member.guild_id, self._client.user_id)
         assert me is not None
         # Raise error if cannot harm user
         helpers.can_harm(me, member, hikari.Permissions.MODERATE_MEMBERS, raise_error=True)
@@ -744,7 +759,7 @@ class ModActions:
             except DMFailedError:
                 embed.set_footer("Failed sending DM to user.")
 
-            await self.app.rest.kick_user(member.guild_id, member, reason=reason)
+            await self._client.rest.kick_user(member.guild_id, member, reason=reason)
             await self.post_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
             return embed
 

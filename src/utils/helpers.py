@@ -15,8 +15,7 @@ from src.models import errors
 from src.models.db_user import DatabaseUser
 
 if t.TYPE_CHECKING:
-    from src.models import SnedBot
-    from src.models.context import SnedApplicationContext, SnedContext
+    from src.models.client import SnedClient, SnedContext
     from src.models.journal import JournalEntry
 
 MESSAGE_LINK_REGEX = re.compile(
@@ -63,13 +62,13 @@ def utcnow() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> datetime.datetime:
+async def usernow(client: SnedClient, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> datetime.datetime:
     """A short-hand function to return a datetime from the user's preferred timezone.
 
     Parameters
     ----------
-    bot : SnedBot
-        The bot instance.
+    client : SnedClient
+        The client instance.
     user : hikari.SnowflakeishOr[hikari.User]
         The user whose timezone preference to use.
 
@@ -78,7 +77,7 @@ async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser])
     datetime.datetime
         The current time in the user's timezone of preference.
     """
-    records = await bot.db_cache.get(table="preferences", user_id=hikari.Snowflake(user), limit=1)
+    records = await client.db_cache.get(table="preferences", user_id=hikari.Snowflake(user), limit=1)
     timezone = records[0].get("timezone") if records else "UTC"
     assert timezone is not None
 
@@ -121,7 +120,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
     db_user = await DatabaseUser.fetch(user.id, ctx.guild_id)
     journal = await db_user.fetch_journal()
 
-    member = ctx.app.cache.get_member(ctx.guild_id, user)
+    member = ctx.client.cache.get_member(ctx.guild_id, user)
 
     if member:
         roles_list = [role.mention for role in sort_roles(member.get_roles()) if role.id != ctx.guild_id]
@@ -139,11 +138,11 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Badges:** {"   ".join(get_badges(member)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** {f"Until: {format_dt(comms_disabled_until)}" if comms_disabled_until is not None else "`-`"}
-**• Journal:** `{f"{len(journal)} entries" if journal else "No entries"}` 
+**• Journal:** `{f"{len(journal)} entries" if journal else "No entries"}`
 **• Roles:** {roles}""",
             color=get_color(member),
         )
-        user = await ctx.app.rest.fetch_user(user.id)
+        user = await ctx.client.rest.fetch_user(user.id)
         embed.set_thumbnail(member.display_avatar_url)
         if user.banner_url:
             embed.set_image(user.banner_url)
@@ -166,14 +165,14 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
             color=const.EMBED_BLUE,
         )
         embed.set_thumbnail(user.display_avatar_url)
-        user = await ctx.app.rest.fetch_user(user.id)
+        user = await ctx.client.rest.fetch_user(user.id)
         if user.banner_url:
             embed.set_image(user.banner_url)
 
     assert ctx.member is not None
 
-    if ctx.member.id in ctx.app.owner_ids:
-        records = await ctx.app.db_cache.get(table="blacklist", guild_id=0, user_id=user.id, limit=1)
+    if ctx.member.id in ctx.client.owner_ids:
+        records = await ctx.client.db_cache.get(table="blacklist", guild_id=0, user_id=user.id, limit=1)
         is_blacklisted = bool(records) and records[0]["user_id"] == user.id
         embed.description = f"{embed.description}\n**• Blacklisted:** `{is_blacklisted}`"
 
@@ -267,7 +266,7 @@ def is_invite(string: str, *, fullmatch: bool = True) -> bool:
     return False
 
 
-def is_member(user: hikari.PartialUser) -> bool:  # Such useful
+def is_member(user: hikari.PartialUser) -> t.TypeGuard[hikari.Member]:
     """Determine if the passed object is a member or not, otherwise raise an error.
     Basically equivalent to `assert isinstance(user, hikari.Member)` but with a fancier error.
     """
@@ -277,7 +276,7 @@ def is_member(user: hikari.PartialUser) -> bool:  # Such useful
     raise errors.MemberExpectedError(f"Expected an instance of hikari.Member, not {user.__class__.__name__}!")
 
 
-async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> hikari.Message | None:
+async def parse_message_link(ctx: SnedContext, message_link: str) -> hikari.Message | None:
     """Parse a message_link string into a message object.
 
     Parameters
@@ -326,8 +325,8 @@ async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> 
         )
         return None
 
-    channel = ctx.app.cache.get_guild_channel(channel_id)
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    channel = ctx.client.cache.get_guild_channel(channel_id)
+    me = ctx.client.cache.get_member(ctx.guild_id, ctx.client.user_id)
     assert me is not None and isinstance(channel, hikari.TextableGuildChannel)
 
     if channel and isinstance(channel, hikari.PermissibleGuildChannel):  # Make reasonable attempt at checking perms
@@ -336,7 +335,7 @@ async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> 
             raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)
 
     try:
-        message = await ctx.app.rest.fetch_message(channel_id, message_id)
+        message = await ctx.client.rest.fetch_message(channel_id, message_id)
     except (hikari.NotFoundError, hikari.ForbiddenError):
         await ctx.respond(
             embed=hikari.Embed(

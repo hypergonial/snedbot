@@ -40,7 +40,7 @@ def _parse_note(db: Database, user_id: int, guild_id: int, note: str) -> Journal
         logger.warning(f"Invalid note format:\n{note}")
         return
 
-    users = db.app.cache.get_users_view()
+    users = db.client.cache.get_users_view()
     user: hikari.User | None = (
         lightbulb.utils.find(users.values(), lambda u: str(u) == match.group("username"))
         if match.group("username") != "Unknown"
@@ -67,7 +67,7 @@ def _parse_note(db: Database, user_id: int, guild_id: int, note: str) -> Journal
 
 async def _migrate_notes(db: Database) -> None:
     logger.warning("Waiting for cache availability to start journal entry migration...")
-    await db.app.wait_until_started()
+    await db.client.wait_until_started()
 
     logger.warning("Migrating journal entries...")
     records = await db.fetch("SELECT * FROM users")
@@ -92,4 +92,4 @@ async def _migrate_notes(db: Database) -> None:
 
 async def run(db: Database) -> None:
     # Defer execution to after startup, don't block
-    db._app.create_task(_migrate_notes(db))
+    db._client.create_task(_migrate_notes(db))

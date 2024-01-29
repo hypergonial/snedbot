@@ -5,6 +5,7 @@ import traceback
 import typing as t
 
 
+# FIXME: Destroy module
 class IntervalLoop:
     """A simple interval loop that runs a coroutine at a specified interval.
 

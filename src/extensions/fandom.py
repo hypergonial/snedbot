@@ -1,14 +1,12 @@
+import arc
 import hikari
-import lightbulb
 import yarl
 
 from src.config import Config
 from src.etc import const
-from src.models.bot import SnedBot
-from src.models.context import SnedSlashContext
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 
-fandom = SnedPlugin("Fandom")
+plugin = SnedPlugin("Fandom")
 
 FANDOM_QUERY_URL = "https://{site}.fandom.com/api.php?action=opensearch&search={query}&limit=5"
 
@@ -28,7 +26,7 @@ async def search_fandom(site: str, query: str) -> str | None:
     Optional[str]
         A formatted string ready to display to the end user. `None` if no results were found.
     """
-    async with fandom.app.session.get(yarl.URL(FANDOM_QUERY_URL.format(query=query, site=site))) as response:
+    async with plugin.client.session.get(yarl.URL(FANDOM_QUERY_URL.format(query=query, site=site))) as response:
         if response.status == 200:
             results = await response.json()
             if results[1]:
@@ -37,14 +35,13 @@ async def search_fandom(site: str, query: str) -> str | None:
             raise RuntimeError(f"Failed to communicate with server. Response code: {response.status}")
 
 
-@fandom.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("query", "What are you looking for?")
-@lightbulb.option("wiki", "Choose the wiki to get results from. This is the 'xxxx.fandom.com' part of the URL.")
-@lightbulb.command("fandom", "Search a Fandom wiki for articles!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def fandom_cmd(ctx: SnedSlashContext, wiki: str, query: str) -> None:
-    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+@plugin.include
+@arc.slash_command("fandom", "Search a Fandom wiki for articles!")
+async def fandom_cmd(
+    ctx: SnedContext,
+    wiki: arc.Option[str, arc.StrParams("The wiki to get results from. This is the 'xxx.fandom.com' part of the URL.")],
+    query: arc.Option[str, arc.StrParams("What are you looking for?")],
+) -> None:
     try:
         if results := await search_fandom(wiki, query):
             embed = hikari.Embed(
@@ -63,26 +60,23 @@ async def fandom_cmd(ctx: SnedSlashContext, wiki: str, query: str) -> None:
     await ctx.respond(embed=embed)
 
 
-@fandom.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option(
-    "wiki",
-    "Choose the wiki to get results from. Defaults to 1800 if not specified.",
-    choices=["1800", "2070", "2205", "1404"],
-    required=False,
-)
-@lightbulb.option("query", "What are you looking for?")
-@lightbulb.command(
+@plugin.include
+@arc.slash_command(
     "annowiki",
     "Search an Anno Wiki for articles!",
-    pass_options=True,
     guilds=Config().DEBUG_GUILDS or (581296099826860033, 372128553031958529),
 )
-@lightbulb.implements(lightbulb.SlashCommand)
-async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> None:
-    wiki = wiki or "1800"
-
-    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+async def annowiki_cmd(
+    ctx: SnedContext,
+    query: arc.Option[str, arc.StrParams("What are you looking for?")],
+    wiki: arc.Option[
+        str,
+        arc.StrParams(
+            "Choose the wiki to get results from. Defaults to 1800 if not specified.",
+            choices=["1800", "2070", "2205", "1404"],
+        ),
+    ] = "1800",
+) -> None:
     try:
         if results := await search_fandom(f"anno{wiki}", query):
             embed = hikari.Embed(
@@ -101,18 +95,16 @@ async def annowiki(ctx: SnedSlashContext, query: str, wiki: str = "1800") -> Non
     await ctx.respond(embed=embed)
 
 
-@fandom.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("query", "What are you looking for?")
-@lightbulb.command(
+@plugin.include
+@arc.slash_command(
     "ffwiki",
     "Search the Falling Frontier Wiki for articles!",
-    pass_options=True,
     guilds=Config().DEBUG_GUILDS or (684324252786360476, 813803567445049414),
 )
-@lightbulb.implements(lightbulb.SlashCommand)
-async def ffwiki(ctx: SnedSlashContext, query: str) -> None:
-    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+async def ffwiki(
+    ctx: SnedContext,
+    query: arc.Option[str, arc.StrParams("What are you looking for?")],
+) -> None:
     try:
         if results := await search_fandom("falling-frontier", query):
             embed = hikari.Embed(
@@ -131,12 +123,14 @@ async def ffwiki(ctx: SnedSlashContext, query: str) -> None:
     await ctx.respond(embed=embed)
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(fandom)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(fandom)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

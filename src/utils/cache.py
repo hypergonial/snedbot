@@ -11,17 +11,18 @@ from src.models.db import DatabaseModel
 logger = logging.getLogger(__name__)
 
 if t.TYPE_CHECKING:
-    from src.models import SnedBot
+    from src.models.client import SnedClient
 
 
+# TODO: Add expiry to cache values
 class DatabaseCache:
     """A class aimed squarely at making caching of values easier to handle, and
     centralize it. It tries lazy-loading a dict whenever requesting data,
     or setting it.
     """
 
-    def __init__(self, bot: SnedBot) -> None:
-        self.bot: SnedBot = bot
+    def __init__(self, client: SnedClient) -> None:
+        self._client: SnedClient = client
         self._cache: dict[str, list[dict[str, t.Any]]] = {}
         self.is_ready: bool = False
 
@@ -34,9 +35,9 @@ class DatabaseCache:
         self._cache = {}
         DatabaseModel._db_cache = self
 
-        records = await self.bot.db.fetch(
+        records = await self._client.db.fetch(
             """
-        SELECT tablename FROM pg_catalog.pg_tables 
+        SELECT tablename FROM pg_catalog.pg_tables
         WHERE schemaname='public'
         """
         )
@@ -107,7 +108,9 @@ class DatabaseCache:
 
         # Construct sql args, remove invalid python chars
         sql_args = [f"{self._clean_kwarg(kwarg)} = ${i+1}" for i, kwarg in enumerate(kwargs)]
-        records = await self.bot.db.fetch(f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values())
+        records = await self._client.db.fetch(
+            f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values()
+        )
 
         for i, row in enumerate(self._cache[table]):
             # Pop old values that match the kwargs

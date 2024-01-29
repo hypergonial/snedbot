@@ -9,18 +9,15 @@ from pathlib import Path
 from textwrap import fill
 from typing import TYPE_CHECKING
 
+import arc
 import hikari
 import Levenshtein as lev  # noqa: N813
-import lightbulb
 import miru
 from miru.ext import nav
 from PIL import Image, ImageDraw, ImageFont
 
 from src.etc import const
-from src.models import SnedBot, SnedSlashContext
-from src.models.checks import bot_has_permissions
-from src.models.context import SnedContext, SnedUserContext
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.models.views import AuthorOnlyNavigator, AuthorOnlyView
 from src.utils import GlobalBucket, RateLimiter, helpers
 from src.utils.dictionaryapi import DictionaryClient, DictionaryEntry, DictionaryError, UrbanEntry
@@ -52,29 +49,28 @@ logger = logging.getLogger(__name__)
 dictionary_client = DictionaryClient(key) if (key := os.getenv("DICTIONARYAPI_API_KEY")) else None
 
 
-@lightbulb.Check  # type: ignore
-def has_dictionary_client(_: SnedContext) -> bool:
+def has_dictionary_client(_: SnedContext) -> None:
     if dictionary_client:
-        return True
+        return
     raise DictionaryError("Dictionary API key not set.")
 
 
-fun = SnedPlugin("Fun")
+plugin = SnedPlugin("Fun")
 
 
-@fun.set_error_handler()
-async def handle_errors(event: lightbulb.CommandErrorEvent) -> bool:
-    if isinstance(event.exception, lightbulb.CheckFailure) and isinstance(event.exception.__cause__, DictionaryError):
-        await event.context.respond(
+@plugin.set_error_handler()
+async def handle_errors(ctx: SnedContext, exception: Exception) -> None:
+    if isinstance(exception, DictionaryError):
+        await ctx.respond(
             embed=hikari.Embed(
                 title="❌ No Dictionary API key provided",
                 description="This command is currently unavailable.\n\n**Information:**\nPlease set the `DICTIONARYAPI_API_KEY` environment variable to use the Dictionary API.",
                 color=const.ERROR_COLOR,
             )
         )
-        return True
+        return
 
-    return False
+    raise exception
 
 
 class AddBufButton(miru.Button):
@@ -143,8 +139,8 @@ class EvalBufButton(miru.Button):
 
 
 class CalculatorView(AuthorOnlyView):
-    def __init__(self, ctx: lightbulb.Context, keep_frac: bool = True) -> None:
-        super().__init__(ctx, timeout=300)
+    def __init__(self, author: hikari.PartialUser | hikari.Snowflakeish, keep_frac: bool = True) -> None:
+        super().__init__(author, timeout=300)
         self._buf: list[str] = []
         self._clear_next = True
         self._keep_frac = keep_frac
@@ -211,7 +207,7 @@ class TicTacToeButton(miru.Button):
         self.x: int = x
         self.y: int = y
 
-    async def callback(self, ctx: miru.Context) -> None:
+    async def callback(self, ctx: miru.ViewContext) -> None:
         if not isinstance(self.view, TicTacToeView) or self.view.current_player.id != ctx.user.id:
             return
 
@@ -324,7 +320,7 @@ class TicTacToeView(miru.View):
             blocked_list[0] = True
 
         # Check columns
-        values = []  # type: ignore
+        values = []
         for col in range(self.size):
             values.append([])
             for row in self.board:
@@ -332,7 +328,7 @@ class TicTacToeView(miru.View):
 
         blocked = []
         for col in values:
-            if not (-1 in col and 1 in col):  # type: ignore
+            if not (-1 in col and 1 in col):
                 blocked.append(False)
             else:
                 blocked.append(True)
@@ -404,7 +400,7 @@ class TicTacToeView(miru.View):
 
 
 class UrbanNavigator(AuthorOnlyNavigator):
-    def __init__(self, lctx: lightbulb.Context, *, entries: list[UrbanEntry]) -> None:
+    def __init__(self, author: hikari.PartialUser | hikari.Snowflakeish, *, entries: list[UrbanEntry]) -> None:
         self.entries = entries
         pages = [
             hikari.Embed(
@@ -418,7 +414,7 @@ class UrbanNavigator(AuthorOnlyNavigator):
             .add_field("Votes", f"👍 {entry.thumbs_up} | 👎 {entry.thumbs_down}")
             for entry in self.entries
         ]
-        super().__init__(lctx, pages=pages)  # type: ignore
+        super().__init__(author, pages=pages)  # type: ignore
 
 
 class DictionarySelect(nav.NavTextSelect):
@@ -445,7 +441,7 @@ class DictionarySelect(nav.NavTextSelect):
 
 
 class DictionaryNavigator(AuthorOnlyNavigator):
-    def __init__(self, lctx: lightbulb.Context, *, entries: list[DictionaryEntry]) -> None:
+    def __init__(self, author: hikari.PartialUser | hikari.Snowflakeish, *, entries: list[DictionaryEntry]) -> None:
         self.entries = entries
         pages = [
             hikari.Embed(
@@ -457,31 +453,28 @@ class DictionaryNavigator(AuthorOnlyNavigator):
             ).set_footer("Provided by Merriam-Webster")
             for entry in self.entries
         ]
-        super().__init__(lctx, pages=pages)  # type: ignore
+        super().__init__(author, pages=pages)  # type: ignore
         self.add_item(DictionarySelect(self.entries))
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option(
-    "display", "The display mode to use for the result.", type=str, required=False, choices=["fractional", "decimal"]
-)
-@lightbulb.option(
-    "expr",
-    "The mathematical expression to evaluate. If provided, interactive mode will not be used.",
-    type=str,
-    required=False,
-    max_length=100,
-)
-@lightbulb.command(
-    "calc", "A calculator! If ran without options, an interactive calculator will be sent.", pass_options=True
-)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def calc(ctx: SnedSlashContext, expr: str | None = None, display: str = "decimal") -> None:
+@plugin.include
+@arc.slash_command("calc", "A calculator! If ran without options, an interactive calculator will be sent.")
+async def calc(
+    ctx: SnedContext,
+    expr: arc.Option[
+        str | None,
+        arc.StrParams(
+            "The mathematical expression to evaluate. If provided, interactive mode will not be used.", max_length=100
+        ),
+    ] = None,
+    display: arc.Option[
+        str, arc.StrParams("The display mode to use for the result.", choices=["fractional", "decimal"])
+    ] = "decimal",
+) -> None:
     if not expr:
-        view = CalculatorView(ctx, display == "fractional")
-        resp = await ctx.respond("```-```", components=view)
-        await view.start(resp)
+        view = CalculatorView(ctx.author, display == "fractional")
+        await ctx.respond("```-```", components=view)
+        ctx.client.miru.start_view(view)
         return
 
     solver = Solver(expr)
@@ -507,15 +500,15 @@ async def calc(ctx: SnedSlashContext, expr: str | None = None, display: str = "d
         await ctx.respond(content=f"```{expr} = {result}```")
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("size", "The size of the board. Default is 3.", required=False, choices=["3", "4", "5"])
-@lightbulb.option("user", "The user to play tic tac toe with!", type=hikari.Member)
-@lightbulb.command("tictactoe", "Play tic tac toe with someone!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: str | None = None) -> None:
-    size_int = int(size or 3)
-    helpers.is_member(user)
+@plugin.include
+@arc.slash_command("tictactoe", "Play tic tac toe with someone!")
+async def tictactoe(
+    ctx: SnedContext,
+    user: arc.Option[hikari.User, arc.UserParams("The user to play tic tac toe with!")],
+    size: arc.Option[int, arc.IntParams("The size of the board. Default is 3.", choices=[3, 4, 5])] = 3,
+) -> None:
+    if not helpers.is_member(user):
+        return
     assert ctx.member is not None
 
     if user.id == ctx.author.id:
@@ -529,19 +522,7 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: str | None
         )
         return
 
-    if not user.is_bot:
-        view = TicTacToeView(size_int, ctx.member, user)
-        proxy = await ctx.respond(
-            embed=hikari.Embed(
-                title="Tic Tac Toe!",
-                description=f"**{user.display_name}** was challenged for a round of tic tac toe by **{ctx.member.display_name}**!\nFirst to a row of **{size_int} wins!**\nIt is **{ctx.member.display_name}**'s turn!",
-                color=const.EMBED_BLUE,
-            ).set_thumbnail(ctx.member.display_avatar_url),
-            components=view.build(),
-        )
-        await view.start(await proxy.message())
-
-    else:
+    if user.is_bot:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Invalid user",
@@ -552,22 +533,30 @@ async def tictactoe(ctx: SnedSlashContext, user: hikari.Member, size: str | None
         )
         return
 
+    view = TicTacToeView(size, ctx.member, user)
+    await ctx.respond(
+        embed=hikari.Embed(
+            title="Tic Tac Toe!",
+            description=f"**{user.display_name}** was challenged for a round of tic tac toe by **{ctx.member.display_name}**!\nFirst to a row of **{size} wins!**\nIt is **{ctx.member.display_name}**'s turn!",
+            color=const.EMBED_BLUE,
+        ).set_thumbnail(ctx.member.display_avatar_url),
+        components=view,
+    )
+    ctx.client.miru.start_view(view)
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.set_max_concurrency(1, lightbulb.ChannelBucket)
-@lightbulb.add_checks(bot_has_permissions(hikari.Permissions.ADD_REACTIONS, hikari.Permissions.VIEW_CHANNEL))
-@lightbulb.option("length", "The amount of words provided.", required=False, type=int, min_value=1, max_value=15)
-@lightbulb.option(
-    "difficulty", "The difficulty of the words provided.", choices=["easy", "medium", "hard"], required=False
-)
-@lightbulb.command("typeracer", "Start a typerace to see who can type the fastest!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length: int | None = None) -> None:
-    length = length or 5
-    difficulty = difficulty or "medium"
 
-    with open(Path(ctx.app.base_dir, "src", "etc", "text", f"words_{difficulty}.txt"), "r") as file:
+@plugin.include
+@arc.with_concurrency_limit(arc.channel_concurrency(1))
+@arc.with_hook(arc.has_permissions(hikari.Permissions.ADD_REACTIONS | hikari.Permissions.VIEW_CHANNEL))
+@arc.slash_command("typeracer", "Start a typerace to see who can type the fastest!")
+async def typeracer(
+    ctx: SnedContext,
+    difficulty: arc.Option[
+        str, arc.StrParams("The difficulty of the words provided.", choices=["easy", "medium", "hard"])
+    ] = "medium",
+    length: arc.Option[int, arc.IntParams("The amount of words provided.", min=1, max=15)] = 5,
+) -> None:
+    with open(Path(ctx.client.base_dir, "src", "etc", "text", f"words_{difficulty}.txt"), "r") as file:
         words = [word.strip() for word in file.readlines()]
 
         text = " ".join([random.choice(words) for _ in range(0, length)])
@@ -583,7 +572,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
     await asyncio.sleep(9.0)  # We sleep for less to roughly account for network delay
 
     def draw_text() -> BytesIO:
-        font = Path(ctx.app.base_dir, "src", "etc", "fonts", "roboto-slab.ttf")
+        font = Path(ctx.client.base_dir, "src", "etc", "fonts", "roboto-slab.ttf")
         display_text = fill(text, 60)
 
         img = Image.new("RGBA", (1, 1), color=0)  # 1x1 transparent image
@@ -646,7 +635,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
         return False
 
     msg_listener = asyncio.create_task(
-        ctx.app.wait_for(hikari.GuildMessageCreateEvent, predicate=predicate, timeout=None)
+        ctx.client.app.wait_for(hikari.GuildMessageCreateEvent, predicate=predicate, timeout=None)
     )
 
     try:
@@ -685,15 +674,12 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
     )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.add_checks(has_dictionary_client)
-@lightbulb.option("word", "The word to look up.", required=True, autocomplete=True)
-@lightbulb.command("dictionary", "Look up a word in the dictionary!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def dictionary_lookup(ctx: SnedSlashContext, word: str) -> None:
+@plugin.include
+@arc.with_hook(has_dictionary_client)
+@arc.slash_command("dictionary", "Look up a word in the dictionary!")
+async def dictionary_lookup(ctx: SnedContext, word: arc.Option[str, arc.StrParams("The word to look up.")]) -> None:
     assert dictionary_client is not None
-    entries = await dictionary_client.get_mw_entries(word)
+    entries = await dictionary_client.fetch_mw_entries(word)
 
     channel = ctx.get_channel()
     is_nsfw = channel.is_nsfw if isinstance(channel, hikari.PermissibleGuildChannel) else False
@@ -711,19 +697,17 @@ async def dictionary_lookup(ctx: SnedSlashContext, word: str) -> None:
         await ctx.respond(embed=embed)
         return
 
-    navigator = DictionaryNavigator(ctx, entries=entries)
-    await navigator.send(ctx.interaction)
+    navigator = DictionaryNavigator(ctx.author, entries=entries)
+    await ctx.respond_with_builder(await navigator.build_response_async(ctx.client.miru))
+    ctx.client.miru.start_view(navigator)
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.add_checks(has_dictionary_client)
-@lightbulb.option("word", "The word to look up.", required=True)
-@lightbulb.command("urban", "Look up a word in the Urban dictionary!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def urban_lookup(ctx: SnedSlashContext, word: str) -> None:
+@plugin.include
+@arc.with_hook(has_dictionary_client)
+@arc.slash_command("urban", "Look up a word in the Urban dictionary!")
+async def urban_lookup(ctx: SnedContext, word: arc.Option[str, arc.StrParams("The word to look up.")]) -> None:
     assert dictionary_client is not None
-    entries = await dictionary_client.get_urban_entries(word)
+    entries = await dictionary_client.fetch_urban_entries(word)
 
     if not entries:
         await ctx.respond(
@@ -735,24 +719,20 @@ async def urban_lookup(ctx: SnedSlashContext, word: str) -> None:
         )
         return
 
-    navigator = UrbanNavigator(ctx, entries=entries)
-    await navigator.send(ctx.interaction)
+    navigator = UrbanNavigator(ctx.author, entries=entries)
+    await ctx.respond_with_builder(await navigator.build_response_async(ctx.client.miru))
+    ctx.client.miru.start_view(navigator)
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option(
-    "show_global",
-    "To show the global avatar or not, if applicable",
-    bool,
-    required=False,
-)
-@lightbulb.option("user", "The user to show the avatar for.", hikari.Member, required=False)
-@lightbulb.command("avatar", "Displays a user's avatar for your viewing pleasure.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def avatar(ctx: SnedSlashContext, user: hikari.Member | None = None, show_global: bool | None = None) -> None:
-    if user:
-        helpers.is_member(user)
+@plugin.include
+@arc.slash_command("avatar", "Displays a user's avatar for your viewing pleasure.")
+async def avatar(
+    ctx: SnedContext,
+    user: arc.Option[hikari.User | None, arc.UserParams("The user to show the avatar for.")] = None,
+    show_global: arc.Option[bool, arc.BoolParams("To show the global avatar or not, if applicable.")] = False,
+) -> None:
+    if user and not helpers.is_member(user):
+        return
     member = user or ctx.member
     assert member is not None
 
@@ -763,11 +743,9 @@ async def avatar(ctx: SnedSlashContext, user: hikari.Member | None = None, show_
     )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("Show Avatar", "Displays the target's avatar for your viewing pleasure.", pass_options=True)
-@lightbulb.implements(lightbulb.UserCommand)
-async def avatar_context(ctx: SnedUserContext, target: hikari.User | hikari.Member) -> None:
+@plugin.include
+@arc.user_command("Show Avatar")
+async def avatar_context(ctx: SnedContext, target: hikari.User) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title=f"{target.display_name if isinstance(target, hikari.Member) else target.username}'s avatar:",
@@ -777,12 +755,10 @@ async def avatar_context(ctx: SnedUserContext, target: hikari.User | hikari.Memb
     )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("funfact", "Shows a random fun fact.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def funfact(ctx: SnedSlashContext) -> None:
-    fun_path = Path(ctx.app.base_dir, "src", "etc", "text", "funfacts.txt")
+@plugin.include
+@arc.slash_command("funfact", "Shows a random fun fact.")
+async def funfact(ctx: SnedContext) -> None:
+    fun_path = Path(ctx.client.base_dir, "src", "etc", "text", "funfacts.txt")
     with open(fun_path, "r") as file:
         fun_facts = file.readlines()
         await ctx.respond(
@@ -794,12 +770,10 @@ async def funfact(ctx: SnedSlashContext) -> None:
         )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("penguinfact", "Shows a fact about penguins.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def penguinfact(ctx: SnedSlashContext) -> None:
-    penguin_path = Path(ctx.app.base_dir, "src", "etc", "text", "penguinfacts.txt")
+@plugin.include
+@arc.slash_command("penguinfact", "Shows a fact about penguins.")
+async def penguinfact(ctx: SnedContext) -> None:
+    penguin_path = Path(ctx.client.base_dir, "src", "etc", "text", "penguinfacts.txt")
     with open(penguin_path, "r") as file:
         penguin_facts = file.readlines()
         await ctx.respond(
@@ -841,37 +815,14 @@ def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
     )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option(
-    "amount", "The amount of dice to roll. 1 by default.", required=False, type=int, min_value=1, max_value=20
-)
-@lightbulb.option(
-    "sides",
-    "The amount of sides a single die should have. 6 by default.",
-    required=False,
-    type=int,
-    min_value=2,
-    max_value=1000,
-)
-@lightbulb.option(
-    "show_sum",
-    "If true, shows the sum of the throws. False by default.",
-    required=False,
-    type=bool,
-)
-@lightbulb.command("dice", "Roll the dice!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
+@plugin.include
+@arc.slash_command("roll", "Roll the dice!")
 async def dice(
-    ctx: SnedSlashContext,
-    sides: int | None = None,
-    amount: int | None = None,
-    show_sum: bool | None = None,
+    ctx: SnedContext,
+    sides: arc.Option[int, arc.IntParams("The amount of sides a single die should have.", min=2, max=1000)],
+    amount: arc.Option[int, arc.IntParams("The amount of dice to roll.", min=1, max=20)] = 1,
+    show_sum: arc.Option[bool, arc.BoolParams("If true, shows the sum of the throws.")] = False,
 ) -> None:
-    sides = sides or 6
-    amount = amount or 1
-    show_sum = show_sum or False
-
     await ctx.respond(
         embed=roll_dice(amount, sides, show_sum),
         components=miru.View().add_item(
@@ -880,10 +831,15 @@ async def dice(
     )
 
 
-@fun.listener(miru.ComponentInteractionCreateEvent)
-async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
-    if event.custom_id.startswith("DICE:"):
-        amount_str, sides_str, show_sum_str, author_id_str = event.custom_id.split(":", maxsplit=1)[1].split(":")
+@plugin.listen()
+async def on_dice_reroll(event: hikari.InteractionCreateEvent) -> None:
+    if not isinstance(event.interaction, hikari.ComponentInteraction):
+        return
+
+    inter = event.interaction
+
+    if inter.custom_id.startswith("DICE:"):
+        amount_str, sides_str, show_sum_str, author_id_str = inter.custom_id.split(":", maxsplit=1)[1].split(":")
         amount, sides, show_sum, author_id = (
             int(amount_str),
             int(sides_str),
@@ -891,8 +847,9 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
             hikari.Snowflake(author_id_str),
         )
 
-        if event.author.id != author_id:
-            await event.context.respond(
+        if inter.user.id != author_id:
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE,
                 embed=hikari.Embed(
                     title="❌ Cannot reroll",
                     description="Only the user who rolled the dice can reroll it.",
@@ -902,41 +859,29 @@ async def on_dice_reroll(event: miru.ComponentInteractionCreateEvent) -> None:
             )
             return
 
-        await event.context.edit_response(
+        await inter.create_initial_response(
+            hikari.ResponseType.MESSAGE_UPDATE,
             embed=roll_dice(amount, sides, show_sum),
             components=miru.View().add_item(
                 miru.Button(
                     emoji="🎲",
                     label="Reroll",
-                    custom_id=f"DICE:{amount}:{sides}:{int(show_sum)}:{event.context.author.id}",
+                    custom_id=f"DICE:{amount}:{sides}:{int(show_sum)}:{inter.user.id}",
                 )
             ),
         )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option(
-    "animal", "The animal to show.", choices=["cat", "dog", "panda", "fox", "bird", "red_panda", "racoon"]
-)
-@lightbulb.command("animal", "Shows a random picture of the selected animal.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def animal(ctx: SnedSlashContext, animal: str) -> None:
-    await ANIMAL_RATELIMITER.acquire(ctx)
-    if ANIMAL_RATELIMITER.is_rate_limited(ctx):
-        await ctx.respond(
-            embed=hikari.Embed(
-                title="❌ Ratelimited",
-                description="Please wait a couple minutes before trying again.",
-                color=const.ERROR_COLOR,
-            ),
-            flags=hikari.MessageFlag.EPHEMERAL,
-        )
-        return
-
-    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-
-    async with ctx.bot.session.get(f"https://some-random-api.com/img/{animal}") as response:
+@plugin.include
+@arc.with_hook(arc.global_limiter(60.0, 45))
+@arc.slash_command("animal", "Shows a random picture of the selected animal.")
+async def animal(
+    ctx: SnedContext,
+    animal: arc.Option[
+        str, arc.StrParams("The animal to show.", choices=["cat", "dog", "panda", "fox", "bird", "red_panda", "racoon"])
+    ],
+) -> None:
+    async with ctx.client.session.get(f"https://some-random-api.com/img/{animal}") as response:
         if response.status != 200:
             await ctx.respond(
                 embed=hikari.Embed(
@@ -956,13 +901,12 @@ async def animal(ctx: SnedSlashContext, animal: str) -> None:
         )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("question", "The question you want to ask of the mighty 8ball.")
-@lightbulb.command("8ball", "Ask a question, and the answers shall reveal themselves.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def eightball(ctx: SnedSlashContext, question: str) -> None:
-    ball_path = Path(ctx.app.base_dir, "src", "etc", "text", "8ball.txt")
+@plugin.include
+@arc.slash_command("8ball", "Ask a question, and the answers shall reveal themselves.")
+async def eightball(
+    ctx: SnedContext, question: arc.Option[str, arc.StrParams("The question you want to ask of the mighty 8ball.")]
+) -> None:
+    ball_path = Path(ctx.client.base_dir, "src", "etc", "text", "8ball.txt")
     with open(ball_path, "r") as file:
         answers = file.readlines()
         await ctx.respond(
@@ -974,15 +918,14 @@ async def eightball(ctx: SnedSlashContext, question: str) -> None:
         )
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("query", "The query you want to search for on Wikipedia.")
-@lightbulb.command("wiki", "Search Wikipedia for articles!", auto_defer=True, pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def wiki(ctx: SnedSlashContext, query: str) -> None:
+@plugin.include
+@arc.slash_command("wiki", "Search Wikipedia for articles!")
+async def wiki(
+    ctx: SnedContext, query: arc.Option[str, arc.StrParams("The query you want to search for on Wikipedia.")]
+) -> None:
     link = "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5"
 
-    async with ctx.app.session.get(link.format(query=query)) as response:
+    async with ctx.client.session.get(link.format(query=query)) as response:
         results = await response.json()
         results_text = results[1]
         results_link = results[3]
@@ -1003,7 +946,7 @@ async def wiki(ctx: SnedSlashContext, query: str) -> None:
         await ctx.respond(embed=embed)
 
 
-@fun.listener(hikari.GuildMessageCreateEvent)
+@plugin.listen()
 async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
     if event.guild_id not in (Config().DEBUG_GUILDS or (1012448659029381190,)) or not event.is_human:
         return
@@ -1017,28 +960,13 @@ async def lose_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
         await event.message.respond("Vesztettem")
 
 
-@fun.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("comf", "Shows your current and upcoming comfiness.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def comf(ctx: SnedSlashContext) -> None:
+@plugin.include
+@arc.with_hook(arc.global_limiter(60.0, 5))
+@arc.slash_command("comf", "Shows your current and upcoming comfiness.")
+async def comf(ctx: SnedContext) -> None:
     assert ctx.member is not None
 
-    await COMF_LIMITER.acquire(ctx)
-    if COMF_LIMITER.is_rate_limited(ctx):
-        await ctx.respond(
-            embed=hikari.Embed(
-                title="❌ Ratelimited",
-                description="Please wait a couple minutes before trying again.",
-                color=const.ERROR_COLOR,
-            ),
-            flags=hikari.MessageFlag.EPHEMERAL,
-        )
-        return
-
-    await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-
-    now = await helpers.usernow(ctx.bot, ctx.author)
+    now = await helpers.usernow(ctx.client, ctx.author)
     today = datetime.datetime.combine(now.date(), datetime.time(0, 0), tzinfo=now.tzinfo)
     dates = [today + datetime.timedelta(days=delta_day + 1) for delta_day in range(3)]
 
@@ -1056,7 +984,7 @@ async def comf(ctx: SnedSlashContext) -> None:
 
     for date in dates:
         params = {"id": str(ctx.author.id), "date": date.strftime("%Y-%m-%d %H:%M:%S")}
-        async with ctx.bot.session.get("https://api.fraw.st/comf", params=params) as response:
+        async with ctx.client.session.get("https://api.fraw.st/comf", params=params) as response:
             if response.status != 200:
                 await ctx.respond(
                     embed=hikari.Embed(
@@ -1078,12 +1006,14 @@ async def comf(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed)
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(fun)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(fun)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

@@ -1,167 +1,98 @@
-import functools
-import operator
+import typing as t
 
+import arc
 import hikari
-import lightbulb
 
-from src.models.context import SnedApplicationContext, SnedContext
-from src.models.errors import BotRoleHierarchyError, RoleHierarchyError
+from src.models.errors import BotRoleHierarchyError, RoleHierarchyError, UserBlacklistedError
 from src.utils import helpers
 
-
-def _guild_only(ctx: SnedContext) -> bool:
-    if not ctx.guild_id:
-        raise lightbulb.OnlyInGuild("This command can only be used in a guild.")
-    return True
+if t.TYPE_CHECKING:
+    from src.models.client import SnedContext  # noqa: TCH004
 
 
-@lightbulb.Check  # type: ignore
-async def is_above_target(ctx: SnedContext) -> bool:
+async def is_not_blacklisted(ctx: SnedContext) -> None:
+    """Hook to evaluate if the user is blacklisted or not.
+
+    Parameters
+    ----------
+    ctx : SnedContext
+        The context to evaluate under.
+
+    Returns
+    -------
+    bool
+        A boolean determining if the user is blacklisted or not.
+
+    Raises
+    ------
+    UserBlacklistedError
+        The user is blacklisted.
+    """
+    records = await ctx.client.db_cache.get(table="blacklist", user_id=ctx.user.id)
+
+    if not records:
+        return
+
+    raise UserBlacklistedError("User is blacklisted from using the application.")
+
+
+async def is_above_target(ctx: SnedContext) -> None:
     """Check if the targeted user is above the bot's top role or not.
     Used in the moderation extension.
     """
-    if not hasattr(ctx.options, "user"):
-        return True
+    user = ctx.get_option("user", arc.OptionType.USER)
+
+    if not user:
+        return
 
     if not ctx.guild_id:
-        return True
+        return
 
     guild = ctx.get_guild()
-    if guild and guild.owner_id == ctx.options.user.id:
+    if guild and guild.owner_id == user.id:
         raise BotRoleHierarchyError("Cannot execute on the owner of the guild.")
 
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    me = ctx.client.cache.get_member(ctx.guild_id, ctx.client.user_id)
     assert me is not None
 
-    if isinstance(ctx.options.user, hikari.Member):
-        member = ctx.options.user
-    else:
-        member = ctx.app.cache.get_member(ctx.guild_id, ctx.options.user)
+    member = user if isinstance(user, hikari.Member) else ctx.client.cache.get_member(ctx.guild_id, user)
 
     if not member:
-        return True
+        return
 
     if helpers.is_above(me, member):
-        return True
+        return
 
     raise BotRoleHierarchyError("The targeted user's highest role is higher than the bot's highest role.")
 
 
-@lightbulb.Check  # type: ignore
-async def is_invoker_above_target(ctx: SnedContext) -> bool:
+async def is_invoker_above_target(ctx: SnedContext) -> None:
     """Check if the targeted user is above the invoker's top role or not.
     Used in the moderation extension.
     """
-    if not hasattr(ctx.options, "user"):
-        return True
+    user = ctx.get_option("user", arc.OptionType.USER)
+
+    if not user:
+        return
 
     if not ctx.member or not ctx.guild_id:
-        return True
+        return
 
     guild = ctx.get_guild()
     assert guild is not None
 
     if ctx.member.id == guild.owner_id:
-        return True
+        return
 
-    if isinstance(ctx.options.user, hikari.Member):
-        member = ctx.options.user
-    else:
-        member = ctx.app.cache.get_member(ctx.guild_id, ctx.options.user)
+    member = user if isinstance(user, hikari.Member) else ctx.client.cache.get_member(ctx.guild_id, user)
 
     if not member:
-        return True
+        return
 
     if helpers.is_above(ctx.member, member):
-        return True
+        return
 
     raise RoleHierarchyError
-
-
-async def _has_permissions(ctx: SnedApplicationContext, *, perms: hikari.Permissions) -> bool:
-    _guild_only(ctx)
-
-    if ctx.interaction is not None and ctx.interaction.member is not None:
-        member_perms = ctx.interaction.member.permissions
-    else:
-        try:
-            channel, guild = (ctx.get_channel() or await ctx.app.rest.fetch_channel(ctx.channel_id)), ctx.get_guild()
-        except hikari.ForbiddenError:
-            raise lightbulb.BotMissingRequiredPermission(
-                "Check cannot run due to missing permissions.", perms=hikari.Permissions.VIEW_CHANNEL
-            )
-
-        if guild is None:
-            raise lightbulb.InsufficientCache(
-                "Some objects required for this check could not be resolved from the cache."
-            )
-        if guild.owner_id == ctx.author.id:
-            return True
-
-        assert ctx.member is not None
-
-        if isinstance(channel, hikari.GuildThreadChannel):
-            channel = ctx.app.cache.get_guild_channel(channel.parent_id)
-
-        assert isinstance(channel, hikari.PermissibleGuildChannel)
-        member_perms = lightbulb.utils.permissions_in(channel, ctx.member)
-
-    missing_perms = ~member_perms & perms
-    if missing_perms is not hikari.Permissions.NONE:
-        raise lightbulb.MissingRequiredPermission(
-            "You are missing one or more permissions required in order to run this command", perms=missing_perms
-        )
-
-    return True
-
-
-async def _bot_has_permissions(ctx: SnedContext, *, perms: hikari.Permissions) -> bool:
-    _guild_only(ctx)
-
-    if interaction := ctx.interaction:
-        bot_perms = interaction.app_permissions
-        assert bot_perms is not None
-    else:
-        try:
-            channel, guild = (ctx.get_channel() or await ctx.app.rest.fetch_channel(ctx.channel_id)), ctx.get_guild()
-        except hikari.ForbiddenError:
-            raise lightbulb.BotMissingRequiredPermission(
-                "Check cannot run due to missing permissions.", perms=hikari.Permissions.VIEW_CHANNEL
-            )
-        if guild is None:
-            raise lightbulb.InsufficientCache(
-                "Some objects required for this check could not be resolved from the cache."
-            )
-        member = guild.get_my_member()
-        if member is None:
-            raise lightbulb.InsufficientCache(
-                "Some objects required for this check could not be resolved from the cache."
-            )
-
-        if isinstance(channel, hikari.GuildThreadChannel):
-            channel = ctx.app.cache.get_guild_channel(channel.parent_id)
-        assert isinstance(channel, hikari.PermissibleGuildChannel)
-        bot_perms = lightbulb.utils.permissions_in(channel, member)
-
-    missing_perms = ~bot_perms & perms
-    if missing_perms is not hikari.Permissions.NONE:
-        raise lightbulb.BotMissingRequiredPermission(
-            "The bot is missing one or more permissions required in order to run this command", perms=missing_perms
-        )
-
-    return True
-
-
-def has_permissions(perm1: hikari.Permissions, *perms: hikari.Permissions) -> lightbulb.Check:
-    """Just a shitty attempt at making has_guild_permissions fetch the channel if it is not present."""
-    reduced = functools.reduce(operator.or_, [perm1, *perms])
-    return lightbulb.Check(functools.partial(_has_permissions, perms=reduced))
-
-
-def bot_has_permissions(perm1: hikari.Permissions, *perms: hikari.Permissions) -> lightbulb.Check:
-    """Just a shitty attempt at making bot_has_guild_permissions fetch the channel if it is not present."""
-    reduced = functools.reduce(operator.or_, [perm1, *perms])
-    return lightbulb.Check(functools.partial(_bot_has_permissions, perms=reduced))
 
 
 # Copyright (C) 2022-present hypergonial

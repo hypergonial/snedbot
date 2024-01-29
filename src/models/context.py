@@ -31,14 +31,14 @@ class ConfirmView(AuthorOnlyView):
         self.value: bool | None = None
 
     @miru.button(emoji="✖️", style=hikari.ButtonStyle.DANGER)
-    async def cancel_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+    async def cancel_button(self, ctx: miru.ViewContext, button: miru.Button) -> None:
         self.value = False
         if self.cancel_resp:
             await ctx.edit_response(**self.cancel_resp)
         self.stop()
 
     @miru.button(emoji="✔️", style=hikari.ButtonStyle.SUCCESS)
-    async def confirm_button(self, button: miru.Button, ctx: miru.ViewContext) -> None:
+    async def confirm_button(self, ctx: miru.ViewContext, button: miru.Button) -> None:
         self.value = True
         if self.confirm_resp:
             await ctx.edit_response(**self.confirm_resp)
@@ -48,6 +48,7 @@ class ConfirmView(AuthorOnlyView):
 class SnedContext(lightbulb.Context):
     """Custom context for use across the bot."""
 
+    # FIXME: Migrate this to either the client or an injected provider
     async def confirm(
         self,
         *args,

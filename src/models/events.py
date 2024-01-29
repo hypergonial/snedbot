@@ -6,7 +6,6 @@ import attr
 import hikari
 
 if t.TYPE_CHECKING:
-    from src.models.bot import SnedBot
     from src.models.rolebutton import RoleButton
     from src.models.timer import Timer
 
@@ -20,7 +19,7 @@ class SnedEvent(hikari.Event):
 class SnedGuildEvent(SnedEvent):
     """Base event for any custom event that occurs within the context of a guild."""
 
-    app: SnedBot
+    app: hikari.GatewayBot
     """The currently running application."""
     _guild_id: hikari.Snowflakeish
 
@@ -69,7 +68,7 @@ class SnedGuildEvent(SnedEvent):
 class TimerCompleteEvent(SnedGuildEvent):
     """Dispatched when a scheduled timer has expired."""
 
-    app: SnedBot
+    app: hikari.GatewayBot
     timer: Timer
     """The timer that was dispatched."""
     _guild_id: hikari.Snowflakeish
@@ -79,7 +78,7 @@ class TimerCompleteEvent(SnedGuildEvent):
 class MassBanEvent(SnedGuildEvent):
     """Dispatched when a massban occurs."""
 
-    app: SnedBot
+    app: hikari.GatewayBot
     _guild_id: hikari.Snowflakeish
     moderator: hikari.Member
     """The moderator responsible for the massban."""
@@ -97,7 +96,7 @@ class MassBanEvent(SnedGuildEvent):
 class WarnEvent(SnedGuildEvent):
     """Base class for all warning events."""
 
-    app: SnedBot
+    app: hikari.GatewayBot
     _guild_id: hikari.Snowflakeish
     member: hikari.Member
     """The member that was warned."""
@@ -128,7 +127,7 @@ class WarnsClearEvent(WarnEvent):
 class AutoModMessageFlagEvent(SnedGuildEvent):
     """Dispatched when a message is flagged by auto-mod."""
 
-    app: SnedBot
+    app: hikari.GatewayBot
     message: hikari.PartialMessage
     """The message that was flagged."""
     user: hikari.PartialUser
@@ -142,7 +141,7 @@ class AutoModMessageFlagEvent(SnedGuildEvent):
 class RoleButtonEvent(SnedGuildEvent):
     """Base class for all rolebutton-related events."""
 
-    app: SnedBot
+    app: hikari.GatewayBot
     _guild_id: hikari.Snowflakeish
     rolebutton: RoleButton
     """The rolebutton that was altered."""

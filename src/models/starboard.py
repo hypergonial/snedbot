@@ -44,7 +44,7 @@ class StarboardSettings(DatabaseModel):
     @classmethod
     async def fetch(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> StarboardSettings:
         """Fetch the starboard settings for a guild from the database. If they do not exist, return default values."""
-        records = await cls._app.db_cache.get(table="starboard", guild_id=hikari.Snowflake(guild), limit=1)
+        records = await cls._client.db_cache.get(table="starboard", guild_id=hikari.Snowflake(guild), limit=1)
         if not records:
             return cls(guild_id=hikari.Snowflake(guild))
         return cls.from_record(records[0])  # type: ignore
@@ -52,10 +52,10 @@ class StarboardSettings(DatabaseModel):
     async def update(self) -> None:
         """Update the starboard settings in the database, or insert them if they do not yet exist."""
         await self._db.execute(
-            """INSERT INTO starboard 
-            (guild_id, channel_id, star_limit, is_enabled, excluded_channels) 
-            VALUES ($1, $2, $3, $4, $5) 
-            ON CONFLICT (guild_id) DO 
+            """INSERT INTO starboard
+            (guild_id, channel_id, star_limit, is_enabled, excluded_channels)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (guild_id) DO
             UPDATE SET channel_id = $2, star_limit = $3, is_enabled = $4, excluded_channels = $5""",
             self.guild_id,
             self.channel_id,
@@ -63,7 +63,7 @@ class StarboardSettings(DatabaseModel):
             self.is_enabled,
             self.excluded_channels,
         )
-        await self._app.db_cache.refresh(table="starboard", guild_id=self.guild_id)
+        await self._client.db_cache.refresh(table="starboard", guild_id=self.guild_id)
 
 
 @attr.define()
@@ -99,7 +99,7 @@ class StarboardEntry(DatabaseModel):
     @classmethod
     async def fetch(cls, original_message: hikari.SnowflakeishOr[hikari.PartialMessage]) -> StarboardEntry | None:
         """Fetch the starboard entry for a message from the database, if one exists."""
-        records = await cls._app.db_cache.get(
+        records = await cls._client.db_cache.get(
             table="starboard_entries", orig_msg_id=hikari.Snowflake(original_message), limit=1
         )
         if not records:
@@ -109,10 +109,10 @@ class StarboardEntry(DatabaseModel):
     async def update(self) -> None:
         """Update the starboard entry in the database, or insert it if it does not yet exist."""
         await self._db.execute(
-            """INSERT INTO starboard_entries 
-            (guild_id, channel_id, orig_msg_id, entry_msg_id, force_starred) 
-            VALUES ($1, $2, $3, $4, $5) 
-            ON CONFLICT (guild_id, channel_id, orig_msg_id) DO 
+            """INSERT INTO starboard_entries
+            (guild_id, channel_id, orig_msg_id, entry_msg_id, force_starred)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (guild_id, channel_id, orig_msg_id) DO
             UPDATE SET guild_id = $1, channel_id = $2, orig_msg_id = $3, entry_msg_id = $4, force_starred = $5""",
             self.guild_id,
             self.channel_id,
@@ -120,7 +120,7 @@ class StarboardEntry(DatabaseModel):
             self.entry_message_id,
             self.force_starred,
         )
-        await self._app.db_cache.refresh(table="starboard_entries", orig_msg_id=self.original_message_id)
+        await self._client.db_cache.refresh(table="starboard_entries", orig_msg_id=self.original_message_id)
 
     async def delete(self) -> None:
         """Delete the starboard entry from the database."""
@@ -129,4 +129,4 @@ class StarboardEntry(DatabaseModel):
             self.guild_id,
             self.original_message_id,
         )
-        await self._app.db_cache.refresh(table="starboard_entries", orig_msg_id=self.original_message_id)
+        await self._client.db_cache.refresh(table="starboard_entries", orig_msg_id=self.original_message_id)

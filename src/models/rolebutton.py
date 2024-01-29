@@ -233,7 +233,7 @@ class RoleButton(DatabaseModel):
             role_id=hikari.Snowflake(role),
         )
 
-        cls._app.dispatch(RoleButtonCreateEvent(cls._app, rolebutton.guild_id, rolebutton, moderator))
+        cls._client.dispatch(RoleButtonCreateEvent(cls._client, rolebutton.guild_id, rolebutton, moderator))
         return rolebutton
 
     async def update(self, moderator: hikari.PartialUser | None = None) -> None:
@@ -249,7 +249,7 @@ class RoleButton(DatabaseModel):
         hikari.ForbiddenError
             Failed to edit or fetch the message the button belongs to.
         """
-        message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
+        message = await self._client.rest.fetch_message(self.channel_id, self.message_id)
 
         view = miru.View.from_message(message)
         buttons = [item for item in view.children if item.custom_id == self.custom_id and isinstance(item, miru.Button)]
@@ -283,7 +283,7 @@ class RoleButton(DatabaseModel):
             self.id,
             self.guild_id,
         )
-        self._app.dispatch(RoleButtonUpdateEvent(self._app, self.guild_id, self, moderator))
+        self._client.dispatch(RoleButtonUpdateEvent(self._client, self.guild_id, self, moderator))
 
     async def delete(self, moderator: hikari.PartialUser | None = None) -> None:
         """Delete this rolebutton, removing it from the message and the database.
@@ -299,7 +299,7 @@ class RoleButton(DatabaseModel):
             Failed to edit or fetch the message the button belongs to.
         """
         try:
-            message = await self._app.rest.fetch_message(self.channel_id, self.message_id)
+            message = await self._client.rest.fetch_message(self.channel_id, self.message_id)
         except hikari.NotFoundError:
             pass
         else:  # Remove button if message still exists
@@ -315,7 +315,7 @@ class RoleButton(DatabaseModel):
             self.guild_id,
             self.id,
         )
-        self._app.dispatch(RoleButtonDeleteEvent(self._app, self.guild_id, self, moderator))
+        self._client.dispatch(RoleButtonDeleteEvent(self._client, self.guild_id, self, moderator))
 
 
 # Copyright (C) 2022-present hypergonial

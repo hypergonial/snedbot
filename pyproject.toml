@@ -1,11 +1,11 @@
 [tool.ruff]
 exclude = ["examples", "docs", "build"]
 select = [
-    "E", 
-    "F", 
-    "I", 
-    "TCH", 
-    "N", 
+    "E",
+    "F",
+    "I",
+    "TCH",
+    "N",
     "D2",
     "D3",
     "D415",
@@ -28,12 +28,13 @@ ignore_errors = true # I use pyright only because mypy dumb
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
+reportPrivateUsage = "none"
 
 [tool.poetry]
 name = "snedbot"
-version = "0.1.0" # I do not actually update this, lol
+version = "0.1.0"                                                      # I do not actually update this, lol
 description = "Your friendly neighbourhood multi-purpose Discord bot."
-authors = ["hypergonial <46067571+hypergonial@users.noreply.github.com>"]
+authors = ["hypergonial <git@hypergonial.com>"]
 license = "GNU GPL-v3"
 
 [tool.poetry.dependencies]
@@ -43,13 +44,14 @@ psutil = "^5.9.6"
 Pillow = "^10.2.0"
 asyncpg = "^0.28.0"
 Levenshtein = "^0.23.0"
-uvloop = {version = "==0.18.0", platform="linux"}
+uvloop = { version = "==0.18.0", platform = "linux" }
 aiodns = "~=3.1.1"
 Brotli = "~=1.0"
 ciso8601 = "~=2.3"
-kosu = {git = "https://github.com/hypergonial/kosu.git"}
-hikari-lightbulb = "~=2.3.5"
-hikari-miru = "~=3.3.1"
+kosu = { git = "https://github.com/hypergonial/kosu.git" }
+hikari-arc = "~=1.2.0"
+hikari-toolbox = "~=0.1.6"
+hikari-miru = "~=4.0.0"
 
 [tool.poetry.dev-dependencies]
 nox = "^2023.4.22"

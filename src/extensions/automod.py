@@ -5,16 +5,15 @@ import logging
 import re
 import typing as t
 
+import arc
 import hikari
 import kosu
-import lightbulb
 
 import src.utils as utils
 from src.etc import const
 from src.etc.settings_static import default_automod_policies, notices
-from src.models.bot import SnedBot
+from src.models.client import SnedClient, SnedPlugin
 from src.models.events import AutoModMessageFlagEvent
-from src.models.plugin import SnedPlugin
 from src.utils import helpers
 from src.utils.ratelimiter import MemberBucket
 
@@ -34,8 +33,7 @@ ESCALATE_RATELIMITER = utils.RateLimiter(30, 1, bucket=MemberBucket, wait=False)
 
 logger = logging.getLogger(__name__)
 
-automod = SnedPlugin("Auto-Moderation", include_datastore=True)
-automod.d.actions = lightbulb.utils.DataStore()
+plugin = SnedPlugin("Auto-Moderation")
 
 
 class AutomodActionType(enum.Enum):
@@ -79,7 +77,7 @@ async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> dict[str, 
     """
     guild_id = hikari.Snowflake(guild)
 
-    records = await automod.app.db_cache.get(table="mod_config", guild_id=guild_id)
+    records = await plugin.client.db_cache.get(table="mod_config", guild_id=guild_id)
 
     policies = json.loads(records[0]["automod_policies"]) if records else default_automod_policies
 
@@ -100,9 +98,6 @@ async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> dict[str, 
         policies.pop(key)
 
     return policies
-
-
-automod.d.actions.get_policies = get_policies
 
 
 def can_automod_punish(me: hikari.Member, offender: hikari.Member) -> bool:
@@ -130,7 +125,7 @@ def can_automod_punish(me: hikari.Member, offender: hikari.Member) -> bool:
 
     assert offender.guild_id is not None
 
-    if offender.id in automod.app.owner_ids:
+    if offender.id in plugin.client.owner_ids:
         return False  # Hyper is always a good person
 
     if not helpers.can_harm(me, offender, permission=required_perms):
@@ -171,8 +166,8 @@ async def punish(
     assert message.guild_id is not None
     assert message.author is not hikari.UNDEFINED
 
-    offender = offender or automod.app.cache.get_member(message.guild_id, message.author.id)
-    me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
+    offender = offender or plugin.client.cache.get_member(message.guild_id, message.author.id)
+    me = plugin.client.cache.get_member(message.guild_id, plugin.client.user_id)
     assert offender is not None and me is not None
 
     if not skip_check and not can_automod_punish(me, offender):
@@ -218,9 +213,13 @@ async def punish(
         await helpers.maybe_delete(message)
 
     if state == AutoModState.FLAG.value:
-        return await automod.app.dispatch(
+        return await plugin.client.app.dispatch(
             AutoModMessageFlagEvent(
-                automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
+                plugin.client.app,
+                message,
+                offender,
+                message.guild_id,
+                f"Message flagged by auto-moderator for {reason}.",
             )
         )
 
@@ -234,14 +233,18 @@ async def punish(
             ),
             user_mentions=True,
         )
-        return await automod.app.dispatch(
+        return await plugin.client.app.dispatch(
             AutoModMessageFlagEvent(
-                automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
+                plugin.client.app,
+                message,
+                offender,
+                message.guild_id,
+                f"Message flagged by auto-moderator for {reason}.",
             )
         )
 
     if state == AutoModState.WARN.value:
-        embed = await automod.app.mod.warn(offender, me, f"Warned by auto-moderator for {reason}.")
+        embed = await plugin.client.mod.warn(offender, me, f"Warned by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
@@ -258,9 +261,9 @@ async def punish(
                 ),
                 user_mentions=True,
             )
-            return await automod.app.dispatch(
+            return await plugin.client.app.dispatch(
                 AutoModMessageFlagEvent(
-                    automod.app,
+                    plugin.client.app,
                     message,
                     offender,
                     message.guild_id,
@@ -269,7 +272,7 @@ async def punish(
             )
 
         elif ESCALATE_PREWARN_RATELIMITER.is_rate_limited(message):
-            embed = await automod.app.mod.warn(
+            embed = await plugin.client.mod.warn(
                 offender,
                 me,
                 f"Warned by auto-moderator for previous offenses ({action.name}).",
@@ -290,7 +293,7 @@ async def punish(
                 )
 
     elif state == AutoModState.TIMEOUT.value:
-        embed = await automod.app.mod.timeout(
+        embed = await plugin.client.mod.timeout(
             offender,
             me,
             helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
@@ -300,19 +303,19 @@ async def punish(
         return
 
     elif state == AutoModState.KICK.value:
-        embed = await automod.app.mod.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
+        embed = await plugin.client.mod.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
     elif state == AutoModState.SOFTBAN.value:
-        embed = await automod.app.mod.ban(
+        embed = await plugin.client.mod.ban(
             offender, me, soft=True, reason=f"Soft-banned by auto-moderator for {reason}.", days_to_delete=1
         )
         await message.respond(embed=embed)
         return
 
     elif state == AutoModState.TEMPBAN.value:
-        embed = await automod.app.mod.ban(
+        embed = await plugin.client.mod.ban(
             offender,
             me,
             duration=helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
@@ -322,7 +325,7 @@ async def punish(
         return
 
     elif state == AutoModState.PERMABAN.value:
-        embed = await automod.app.mod.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
+        embed = await plugin.client.mod.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
@@ -566,7 +569,7 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
     assert message.guild_id and message.member
 
     if policies["perspective"]["state"] != AutoModState.DISABLED.value:
-        me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
+        me = plugin.client.cache.get_member(message.guild_id, plugin.client.user_id)
         assert me is not None
 
         # This is a pretty expensive check so we'll only do it if we have to
@@ -588,7 +591,7 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
             return True
 
         try:
-            resp: kosu.AnalysisResponse = await automod.app.perspective.analyze(message.content, persp_attribs)
+            resp: kosu.AnalysisResponse = await plugin.client.perspective.analyze(message.content, persp_attribs)
         except kosu.PerspectiveException as e:
             logger.debug(f"Perspective failed to analyze a message: {e}")
         else:
@@ -607,11 +610,8 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
     return True
 
 
-@automod.listener(hikari.GuildMessageCreateEvent, bind=True)
-@automod.listener(hikari.GuildMessageUpdateEvent, bind=True)
-async def scan_messages(
-    plugin: SnedPlugin, event: hikari.GuildMessageCreateEvent | hikari.GuildMessageUpdateEvent
-) -> None:
+@plugin.listen()
+async def scan_messages(event: hikari.GuildMessageCreateEvent | hikari.GuildMessageUpdateEvent) -> None:
     """Scan messages for all possible offences."""
     message = event.message
 
@@ -619,7 +619,7 @@ async def scan_messages(
         # Probably a partial update, ignore it
         return
 
-    if not plugin.app.is_started or not plugin.app.db_cache.is_ready:
+    if not plugin.client.is_started or not plugin.client.db_cache.is_ready:
         return
 
     if message.guild_id is None:
@@ -655,12 +655,14 @@ async def scan_messages(
         )
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(automod)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(automod)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

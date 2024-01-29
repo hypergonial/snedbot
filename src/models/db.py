@@ -13,7 +13,7 @@ import hikari
 from src.models.errors import DatabaseStateConflictError
 
 if t.TYPE_CHECKING:
-    from src.models.bot import SnedBot
+    from src.models.client import SnedClient
     from src.utils.cache import DatabaseCache
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 class Database:
     """A database object that wraps an asyncpg pool and provides additional methods for convenience."""
 
-    def __init__(self, app: SnedBot) -> None:
-        self._app: SnedBot = app
+    def __init__(self, client: SnedClient) -> None:
+        self._client = client
         self._user = os.getenv("POSTGRES_USER") or "postgres"
         self._host = os.getenv("POSTGRES_HOST") or "sned-db"
         self._db_name = os.getenv("POSTGRES_DB") or "sned"
@@ -35,12 +35,12 @@ class Database:
         self._is_closed: bool = False
 
         DatabaseModel._db = self
-        DatabaseModel._app = self.app
+        DatabaseModel._client = self.client
 
     @property
-    def app(self) -> SnedBot:
+    def client(self) -> SnedClient:
         """The currently running application."""
-        return self._app
+        return self._client
 
     @property
     def user(self) -> str:
@@ -305,12 +305,12 @@ class Database:
             )
             return
 
-        path = os.path.join(self._app.base_dir, "src", "db", "migrations", filename)
+        path = os.path.join(self._client.base_dir, "src", "db", "migrations", filename)
 
         if migration_version <= self.schema_version or not os.path.isfile(path):
             return
 
-        with open(os.path.join(self._app.base_dir, "src", "db", "migrations", filename)) as file:
+        with open(os.path.join(self._client.base_dir, "src", "db", "migrations", filename)) as file:
             await self.execute(file.read())
 
         await self._increment_schema_version()
@@ -335,7 +335,7 @@ class Database:
             )
             return
 
-        path = os.path.join(self._app.base_dir, "src", "db", "migrations", filename)
+        path = os.path.join(self._client.base_dir, "src", "db", "migrations", filename)
 
         if migration_version <= self.schema_version or not os.path.isfile(path):
             return
@@ -348,7 +348,7 @@ class Database:
     async def build_schema(self) -> None:
         """Build the initial schema for the database if one doesn't already exist."""
         async with self.acquire() as con:
-            with open(os.path.join(self._app.base_dir, "src", "db", "schema.sql")) as file:
+            with open(os.path.join(self._client.base_dir, "src", "db", "schema.sql")) as file:
                 await con.execute(file.read())
 
     async def update_schema(self) -> None:
@@ -356,14 +356,14 @@ class Database:
         This also creates the initial schema structure if one does not exist.
         """
         async with self.acquire() as con:
-            with open(os.path.join(self._app.base_dir, "src", "db", "schema.sql")) as file:
+            with open(os.path.join(self._client.base_dir, "src", "db", "schema.sql")) as file:
                 await con.execute(file.read())
 
             schema_version = await con.fetchval("""SELECT schema_version FROM schema_info""", column=0)
             if not isinstance(schema_version, int):
                 raise ValueError(f"Schema version not found or invalid. Expected integer, found '{schema_version}'.")
 
-            for filename in sorted(os.listdir(os.path.join(self._app.base_dir, "src", "db", "migrations"))):
+            for filename in sorted(os.listdir(os.path.join(self._client.base_dir, "src", "db", "migrations"))):
                 if filename.endswith(".py"):
                     await self._do_python_migration(filename)
                 elif filename.endswith(".sql"):
@@ -372,11 +372,12 @@ class Database:
         logger.info("Database schema is up to date!")
 
 
+# TODO: We can probably use dep injection to get rid of this gross global state here
 class DatabaseModel(abc.ABC):
     """Common base-class for all database model objects."""
 
     _db: Database
-    _app: SnedBot
+    _client: SnedClient
     _db_cache: DatabaseCache
 
 

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 if t.TYPE_CHECKING:
-    from src.models.bot import SnedBot
+    from src.models.client import SnedClient
 
 
 class ConversionMode(enum.IntEnum):
@@ -34,8 +34,8 @@ class Scheduler:
     Essentially the internal scheduler of the bot.
     """
 
-    def __init__(self, bot: SnedBot) -> None:
-        self.bot: SnedBot = bot
+    def __init__(self, client: SnedClient) -> None:
+        self.client = client
         self._current_timer: Timer | None = None  # Currently active timer that is being awaited
         self._current_task: asyncio.Task | None = None  # Current task that is handling current_timer
         self._timer_loop: IntervalLoop = IntervalLoop(self._wait_for_active_timers, hours=1.0)
@@ -161,7 +161,7 @@ class Scheduler:
         if not conversion_mode or conversion_mode == ConversionMode.ABSOLUTE:
             timezone = "UTC"
             if user_id:
-                records = await self.bot.db_cache.get(table="preferences", user_id=user_id, limit=1)
+                records = await self.client.db_cache.get(table="preferences", user_id=user_id, limit=1)
                 timezone = records[0].get("timezone") if records else "UTC"
                 assert timezone is not None  # Fucking pointless, I hate you pyright
 
@@ -192,8 +192,8 @@ class Scheduler:
         Optional[Timer]
             The timer object that was found, if any.
         """
-        await self.bot.wait_until_started()
-        record = await self.bot.db.fetchrow(
+        await self.client.wait_until_started()
+        record = await self.client.db.fetchrow(
             """SELECT * FROM timers WHERE expires < $1 ORDER BY expires LIMIT 1""",
             round((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=days)).timestamp()),
         )
@@ -221,18 +221,18 @@ class Scheduler:
         timer : Timer
             The timer to be called.
         """
-        await self.bot.db.execute("""DELETE FROM timers WHERE id = $1""", timer.id)
+        await self.client.db.execute("""DELETE FROM timers WHERE id = $1""", timer.id)
 
         self._current_timer = None
-        event = TimerCompleteEvent(self.bot, timer, timer.guild_id)
+        event = TimerCompleteEvent(self.client.app, timer, timer.guild_id)
 
-        self.bot.dispatch(event)
+        self.client.app.dispatch(event)
         logger.info(f"Dispatched TimerCompleteEvent for {timer.event.value} (ID: {timer.id})")
 
     async def _dispatch_timers(self):
         """A task that loops, waits for, and calls pending timers."""
         try:
-            while self.bot.is_ready and self._is_started:
+            while self.client.is_started and self._is_started:
                 timer = await self.get_latest_timer(days=30)
                 self._current_timer = timer
 
@@ -271,7 +271,7 @@ class Scheduler:
         if not self._is_started:
             raise hikari.ComponentStateConflictError("The scheduler is not running.")
 
-        await self.bot.db.execute(
+        await self.client.db.execute(
             """UPDATE timers SET user_id = $1, channel_id = $2, event = $3, expires = $4, notes = $5 WHERE id = $6 AND guild_id = $7""",
             timer.user_id,
             timer.channel_id,
@@ -317,14 +317,14 @@ class Scheduler:
         user_id = hikari.Snowflake(user) if user else None
 
         if user_id:
-            record = await self.bot.db.fetchrow(
+            record = await self.client.db.fetchrow(
                 """SELECT * FROM timers WHERE id = $1 AND guild_id = $2 AND user_id = $3 LIMIT 1""",
                 entry_id,
                 guild_id,
                 user_id,
             )
         else:
-            record = await self.bot.db.fetchrow(
+            record = await self.client.db.fetchrow(
                 """SELECT * FROM timers WHERE id = $1 AND guild_id = $2 LIMIT 1""",
                 entry_id,
                 guild_id,
@@ -385,7 +385,7 @@ class Scheduler:
         channel_id = hikari.Snowflake(channel) if channel else None
         timestamp = round(expires.timestamp())
 
-        records = await self.bot.db.fetch(
+        records = await self.client.db.fetch(
             """INSERT INTO timers (guild_id, channel_id, user_id, event, expires, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *""",
             guild_id,
             channel_id,
@@ -449,7 +449,7 @@ class Scheduler:
         except ValueError:
             raise
         else:
-            await self.bot.db.execute(
+            await self.client.db.execute(
                 """DELETE FROM timers WHERE id = $1 AND guild_id = $2""", timer.id, timer.guild_id
             )
 
@@ -462,7 +462,7 @@ class Scheduler:
 
     async def _wait_for_active_timers(self) -> None:
         """Check every hour to see if new timers meet criteria in the database."""
-        await self.bot.wait_until_started()
+        await self.client.wait_until_started()
 
         if self._current_task is None:
             self._current_task = asyncio.create_task(self._dispatch_timers())

@@ -2,86 +2,65 @@ import logging
 import re
 from difflib import get_close_matches
 
+import arc
 import hikari
-import lightbulb
 import miru
 import psutil
 import pytz
 
 from src.etc import const
-from src.models import SnedBot
-from src.models.checks import bot_has_permissions
-from src.models.context import SnedMessageContext, SnedSlashContext
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.utils import helpers
 from src.utils.scheduler import ConversionMode
 
 logger = logging.getLogger(__name__)
 
-misc = SnedPlugin("Miscellaneous Commands")
+plugin = SnedPlugin("Miscellaneous Commands")
 psutil.cpu_percent(interval=1)  # Call so subsequent calls for CPU % will not be blocking
 
 RGB_REGEX = re.compile(r"[0-9]{1,3} [0-9]{1,3} [0-9]{1,3}")
 
 
-@misc.command
-@lightbulb.app_command_permissions(None, dm_enabled=True)
-@lightbulb.command("ping", "Check the bot's latency.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def ping(ctx: SnedSlashContext) -> None:
+@plugin.include
+@arc.slash_command("ping", "Check the bot's latency.")
+async def ping(ctx: SnedContext) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title="🏓 Pong!",
-            description=f"Latency: `{round(ctx.app.heartbeat_latency * 1000)}ms`",
+            description=f"Latency: `{round(ctx.client.app.heartbeat_latency * 1000)}ms`",
             color=const.MISC_COLOR,
         )
     )
 
 
-@misc.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("detach", "Send the embed in a detached manner from the slash command.", type=bool, required=False)
-@lightbulb.option(
-    "color",
-    "The color of the embed. Expects three space-separated values for an RGB value.",
-    type=str,
-    required=False,
-    max_length=11,
-)
-@lightbulb.option("author_url", "An URL to direct users to if the author is clicked.", required=False)
-@lightbulb.option(
-    "author_image_url",
-    "An URL pointing to an image to use for the author's avatar.",
-    required=False,
-)
-@lightbulb.option("author", "The author of the embed. Appears above the title.", required=False)
-@lightbulb.option(
-    "footer_image_url",
-    "An url pointing to an image to use for the embed footer.",
-    required=False,
-)
-@lightbulb.option(
-    "image_url",
-    "An url pointing to an image to use for the embed image.",
-    required=False,
-)
-@lightbulb.option(
-    "thumbnail_url",
-    "An url pointing to an image to use for the thumbnail.",
-    required=False,
-)
-@lightbulb.option("footer", "The footer of the embed.", required=False)
-@lightbulb.option("description", "The description of the embed.", required=False)
-@lightbulb.option("title", "The title of the embed. Required.")
-@lightbulb.command("embed", "Generates a new embed with the parameters specified")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def embed(ctx: SnedSlashContext) -> None:
+@plugin.include
+@arc.slash_command("embed", "Generates a new embed with the parameters specified")
+async def embed(
+    ctx: SnedContext,
+    title: arc.Option[str, arc.StrParams("The title of the embed. Required.")],
+    description: arc.Option[str | None, arc.StrParams("The description of the embed.")] = None,
+    footer: arc.Option[str | None, arc.StrParams("The footer of the embed.")] = None,
+    thumbnail_url: arc.Option[str | None, arc.StrParams("A URL pointing to an image to use for the thumbnail.")] = None,
+    image_url: arc.Option[str | None, arc.StrParams("A URL pointing to an image to use for the embed image.")] = None,
+    footer_image_url: arc.Option[
+        str | None, arc.StrParams("A URL pointing to an image to use for the embed footer.")
+    ] = None,
+    author: arc.Option[str | None, arc.StrParams("The author of the embed. Appears above the title.")] = None,
+    author_image_url: arc.Option[
+        str | None, arc.StrParams("A URL pointing to an image to use for the author's avatar.")
+    ] = None,
+    author_url: arc.Option[str | None, arc.StrParams("A URL to direct users to if the author is clicked.")] = None,
+    color: arc.Option[
+        str | None, arc.StrParams("The color of the embed. Expects three space-separated values for an RGB value.")
+    ] = None,
+    detach: arc.Option[bool, arc.BoolParams("Send the embed in a detached manner from the slash command.")] = False,
+) -> None:
     url_options = [
-        ctx.options.image_url,
-        ctx.options.thumbnail_url,
-        ctx.options.footer_image_url,
-        ctx.options.author_image_url,
-        ctx.options.author_url,
+        image_url,
+        thumbnail_url,
+        footer_image_url,
+        author_image_url,
+        author_url,
     ]
     for option in url_options:
         if option and not helpers.is_url(option):
@@ -95,7 +74,7 @@ async def embed(ctx: SnedSlashContext) -> None:
             )
             return
 
-    if ctx.options.color is not None and not RGB_REGEX.fullmatch(ctx.options.color):
+    if color is not None and not RGB_REGEX.fullmatch(color):
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Invalid Color",
@@ -108,27 +87,27 @@ async def embed(ctx: SnedSlashContext) -> None:
 
     embed = (
         hikari.Embed(
-            title=ctx.options.title,
-            description=ctx.options.description,
-            color=ctx.options.color,
+            title=title,
+            description=description,
+            color=color,
         )
-        .set_footer(ctx.options.footer, icon=ctx.options.footer_image_url)
-        .set_image(ctx.options.image_url)
-        .set_thumbnail(ctx.options.thumbnail_url)
+        .set_footer(footer, icon=footer_image_url)
+        .set_image(image_url)
+        .set_thumbnail(thumbnail_url)
         .set_author(
-            name=ctx.options.author,
-            url=ctx.options.author_url,
-            icon=ctx.options.author_image_url,
+            name=author,
+            url=author_url,
+            icon=author_image_url,
         )
     )
 
-    if not ctx.options.detach:
+    if not detach:
         await ctx.respond(embed=embed)
         return
 
-    if ctx.member and not helpers.includes_permissions(
-        lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
-    ):
+    assert ctx.member is not None
+
+    if ctx.member and not helpers.includes_permissions(ctx.member.permissions, hikari.Permissions.MANAGE_MESSAGES):
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Missing Permissions",
@@ -139,56 +118,53 @@ async def embed(ctx: SnedSlashContext) -> None:
         )
         return
 
+    # TODO: shouldn't this be in a hook?
     if ctx.interaction.app_permissions and not helpers.includes_permissions(
         ctx.interaction.app_permissions,
         hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL,
     ):
-        raise lightbulb.BotMissingRequiredPermission(
-            perms=hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.SEND_MESSAGES
+        raise arc.BotMissingPermissionsError(
+            missing_permissions=hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.SEND_MESSAGES
         )
 
-    await ctx.app.rest.create_message(ctx.channel_id, embed=embed)
+    await ctx.client.rest.create_message(ctx.channel_id, embed=embed)
     await ctx.respond(
         embed=hikari.Embed(title="✅ Embed created!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
     )
 
 
 @embed.set_error_handler
-async def embed_error(event: lightbulb.CommandErrorEvent) -> bool:
-    if isinstance(event.exception, lightbulb.CommandInvocationError) and isinstance(
-        event.exception.original, ValueError
-    ):
-        await event.context.respond(
+async def embed_error(ctx: SnedContext, exc: Exception) -> None:
+    if isinstance(exc, ValueError):
+        await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Parsing error",
-                description=f"An error occurred parsing parameters.\n**Error:** ```{event.exception.original}```",
+                description=f"An error occurred parsing parameters.\n**Error:** ```{exc}```",
                 color=const.ERROR_COLOR,
             ),
             flags=hikari.MessageFlag.EPHEMERAL,
         )
-        return True
-    return False
+        return
+    raise exc
 
 
-@misc.command
-@lightbulb.app_command_permissions(None, dm_enabled=True)
-@lightbulb.command("about", "Displays information about the bot.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def about(ctx: SnedSlashContext) -> None:
-    me = ctx.app.get_me()
+@plugin.include
+@arc.slash_command("about", "Displays information about the bot.")
+async def about(ctx: SnedContext) -> None:
+    me = ctx.client.app.get_me()
     assert me is not None
     process = psutil.Process()
 
     await ctx.respond(
         embed=hikari.Embed(
             title=f"ℹ️ About {me.username}",
-            description=f"""**• Made by:** `hypergonial`
-**• Servers:** `{len(ctx.app.cache.get_guilds_view())}`
-**• Online since:** {helpers.format_dt(ctx.app.start_time, style='R')}
-**• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
-**• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
-**• Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/tos.md)
-**• Privacy Policy:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/privacy.md)\n
+            description=f"""**- Made by:** `hypergonial`
+**- Servers:** `{len(ctx.client.cache.get_guilds_view())}`
+**- Online since:** {helpers.format_dt(ctx.client.start_time, style='R')}
+**- Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
+**- Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
+**- Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/tos.md)
+**- Privacy Policy:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/privacy.md)\n
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
             color=const.EMBED_BLUE,
         )
@@ -205,19 +181,17 @@ Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/license
         )
         .add_field(
             name="Latency",
-            value=f"`{round(ctx.app.heartbeat_latency * 1000)}ms`",
+            value=f"`{round(ctx.client.app.heartbeat_latency * 1000)}ms`",
             inline=True,
         )
     )
 
 
-@misc.command
-@lightbulb.app_command_permissions(None, dm_enabled=True)
-@lightbulb.command("invite", "Invite the bot to your server!")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def invite(ctx: SnedSlashContext) -> None:
-    if not ctx.app.dev_mode:
-        invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.app.user_id}&permissions=1494984682710&scope=applications.commands%20bot"
+@plugin.include
+@arc.slash_command("invite", "Invite the bot to your server!")
+async def invite(ctx: SnedContext) -> None:
+    if not ctx.client.dev_mode:
+        invite_url = f"https://discord.com/oauth2/authorize?client_id={ctx.client.user_id}&permissions=1494984682710&scope=applications.commands%20bot"
         await ctx.respond(
             embed=hikari.Embed(
                 title="🌟 Yay!",
@@ -235,21 +209,21 @@ async def invite(ctx: SnedSlashContext) -> None:
         )
 
 
-@misc.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_NICKNAMES, dm_enabled=False)
-@lightbulb.add_cooldown(10.0, 1, lightbulb.GuildBucket)
-@lightbulb.add_checks(
-    bot_has_permissions(hikari.Permissions.CHANGE_NICKNAME),
-)
-@lightbulb.option("nickname", "The nickname to set the bot's nickname to. Type 'None' to reset it!")
-@lightbulb.command("setnick", "Set the bot's nickname!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def setnick(ctx: SnedSlashContext, nickname: str | None = None) -> None:
+@plugin.include
+@arc.with_hook(arc.guild_limiter(10.0, 1))
+@arc.with_hook(arc.bot_has_permissions(perms=hikari.Permissions.CHANGE_NICKNAME))
+@arc.slash_command("setnick", "Set the bot's nickname!", default_permissions=hikari.Permissions.MANAGE_NICKNAMES)
+async def setnick(
+    ctx: SnedContext,
+    nickname: arc.Option[
+        str | None, arc.StrParams("The nickname to set the bot's nickname to. Type 'None' to reset it!")
+    ] = None,
+) -> None:
     assert ctx.guild_id is not None
 
     nickname = nickname[:32] if nickname and nickname.casefold() != "none" else None
 
-    await ctx.app.rest.edit_my_member(
+    await ctx.client.rest.edit_my_member(
         ctx.guild_id, nickname=nickname, reason=f"Nickname changed via /setnick by {ctx.author}"
     )
     await ctx.respond(
@@ -257,47 +231,43 @@ async def setnick(ctx: SnedSlashContext, nickname: str | None = None) -> None:
     )
 
 
-@misc.command
-@lightbulb.command("support", "Provides a link to the support Discord.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def support(ctx: SnedSlashContext) -> None:
+@plugin.include
+@arc.slash_command("support", "Provides a link to the support Discord.")
+async def support(ctx: SnedContext) -> None:
     await ctx.respond("https://discord.gg/KNKr8FPmJa", flags=hikari.MessageFlag.EPHEMERAL)
 
 
-@misc.command
-@lightbulb.command("source", "Provides a link to the source-code of the bot.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def source(ctx: SnedSlashContext) -> None:
+@plugin.include
+@arc.slash_command("source", "Provides a link to the source-code of the bot.")
+async def source(ctx: SnedContext) -> None:
     await ctx.respond("<https://github.com/hypergonial/snedbot>")
 
 
-@misc.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("serverinfo", "Provides detailed information about this server.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def serverinfo(ctx: SnedSlashContext) -> None:
+@plugin.include
+@arc.slash_command("serverinfo", "Provides detailed information about this server.")
+async def serverinfo(ctx: SnedContext) -> None:
     assert ctx.guild_id is not None
-    guild = ctx.app.cache.get_available_guild(ctx.guild_id)
+    guild = ctx.client.cache.get_available_guild(ctx.guild_id)
     assert guild is not None
 
     embed = (
         hikari.Embed(
             title="ℹ️ Server Information",
-            description=f"""**• Name:** `{guild.name}`
-**• ID:** `{guild.id}`
-**• Owner:** `{ctx.app.cache.get_member(guild.id, guild.owner_id)}` (`{guild.owner_id}`)
-**• Created at:** {helpers.format_dt(guild.created_at)} ({helpers.format_dt(guild.created_at, style="R")})
-**• Member count:** `{guild.member_count}`
-**• Roles:** `{len(guild.get_roles())}`
-**• Channels:** `{len(guild.get_channels())}`
-**• Nitro Boost level:** `{guild.premium_tier}`
-**• Nitro Boost count:** `{guild.premium_subscription_count or '*Not found*'}`
-**• Preferred locale:** `{guild.preferred_locale}`
-**• Community:** `{"Yes" if "COMMUNITY" in guild.features else "No"}`
-**• Partner:** `{"Yes" if "PARTNERED" in guild.features else "No"}`
-**• Verified:** `{"Yes" if "VERIFIED" in guild.features else "No"}`
-**• Discoverable:** `{"Yes" if "DISCOVERABLE" in guild.features else "No"}`
-{f"**• Vanity URL:** {guild.vanity_url_code}" if guild.vanity_url_code else ""}
+            description=f"""**- Name:** `{guild.name}`
+**- ID:** `{guild.id}`
+**- Owner:** `{ctx.client.cache.get_member(guild.id, guild.owner_id)}` (`{guild.owner_id}`)
+**- Created at:** {helpers.format_dt(guild.created_at)} ({helpers.format_dt(guild.created_at, style="R")})
+**- Member count:** `{guild.member_count}`
+**- Roles:** `{len(guild.get_roles())}`
+**- Channels:** `{len(guild.get_channels())}`
+**- Nitro Boost level:** `{guild.premium_tier}`
+**- Nitro Boost count:** `{guild.premium_subscription_count or '*Not found*'}`
+**- Preferred locale:** `{guild.preferred_locale}`
+**- Community:** `{"Yes" if "COMMUNITY" in guild.features else "No"}`
+**- Partner:** `{"Yes" if "PARTNERED" in guild.features else "No"}`
+**- Verified:** `{"Yes" if "VERIFIED" in guild.features else "No"}`
+**- Discoverable:** `{"Yes" if "DISCOVERABLE" in guild.features else "No"}`
+{f"**- Vanity URL:** {guild.vanity_url_code}" if guild.vanity_url_code else ""}
 """,
             color=const.EMBED_BLUE,
         )
@@ -308,42 +278,35 @@ async def serverinfo(ctx: SnedSlashContext) -> None:
     await ctx.respond(embed=embed)
 
 
-@misc.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
-@lightbulb.add_checks(
-    bot_has_permissions(hikari.Permissions.SEND_MESSAGES, hikari.Permissions.VIEW_CHANNEL),
+@plugin.include
+@arc.with_hook(
+    arc.bot_has_permissions(hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL),
 )
-@lightbulb.option("text", "The text to echo.")
-@lightbulb.command("echo", "Repeat the provided text as the bot.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def echo(ctx: SnedSlashContext, text: str) -> None:
-    assert ctx.interaction.app_permissions is not None
-
-    if not helpers.includes_permissions(
-        ctx.interaction.app_permissions, hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
-    ):
-        raise lightbulb.BotMissingRequiredPermission(
-            perms=hikari.Permissions.SEND_MESSAGES | hikari.Permissions.VIEW_CHANNEL
-        )
-
-    await ctx.app.rest.create_message(ctx.channel_id, text[:2000])
+@arc.slash_command(
+    "echo",
+    "Repeat the provided text as the bot.",
+    default_permissions=hikari.Permissions.MANAGE_MESSAGES,
+)
+async def echo(ctx: SnedContext, text: arc.Option[str, arc.StrParams("The text to echo.", max_length=2000)]) -> None:
+    await ctx.client.rest.create_message(ctx.channel_id, text)
 
     await ctx.respond(
         embed=hikari.Embed(title="✅ Message sent!", color=const.EMBED_GREEN), flags=hikari.MessageFlag.EPHEMERAL
     )
 
 
-@misc.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
-@lightbulb.add_checks(
-    bot_has_permissions(
-        hikari.Permissions.SEND_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY, hikari.Permissions.VIEW_CHANNEL
+@plugin.include
+@arc.with_hook(
+    arc.bot_has_permissions(
+        hikari.Permissions.SEND_MESSAGES | hikari.Permissions.READ_MESSAGE_HISTORY | hikari.Permissions.VIEW_CHANNEL
     ),
 )
-@lightbulb.option("message_link", "You can get this by right-clicking a message.", type=str)
-@lightbulb.command("edit", "Edit a message that was sent by the bot.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def edit(ctx: SnedSlashContext, message_link: str) -> None:
+@arc.slash_command(
+    "edit", "Edit a message that was sent by the bot.", default_permissions=hikari.Permissions.MANAGE_MESSAGES
+)
+async def edit(
+    ctx: SnedContext, message_link: arc.Option[str, arc.StrParams("You can get this by right-clicking a message.")]
+) -> None:
     message = await helpers.parse_message_link(ctx, message_link)
     if not message:
         return
@@ -399,7 +362,7 @@ async def edit(ctx: SnedSlashContext, message_link: str) -> None:
     )
 
 
-@misc.command
+@plugin.command
 @lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(
@@ -422,7 +385,7 @@ async def raw(ctx: SnedMessageContext, target: hikari.Message) -> None:
         )
 
 
-@misc.command
+@plugin.command
 @lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option("timezone", "The timezone to set as your default. Example: 'Europe/Kiev'", autocomplete=True)
 @lightbulb.command(
@@ -443,9 +406,9 @@ async def set_timezone(ctx: SnedSlashContext, timezone: str) -> None:
 
     await ctx.app.db.execute(
         """
-    INSERT INTO preferences (user_id, timezone) 
-    VALUES ($1, $2) 
-    ON CONFLICT (user_id) DO 
+    INSERT INTO preferences (user_id, timezone)
+    VALUES ($1, $2)
+    ON CONFLICT (user_id) DO
     UPDATE SET timezone = $2""",
         ctx.user.id,
         timezone.title(),
@@ -472,7 +435,7 @@ async def tz_opts(
     return []
 
 
-@misc.command
+@plugin.command
 @lightbulb.app_command_permissions(None, dm_enabled=False)
 @lightbulb.option(
     "style",
@@ -515,12 +478,14 @@ async def timestamp_gen(ctx: SnedSlashContext, time: str, style: str | None = No
     )
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(misc)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(misc)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

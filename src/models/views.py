@@ -1,5 +1,4 @@
 import hikari
-import lightbulb
 import miru
 from miru.ext import nav
 
@@ -9,19 +8,21 @@ from src.etc import const
 class StopSelect(miru.TextSelect):
     """A select that stops the view after interaction."""
 
-    async def callback(self, context: miru.Context) -> None:
+    async def callback(self, context: miru.ViewContext) -> None:
         self.view.stop()
 
 
 class AuthorOnlyView(miru.View):
     """A navigator that only works for the user who invoked it."""
 
-    def __init__(self, lctx: lightbulb.Context, *, timeout: float | None = 120, autodefer: bool = True) -> None:
+    def __init__(
+        self, author: hikari.PartialUser | hikari.Snowflakeish, *, timeout: float | None = 120, autodefer: bool = True
+    ) -> None:
         super().__init__(timeout=timeout, autodefer=autodefer)
-        self.lctx = lctx
+        self._author_id = hikari.Snowflake(author)
 
-    async def view_check(self, ctx: miru.Context) -> bool:
-        if ctx.user.id != self.lctx.author.id:
+    async def view_check(self, ctx: miru.ViewContext) -> bool:
+        if ctx.user.id != self._author_id:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Oops!",
@@ -31,7 +32,7 @@ class AuthorOnlyView(miru.View):
                 flags=hikari.MessageFlag.EPHEMERAL,
             )
 
-        return ctx.user.id == self.lctx.author.id
+        return ctx.user.id == self._author_id
 
 
 class SnedNavigator(nav.NavigatorView):
@@ -39,18 +40,18 @@ class SnedNavigator(nav.NavigatorView):
         self,
         *,
         pages: list[str | hikari.Embed],
-        buttons: list[nav.NavButton] | None = None,
+        items: list[nav.NavItem] | None = None,
         timeout: float | None = 120.0,
         autodefer: bool = True,
     ) -> None:
-        buttons = buttons or [
+        items = items or [
             nav.FirstButton(emoji=const.EMOJI_FIRST),
             nav.PrevButton(emoji=const.EMOJI_PREV),
             nav.IndicatorButton(),
             nav.NextButton(emoji=const.EMOJI_NEXT),
             nav.LastButton(emoji=const.EMOJI_LAST),
         ]
-        super().__init__(pages=pages, buttons=buttons, timeout=timeout, autodefer=autodefer)
+        super().__init__(pages=pages, items=items, timeout=timeout, autodefer=autodefer)
 
 
 class AuthorOnlyNavigator(SnedNavigator):
@@ -58,19 +59,19 @@ class AuthorOnlyNavigator(SnedNavigator):
 
     def __init__(
         self,
-        lctx: lightbulb.Context,
+        author: hikari.PartialUser | hikari.Snowflakeish,
         *,
         pages: list[str | hikari.Embed],
-        buttons: list[nav.NavButton] | None = None,
+        items: list[nav.NavItem] | None = None,
         timeout: float | None = 300.0,
         autodefer: bool = True,
     ) -> None:
-        self.lctx = lctx
+        self._author_id = hikari.Snowflake(author)
 
-        super().__init__(pages=pages, buttons=buttons, timeout=timeout, autodefer=autodefer)
+        super().__init__(pages=pages, items=items, timeout=timeout, autodefer=autodefer)
 
-    async def view_check(self, ctx: miru.Context) -> bool:
-        if ctx.user.id != self.lctx.author.id:
+    async def view_check(self, ctx: miru.ViewContext) -> bool:
+        if ctx.user.id != self._author_id:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Oops!",
@@ -80,7 +81,7 @@ class AuthorOnlyNavigator(SnedNavigator):
                 flags=hikari.MessageFlag.EPHEMERAL,
             )
 
-        return ctx.user.id == self.lctx.author.id
+        return ctx.user.id == self._author_id
 
 
 # Copyright (C) 2022-present hypergonial

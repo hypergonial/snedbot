@@ -2,65 +2,65 @@ import datetime
 import logging
 import re
 
+import arc
 import hikari
-import lightbulb
 import miru
 
 import src.models as models
 from src.etc import const
 from src.models import errors
-from src.models.bot import SnedBot
-from src.models.checks import bot_has_permissions, is_above_target, is_invoker_above_target
-from src.models.context import SnedSlashContext, SnedUserContext
+from src.models.checks import is_above_target, is_invoker_above_target
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.models.db_user import DatabaseUser
 from src.models.events import MassBanEvent
 from src.models.journal import JournalEntry, JournalEntryType
 from src.models.mod_actions import ModerationFlags
-from src.models.plugin import SnedPlugin
 from src.utils import helpers
 
 logger = logging.getLogger(__name__)
 
-mod = SnedPlugin("Moderation", include_datastore=True)
+plugin = SnedPlugin("Moderation")
 
 
-@mod.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_GUILD, dm_enabled=False)
-@lightbulb.option("user", "The user to show information about.", type=hikari.User)
-@lightbulb.command("whois", "Show user information about the specified user.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def whois(ctx: SnedSlashContext, user: hikari.User) -> None:
+@plugin.include
+@arc.slash_command(
+    "whois", "Show user information about the target user.", default_permissions=hikari.Permissions.MANAGE_GUILD
+)
+async def whois(
+    ctx: SnedContext,
+    user: arc.Option[hikari.User, arc.UserParams("The user to show information about.")],
+) -> None:
     embed = await helpers.get_userinfo(ctx, user)
-    await ctx.mod_respond(embed=embed)
+    await ctx.respond(embed=embed)
 
 
-@mod.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_GUILD, dm_enabled=False)
-@lightbulb.command("Show Userinfo", "Show user information about the target user.", pass_options=True)
-@lightbulb.implements(lightbulb.UserCommand)
-async def whois_user_command(ctx: SnedUserContext, target: hikari.User) -> None:
+@plugin.include
+@arc.user_command("Show Userinfo")
+async def whois_user_command(
+    ctx: SnedContext,
+    target: hikari.User,
+) -> None:
     embed = await helpers.get_userinfo(ctx, target)
-    await ctx.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+    await ctx.respond(embed=embed)
 
 
-@mod.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_ROLES, dm_enabled=False)
-@lightbulb.command("role", "Manage roles using commands.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommandGroup)
-async def role_group(_: SnedSlashContext) -> None:
-    pass
+role = plugin.include_slash_group(
+    "role", "Manage roles using commands.", default_permissions=hikari.Permissions.MANAGE_ROLES
+)
 
 
-@role_group.child
-@lightbulb.option("role", "The role to add", type=hikari.Role)
-@lightbulb.option("user", "The user to add the role to", type=hikari.Member)
-@lightbulb.command("add", "Add a role to the target user.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role) -> None:
-    helpers.is_member(user)
+@role.include
+@arc.slash_subcommand("add", "Add a role to the target user.")
+async def role_add(
+    ctx: SnedContext,
+    user: arc.Option[hikari.User, arc.UserParams("The user to add the role to.")],
+    role: arc.Option[hikari.Role, arc.RoleParams("The role to add.")],
+) -> None:
+    if not helpers.is_member(user):
+        return
     assert ctx.guild_id and ctx.member
 
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    me = ctx.client.cache.get_member(ctx.guild_id, ctx.client.user_id)
     assert me
 
     if role.is_managed or role.is_premium_subscriber_role or role.id == ctx.guild_id:
@@ -96,7 +96,7 @@ async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     ):
         raise errors.RoleHierarchyError("Target role is higher than your highest role.")
 
-    await ctx.app.rest.add_role_to_member(
+    await ctx.client.rest.add_role_to_member(
         ctx.guild_id, user, role, reason=f"{ctx.member} ({ctx.member.id}): Added role via Sned"
     )
     await ctx.mod_respond(
@@ -106,16 +106,18 @@ async def role_add(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     )
 
 
-@role_group.child
-@lightbulb.option("role", "The role to remove", type=hikari.Role)
-@lightbulb.option("user", "The user to remove the role from", type=hikari.Member)
-@lightbulb.command("remove", "Remove a role from the target user.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role) -> None:
-    helpers.is_member(user)
+@role.include
+@arc.slash_subcommand("remove", "Remove a role from the target user.")
+async def role_del(
+    ctx: SnedContext,
+    user: arc.Option[hikari.User, arc.UserParams("The user to remove the role from.")],
+    role: arc.Option[hikari.Role, arc.RoleParams("The role to remove.")],
+) -> None:
+    if not helpers.is_member(user):
+        return
     assert ctx.guild_id and ctx.member
 
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    me = ctx.client.cache.get_member(ctx.guild_id, ctx.client.user_id)
     assert me
 
     if role.is_managed or role.is_premium_subscriber_role or role.id == ctx.guild_id:
@@ -151,7 +153,7 @@ async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     ):
         raise errors.RoleHierarchyError("Target role is higher than your highest role.")
 
-    await ctx.app.rest.remove_role_from_member(
+    await ctx.client.rest.remove_role_from_member(
         ctx.guild_id, user, role, reason=f"{ctx.member} ({ctx.member.id}): Removed role via Sned"
     )
     await ctx.mod_respond(
@@ -161,27 +163,31 @@ async def role_del(ctx: SnedSlashContext, user: hikari.Member, role: hikari.Role
     )
 
 
-@mod.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
-@lightbulb.add_cooldown(20, 1, lightbulb.ChannelBucket)
-@lightbulb.add_checks(
-    bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES, hikari.Permissions.READ_MESSAGE_HISTORY),
+@plugin.include
+@arc.with_hook(arc.channel_limiter(20.0, 1))
+@arc.with_hook(arc.bot_has_permissions(hikari.Permissions.MANAGE_MESSAGES | hikari.Permissions.READ_MESSAGE_HISTORY))
+@arc.slash_command(
+    "purge",
+    "Purge multiple messages in this channel.",
+    default_permissions=hikari.Permissions.MANAGE_MESSAGES,
 )
-@lightbulb.option("user", "Only delete messages authored by this user.", type=hikari.User, required=False)
-@lightbulb.option("regex", "Only delete messages that match with the regular expression.", required=False)
-@lightbulb.option("embeds", "Only delete messages that contain embeds.", type=bool, required=False)
-@lightbulb.option("links", "Only delete messages that contain links.", type=bool, required=False)
-@lightbulb.option("invites", "Only delete messages that contain Discord invites.", type=bool, required=False)
-@lightbulb.option("attachments", "Only delete messages that contain files & images.", type=bool, required=False)
-@lightbulb.option("onlytext", "Only delete messages that exclusively contain text.", type=bool, required=False)
-@lightbulb.option("notext", "Only delete messages that do not contain text.", type=bool, required=False)
-@lightbulb.option("endswith", "Only delete messages that end with the specified text.", required=False)
-@lightbulb.option("startswith", "Only delete messages that start with the specified text.", required=False)
-@lightbulb.option("count", "The amount of messages to delete.", type=int, min_value=1, max_value=100)
-@lightbulb.command("purge", "Purge multiple messages in this channel.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def purge(ctx: SnedSlashContext) -> None:
-    channel = ctx.get_channel() or await ctx.app.rest.fetch_channel(ctx.channel_id)
+async def purge(
+    ctx: SnedContext,
+    count: arc.Option[int, arc.IntParams("The amount of messages to delete.", min=1, max=100)],
+    user: arc.Option[hikari.User | None, arc.UserParams("Only delete messages authored by this user.")] = None,
+    regex: arc.Option[str | None, arc.StrParams("Only delete messages that match with the regular expression.")] = None,
+    embeds: arc.Option[bool, arc.BoolParams("Only delete messages that contain embeds.")] = False,
+    links: arc.Option[bool, arc.BoolParams("Only delete messages that contain links.")] = False,
+    invites: arc.Option[bool, arc.BoolParams("Only delete messages that contain Discord invites.")] = False,
+    attachments: arc.Option[bool, arc.BoolParams("Only delete messages that contain files & images.")] = False,
+    onlytext: arc.Option[bool, arc.BoolParams("Only delete messages that exclusively contain text.")] = False,
+    notext: arc.Option[bool, arc.BoolParams("Only delete messages that do not contain text.")] = False,
+    endswith: arc.Option[str | None, arc.StrParams("Only delete messages that end with the specified text.")] = None,
+    startswith: arc.Option[
+        str | None, arc.StrParams("Only delete messages that start with the specified text.")
+    ] = None,
+) -> None:
+    channel = ctx.get_channel() or await ctx.client.rest.fetch_channel(ctx.channel_id)
     assert isinstance(channel, hikari.TextableGuildChannel)
 
     predicates = [
@@ -189,10 +195,10 @@ async def purge(ctx: SnedSlashContext) -> None:
         lambda message: not (hikari.MessageFlag.LOADING & message.flags)
     ]
 
-    if ctx.options.regex:
+    if regex:
         try:
-            regex = re.compile(ctx.options.regex)
-        except re.error as error:
+            pattern = re.compile(regex)
+        except Exception as error:
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Invalid regex passed",
@@ -201,57 +207,53 @@ async def purge(ctx: SnedSlashContext) -> None:
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,
             )
-
-            assert ctx.invoked is not None and ctx.invoked.cooldown_manager is not None
-            return await ctx.invoked.cooldown_manager.reset_cooldown(ctx)
+            ctx.command.reset_all_limiters(ctx)
         else:
-            predicates.append(lambda message, regex=regex: regex.match(message.content) if message.content else False)
+            predicates.append(lambda message: bool(pattern.match(message.content)) if message.content else False)
 
-    if ctx.options.startswith:
-        predicates.append(
-            lambda message: message.content.startswith(ctx.options.startswith) if message.content else False
-        )
+    if startswith:
+        predicates.append(lambda message: message.content.startswith(startswith) if message.content else False)
 
-    if ctx.options.endswith:
-        predicates.append(lambda message: message.content.endswith(ctx.options.endswith) if message.content else False)
+    if endswith:
+        predicates.append(lambda message: message.content.endswith(endswith) if message.content else False)
 
-    if ctx.options.notext:
+    if notext:
         predicates.append(lambda message: not message.content)
 
-    if ctx.options.onlytext:
+    if onlytext:
         predicates.append(lambda message: message.content and not message.attachments and not message.embeds)
 
-    if ctx.options.attachments:
+    if attachments:
         predicates.append(lambda message: bool(message.attachments))
 
-    if ctx.options.invites:
+    if invites:
         predicates.append(
             lambda message: helpers.is_invite(message.content, fullmatch=False) if message.content else False
         )
 
-    if ctx.options.links:
+    if links:
         predicates.append(
             lambda message: helpers.is_url(message.content, fullmatch=False) if message.content else False
         )
 
-    if ctx.options.embeds:
+    if embeds:
         predicates.append(lambda message: bool(message.embeds))
 
-    if ctx.options.user:
-        predicates.append(lambda message: message.author.id == ctx.options.user.id)
+    if user:
+        predicates.append(lambda message: message.author.id == user.id)
 
-    await ctx.mod_respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
+    await ctx.defer()
 
     messages = (
-        await ctx.app.rest.fetch_messages(channel)
+        await ctx.client.rest.fetch_messages(channel)
         .take_until(lambda m: (helpers.utcnow() - datetime.timedelta(days=14)) > m.created_at)
         .filter(*predicates)
-        .limit(ctx.options.count)
+        .limit(count)
     )
 
     if messages:
         try:
-            await ctx.app.rest.delete_messages(channel, messages)
+            await ctx.client.rest.delete_messages(channel, messages)
             embed = hikari.Embed(
                 title="🗑️ Messages purged",
                 description=f"**{len(messages)}** messages have been deleted.",
@@ -275,24 +277,22 @@ async def purge(ctx: SnedSlashContext) -> None:
     await ctx.mod_respond(embed=embed)
 
 
-@mod.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_NICKNAMES, dm_enabled=False)
-@lightbulb.add_checks(
-    bot_has_permissions(hikari.Permissions.MANAGE_NICKNAMES),
-    is_invoker_above_target,
-    is_above_target,
+@plugin.include
+@arc.with_hook(is_invoker_above_target)
+@arc.with_hook(is_above_target)
+@arc.with_hook(arc.bot_has_permissions(hikari.Permissions.MANAGE_NICKNAMES))
+@arc.slash_command(
+    "deobfuscate", "Deobfuscate a user's nickname.", default_permissions=hikari.Permissions.MANAGE_NICKNAMES
 )
-@lightbulb.option(
-    "strict",
-    "Defaults to True. If enabled, uses stricter filtering and may filter out certain valid letters.",
-    type=bool,
-    required=False,
-)
-@lightbulb.option("user", "The user who's nickname should be deobfuscated.", type=hikari.Member, required=True)
-@lightbulb.command("deobfuscate", "Deobfuscate a user's nickname.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def deobfuscate_nick(ctx: SnedSlashContext, user: hikari.Member, strict: bool = True) -> None:
-    helpers.is_member(user)
+async def deobfuscate(
+    ctx: SnedContext,
+    user: arc.Option[hikari.User, arc.UserParams("The user who's nickname should be deobfuscated.")],
+    strict: arc.Option[
+        bool, arc.BoolParams("If enabled, uses stricter filtering and may filter out certain valid letters.")
+    ] = True,
+) -> None:
+    if not helpers.is_member(user):
+        return
 
     new_nick = helpers.normalize_string(user.display_name, strict=strict)
     if not new_nick:
@@ -319,7 +319,7 @@ async def deobfuscate_nick(ctx: SnedSlashContext, user: hikari.Member, strict: b
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
 @lightbulb.command("journal", "Access and manage the moderation journal.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
@@ -375,7 +375,7 @@ async def journal_add(ctx: SnedSlashContext, user: hikari.User, note: str) -> No
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
 @lightbulb.add_checks(is_invoker_above_target)
 @lightbulb.option("reason", "The reason for this warn", required=False)
@@ -399,7 +399,7 @@ async def warn_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: str | Non
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.VIEW_AUDIT_LOG, dm_enabled=False)
 @lightbulb.command("warns", "Manage warnings.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
@@ -469,7 +469,7 @@ async def warns_remove(ctx: SnedSlashContext, user: hikari.Member, reason: str |
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.MODERATE_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.MODERATE_MEMBERS),
@@ -527,7 +527,7 @@ async def timeout_cmd(ctx: SnedSlashContext, user: hikari.Member, duration: str,
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.MODERATE_MEMBERS, dm_enabled=False)
 @lightbulb.command("timeouts", "Manage timeouts.")
 @lightbulb.implements(lightbulb.SlashCommandGroup)
@@ -579,7 +579,7 @@ async def timeouts_remove_cmd(ctx: SnedSlashContext, user: hikari.Member, reason
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.BAN_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
@@ -658,7 +658,7 @@ async def ban_cmd(
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.KICK_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
@@ -708,7 +708,7 @@ async def softban_cmd(
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.BAN_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.BAN_MEMBERS),
@@ -734,7 +734,7 @@ async def unban_cmd(ctx: SnedSlashContext, user: hikari.User, reason: str | None
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.KICK_MEMBERS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.KICK_MEMBERS),
@@ -761,7 +761,7 @@ async def kick_cmd(ctx: SnedSlashContext, user: hikari.Member, reason: str | Non
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.MANAGE_CHANNELS, dm_enabled=False)
 @lightbulb.add_checks(
     bot_has_permissions(hikari.Permissions.MANAGE_CHANNELS, hikari.Permissions.MANAGE_MESSAGES),
@@ -782,7 +782,7 @@ async def slowmode_mcd(ctx: SnedSlashContext, interval: int) -> None:
     )
 
 
-@mod.command
+@plugin.command
 @lightbulb.app_command_permissions(hikari.Permissions.ADMINISTRATOR, dm_enabled=False)
 @lightbulb.set_max_concurrency(1, lightbulb.GuildBucket)
 @lightbulb.add_cooldown(180.0, 1, bucket=lightbulb.GuildBucket)
@@ -996,11 +996,11 @@ async def massban(ctx: SnedSlashContext) -> None:
 
 
 def load(bot: SnedBot) -> None:
-    bot.add_plugin(mod)
+    bot.add_plugin(plugin)
 
 
 def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(mod)
+    bot.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial
