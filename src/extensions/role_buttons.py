@@ -312,7 +312,7 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
 @lightbulb.option(
     "label", "Change the label that should appear on the button. Type 'removelabel' to remove it.", required=False
 )
-@lightbulb.option("emoji", "Change the emoji that should appear in the button.", type=hikari.Emoji, required=False)
+@lightbulb.option("emoji", "Change the emoji that should appear in the button.", type=str, required=False)
 @lightbulb.option("role", "Change the role handed out by this button.", type=hikari.Role, required=False)
 @lightbulb.option(
     "button_id", "The ID of the rolebutton to edit. You can get this via /rolebutton list", type=int, min_value=0
