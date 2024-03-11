@@ -49,7 +49,7 @@ Brotli = "~=1.0"
 ciso8601 = "~=2.3"
 kosu = {git = "https://github.com/hypergonial/kosu.git"}
 hikari-lightbulb = "~=2.3.5"
-hikari-miru = "~=3.3.1"
+hikari-miru = "~=4.1.0"
 
 [tool.poetry.dev-dependencies]
 nox = "^2023.4.22"
