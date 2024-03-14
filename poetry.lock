@@ -124,6 +124,17 @@ files = [
 frozenlist = ">=1.1.0"
 
 [[package]]
+name = "alluka"
+version = "0.1.4"
+description = "A type based dependency injection framework for Python 3.9+."
+optional = false
+python-versions = ">=3.9.0,<3.13"
+files = [
+    {file = "alluka-0.1.4-py3-none-any.whl", hash = "sha256:702fbc13ade0c85ac9a6e0fac9c596ab2906ee3c09cf4d1750a4d52c23ffad9d"},
+    {file = "alluka-0.1.4.tar.gz", hash = "sha256:3855a459498bfe4292862057d0df7f130323ad98451b2d9345abd498f24e8d8c"},
+]
+
+[[package]]
 name = "argcomplete"
 version = "3.2.1"
 description = "Bash tab completion for argparse"
@@ -630,21 +641,24 @@ crontrigger = ["croniter (>=2.0.1,<2.1.0)", "types-croniter (>=2.0.0,<2.1.0)"]
 
 [[package]]
 name = "hikari-miru"
-version = "3.3.1"
+version = "4.1.1"
 description = "An alternative component handler for hikari, inspired by discord.py's views."
 optional = false
-python-versions = ">=3.8.0,<3.13"
+python-versions = ">=3.10.0,<3.13"
 files = [
-    {file = "hikari-miru-3.3.1.tar.gz", hash = "sha256:44633d4f3b6cb07045ade72b9c235c3690e92309bd3c19e5ca67c8a06bf5859e"},
-    {file = "hikari_miru-3.3.1-py3-none-any.whl", hash = "sha256:f42b1abd3649fc911af18b89072ad582a3a65cddc73658c76a964058e7ad6640"},
+    {file = "hikari-miru-4.1.1.tar.gz", hash = "sha256:cd88b24beaac7392e0499aecca28000a7f969c0727b65c972c31c9fc31b5bacf"},
+    {file = "hikari_miru-4.1.1-py3-none-any.whl", hash = "sha256:85366ec18ce08868f9f805e255be6c1803bb835e32ea5909e795fee8dff502e4"},
 ]
 
 [package.dependencies]
+alluka = ">=0.1.4"
+attrs = ">=23.1"
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
 hikari = ">=2.0.0.dev122"
 
 [package.extras]
-docs = ["furo (>=2022.1.2,<2022.2.0)", "sphinx (==4.4.0)"]
+dev = ["hikari-arc (==1.2.1)", "hikari-tanjun (==2.17.2)", "nox (==2024.3.2)", "pyright (==1.1.353)", "pytest (==8.1.1)", "pytest-asyncio (==0.23.5.post1)", "ruff (==0.3.2)", "slotscheck (==0.17.3)", "typing-extensions (==4.10.0)"]
+docs = ["black (>=24.2.0,<24.3.0)", "griffe-inherited-docstrings (>=1.0.0,<1.1.0)", "mkdocs (>=1.5.3,<1.6.0)", "mkdocs-glightbox (>=0.3.7,<0.4.0)", "mkdocs-material[imaging] (>=9.5.13,<9.6.0)", "mkdocstrings-python (>=1.8.0,<1.9.0)"]
 
 [[package]]
 name = "idna"
@@ -1579,4 +1593,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "ce1fdd82a4520fea9dd8187c53dd01f9622a737d5367a6ef897b1a44a6c38b67"
+content-hash = "a10ed04efef86859679c24d5817dae82cde73d71086ef9868408368f86700728"
