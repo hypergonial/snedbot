@@ -107,9 +107,9 @@ class DatabaseCache:
             raise ValueError("Invalid table specified.")
 
         # Construct sql args, remove invalid python chars
-        sql_args = [f"{self._clean_kwarg(kwarg)} = ${i+1}" for i, kwarg in enumerate(kwargs)]
+        sql_args = [f"{self._clean_kwarg(kwarg)} = ${i + 1}" for i, kwarg in enumerate(kwargs)]
         records = await self._client.db.fetch(
-            f"""SELECT * FROM {table} WHERE {' AND '.join(sql_args)}""", *kwargs.values()
+            f"""SELECT * FROM {table} WHERE {" AND ".join(sql_args)}""", *kwargs.values()
         )
 
         for i, row in enumerate(self._cache[table]):

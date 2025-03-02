@@ -160,7 +160,7 @@ async def about(ctx: SnedContext) -> None:
             title=f"ℹ️ About {me.username}",
             description=f"""**- Made by:** `hypergonial`
 **- Servers:** `{len(ctx.client.cache.get_guilds_view())}`
-**- Online since:** {helpers.format_dt(ctx.client.start_time, style='R')}
+**- Online since:** {helpers.format_dt(ctx.client.start_time, style="R")}
 **- Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
 **- Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
 **- Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/tos.md)
@@ -261,7 +261,7 @@ async def serverinfo(ctx: SnedContext) -> None:
 **- Roles:** `{len(guild.get_roles())}`
 **- Channels:** `{len(guild.get_channels())}`
 **- Nitro Boost level:** `{guild.premium_tier}`
-**- Nitro Boost count:** `{guild.premium_subscription_count or '*Not found*'}`
+**- Nitro Boost count:** `{guild.premium_subscription_count or "*Not found*"}`
 **- Preferred locale:** `{guild.preferred_locale}`
 **- Community:** `{"Yes" if "COMMUNITY" in guild.features else "No"}`
 **- Partner:** `{"Yes" if "PARTNERED" in guild.features else "No"}`
