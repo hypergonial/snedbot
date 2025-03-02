@@ -3,14 +3,7 @@ import typing as t
 import hikari
 import miru
 
-from src.models.mod_actions import ModerationFlags
-
 # Static values for the settings extension
-
-mod_flags_strings = {
-    ModerationFlags.DM_USERS_ON_PUNISH: "DM users after punishment",
-    ModerationFlags.IS_EPHEMERAL: "Send mod commands ephemerally",
-}
 
 default_automod_policies: dict[str, t.Any] = {
     "invites": {

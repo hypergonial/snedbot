@@ -15,7 +15,6 @@ import src.models as models
 from src.etc import const
 from src.etc.settings_static import (
     log_event_strings,
-    mod_flags_strings,
     policy_fields,
     policy_states,
     policy_strings,
@@ -45,6 +44,11 @@ if t.TYPE_CHECKING:
     from miru.abc import ViewItem
 
     from src.models.client import SnedContext
+
+mod_flags_strings = {
+    ModerationFlags.DM_USERS_ON_PUNISH: "DM users after punishment",
+    ModerationFlags.IS_EPHEMERAL: "Send mod commands ephemerally",
+}
 
 plugin = SnedPlugin("Settings")
 
@@ -671,8 +675,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
         # Conditions for certain attributes to appear
         predicates: dict[str, t.Callable[[str], bool]] = {
             "temp_dur": lambda s: s in ["timeout", "tempban"]
-            or s == "escalate"
-            and policies["escalate"]["state"] in ["timeout", "tempban"],
+            or (s == "escalate" and policies["escalate"]["state"] in ["timeout", "tempban"]),
         }
 
         if policy_data.get("excluded_channels") is not None and policy_data.get("excluded_roles") is not None:

@@ -187,7 +187,7 @@ async def get_diff(guild_id: int, old_object: T, object: T, attrs: dict[str, str
         elif (
             isinstance(old, list)
             and isinstance(new, list)
-            and (old and hasattr(old[0], "name") or new and hasattr(new[0], "name"))  # type: ignore
+            and (old and hasattr(old[0], "name") or new and hasattr(new[0], "name"))  # type: ignore  # noqa: RUF021
         ):  # Handling flag lists
             old_names = [str(x) for x in old]  # type: ignore
             new_names = [str(x) for x in new]  # type: ignore
@@ -306,8 +306,8 @@ async def bulk_message_delete(event: hikari.GuildBulkMessageDeleteEvent) -> None
 
     embed = hikari.Embed(
         title="🗑️ Bulk message deletion",
-        description=f"""**Channel:** {channel.mention if channel else 'Unknown'}
-**Moderator:** `{display_user(moderator) if moderator else 'Discord'}`
+        description=f"""**Channel:** {channel.mention if channel else "Unknown"}
+**Moderator:** `{display_user(moderator) if moderator else "Discord"}`
 ```{len(event.message_ids)} messages have been purged.```""",
         color=const.ERROR_COLOR,
     )
@@ -697,7 +697,7 @@ async def member_update(event: hikari.MemberUpdateEvent) -> None:
             title="🔇 User timed out",
             description=f"""**User:** `{display_user(member)}`
 **Moderator:** `{display_user(moderator)}`
-**Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style='R')})
+**Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style="R")})
 **Reason:** ```{reason}```""",
             color=const.ERROR_COLOR,
         )

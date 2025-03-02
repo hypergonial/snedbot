@@ -11,9 +11,9 @@ import typing as t
 import arc
 import hikari
 import miru
-from config import Config
 from miru.ext import nav
 
+from config import Config
 from src.etc import const
 from src.models import AuthorOnlyNavigator
 from src.models.client import SnedClient, SnedContext, SnedPlugin

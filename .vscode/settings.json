@@ -5,4 +5,5 @@
         "editor.defaultFormatter": "charliermarsh.ruff"
     },
     "autoDocstring.docstringFormat": "numpy",
+    "makefile.configureOnOpen": false,
 }

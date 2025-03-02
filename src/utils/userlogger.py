@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import datetime
 import enum
@@ -5,11 +7,13 @@ import json
 import logging
 import sys
 import traceback
+import typing as t
 
 import hikari
 import toolbox
 
-from src.models.client import SnedClient
+if t.TYPE_CHECKING:
+    from src.models.client import SnedClient
 
 logger = logging.getLogger(__name__)
 
