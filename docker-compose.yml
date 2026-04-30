@@ -4,24 +4,24 @@ services:
     image: postgres:${POSTGRES_VERSION:-14}
     restart: always
     expose:
-      - $POSTGRES_PORT:-5432
+      - ${POSTGRES_PORT:-5432}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-sned}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err}
     volumes:
-     - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - private
 
   sned:
     build:
-        context: .
-        dockerfile: Dockerfile
-        args:
-          postgres_version: ${POSTGRES_VERSION:-14}
-    command: ["python3.11", "-O", "-m", "src"]
+      context: .
+      dockerfile: Dockerfile
+      args:
+        postgres_version: ${POSTGRES_VERSION:-14}
+    command: [ "python3.11", "-O", "-m", "src" ]
     depends_on:
       - sned-db
     restart: always
