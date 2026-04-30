@@ -134,8 +134,8 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Nickname:** `{member.nickname or "-"}`
 **• User ID:** `{member.id}`
 **• Bot:** `{member.is_bot}`
-**• Account creation date:** {format_dt(member.created_at)} ({format_dt(member.created_at, style='R')})
-**• Join date:** {format_dt(member.joined_at)} ({format_dt(member.joined_at, style='R')})
+**• Account creation date:** {format_dt(member.created_at)} ({format_dt(member.created_at, style="R")})
+**• Join date:** {format_dt(member.joined_at)} ({format_dt(member.joined_at, style="R")})
 **• Badges:** {"   ".join(get_badges(member)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** {f"Until: {format_dt(comms_disabled_until)}" if comms_disabled_until is not None else "`-`"}
@@ -155,7 +155,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• Nickname:** `-`
 **• User ID:** `{user.id}`
 **• Bot:** `{user.is_bot}`
-**• Account creation date:** {format_dt(user.created_at)} ({format_dt(user.created_at, style='R')})
+**• Account creation date:** {format_dt(user.created_at)} ({format_dt(user.created_at, style="R")})
 **• Join date:** `-`
 **• Badges:** {"   ".join(get_badges(user)) or "`-`"}
 **• Warns:** `{db_user.warns}`

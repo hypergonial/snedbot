@@ -600,7 +600,7 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
                         message,
                         policies,
                         AutomodActionType.PERSPECTIVE,
-                        reason=f"toxic content detected by Perspective ({score.replace('_', ' ').lower()}: {round(value*100)}%)",
+                        reason=f"toxic content detected by Perspective ({score.replace('_', ' ').lower()}: {round(value * 100)}%)",
                         skip_check=True,
                     )
                     return False

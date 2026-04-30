@@ -366,8 +366,10 @@ async def find_auditlog_data(
     return userlog.app.audit_log_cache.get_first_by(
         guild,
         event_type,
-        lambda e: (e.target_id == user_id if user_id else True)
-        and e.id.created_at > helpers.utcnow() - datetime.timedelta(seconds=15),
+        lambda e: (
+            (e.target_id == user_id if user_id else True)
+            and e.id.created_at > helpers.utcnow() - datetime.timedelta(seconds=15)
+        ),
     )
 
 
@@ -550,8 +552,8 @@ async def bulk_message_delete(plugin: SnedPlugin, event: hikari.GuildBulkMessage
 
     embed = hikari.Embed(
         title="🗑️ Bulk message deletion",
-        description=f"""**Channel:** {channel.mention if channel else 'Unknown'}
-**Moderator:** `{display_user(moderator) if moderator else 'Discord'}`
+        description=f"""**Channel:** {channel.mention if channel else "Unknown"}
+**Moderator:** `{display_user(moderator) if moderator else "Discord"}`
 ```{len(event.message_ids)} messages have been purged.```""",
         color=const.ERROR_COLOR,
     )
@@ -941,7 +943,7 @@ async def member_update(plugin: SnedPlugin, event: hikari.MemberUpdateEvent) -> 
             title="🔇 User timed out",
             description=f"""**User:** `{display_user(member)}`
 **Moderator:** `{display_user(moderator)}`
-**Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style='R')})
+**Until:** {helpers.format_dt(comms_disabled_until)} ({helpers.format_dt(comms_disabled_until, style="R")})
 **Reason:** ```{reason}```""",
             color=const.ERROR_COLOR,
         )

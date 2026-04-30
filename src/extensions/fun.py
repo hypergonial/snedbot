@@ -674,7 +674,7 @@ async def typeracer(ctx: SnedSlashContext, difficulty: str | None = None, length
     desc = "**Participants:**\n"
     winner_keys = list(winners.keys())
     for winner in winners:
-        desc = f"{desc}**#{winner_keys.index(winner)+1}** **{winner}** `{round(winners[winner], 1)}` seconds - `{round((len(text) / 5) / (winners[winner] / 60))}`WPM\n"
+        desc = f"{desc}**#{winner_keys.index(winner) + 1}** **{winner}** `{round(winners[winner], 1)}` seconds - `{round((len(text) / 5) / (winners[winner] / 60))}`WPM\n"
 
     await ctx.respond(
         embed=hikari.Embed(
@@ -829,7 +829,7 @@ def roll_dice(amount: int, sides: int, show_sum: bool) -> hikari.Embed:
         The diceroll results as an embed.
     """
     throws = [random.randint(1, sides) for _ in range(amount)]
-    description = f'**Results (`{amount}d{sides}`):** {" ".join([f"`[{throw}]`" for throw in throws])}'
+    description = f"**Results (`{amount}d{sides}`):** {' '.join([f'`[{throw}]`' for throw in throws])}"
 
     if show_sum:
         description += f"\n**Sum:** `{sum(throws)}`"

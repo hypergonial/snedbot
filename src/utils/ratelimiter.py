@@ -18,16 +18,13 @@ class ContextLike(t.Protocol):
     """An object that has common attributes of a context."""
 
     @property
-    def author(self) -> hikari.UndefinedOr[hikari.User]:
-        ...
+    def author(self) -> hikari.UndefinedOr[hikari.User]: ...
 
     @property
-    def guild_id(self) -> hikari.Snowflake | None:
-        ...
+    def guild_id(self) -> hikari.Snowflake | None: ...
 
     @property
-    def channel_id(self) -> hikari.Snowflake:
-        ...
+    def channel_id(self) -> hikari.Snowflake: ...
 
 
 @attr.define()

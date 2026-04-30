@@ -97,12 +97,12 @@ class Solver:
         stack = []
         for i, c in enumerate(self._expr):
             if c not in VALID_CHARS:
-                raise InvalidExpressionError(f"Illegal character at position {i+1}: {c}")
+                raise InvalidExpressionError(f"Illegal character at position {i + 1}: {c}")
             if c == "(":
                 stack.append(c)
             elif c == ")":
                 if not stack:
-                    raise InvalidExpressionError(f"Unmatched closing parenthesis at position {i+1}")
+                    raise InvalidExpressionError(f"Unmatched closing parenthesis at position {i + 1}")
                 stack.pop()
 
         if stack:

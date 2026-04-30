@@ -124,8 +124,7 @@ class SnedContext(lightbulb.Context):
         role_mentions: hikari.UndefinedOr[
             t.Union[hikari.SnowflakeishSequence[hikari.PartialRole], bool]
         ] = hikari.UNDEFINED,
-    ) -> lightbulb.ResponseProxy:
-        ...
+    ) -> lightbulb.ResponseProxy: ...
 
     @t.overload
     async def mod_respond(
@@ -151,8 +150,7 @@ class SnedContext(lightbulb.Context):
         role_mentions: hikari.UndefinedOr[
             t.Union[hikari.SnowflakeishSequence[hikari.PartialRole], bool]
         ] = hikari.UNDEFINED,
-    ) -> lightbulb.ResponseProxy:
-        ...
+    ) -> lightbulb.ResponseProxy: ...
 
     async def mod_respond(self, *args, **kwargs) -> lightbulb.ResponseProxy:
         """Respond to the command while taking into consideration the current moderation command settings.
