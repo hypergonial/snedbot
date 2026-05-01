@@ -4,7 +4,8 @@
 
 ### [Add it to your server!](https://discord.com/oauth2/authorize?client_id=817730141722902548&permissions=1494984682710&scope=applications.commands%20bot)
 
-### Main features:
+### Main features
+
 - Powerful moderation commands
 - Intuitive settings menu
 - AutoMod
@@ -18,21 +19,21 @@
 - Fun commands such as tic-tac-toe and typeracer
 - Much much more!
 
-
-### Configuration:
+### Configuration
 
 To get started with setting up the bot on a server you have `Manage Server` permissions on, simply type `/settings`!
 
-### Development:
+### Selfhosting
 
-If you'd like to contribute to Sned, or host it locally, you need the following utilities:
+If you'd like to host it locally, install [`docker`](https://www.docker.com/get-started/) and [`docker compose`](https://docs.docker.com/compose/install/). Then, create and fill out `.env`, you can see an example in `.env_example`. Finally, run `docker compose up --build -d` to start the bot in the background along with it's database.
 
-- [`make`](https://www.gnu.org/software/make/)
-- [`docker`](https://www.docker.com/get-started/)
-- [`python`](https://www.python.org/downloads/) - 3.10 or higher
-- [`poetry`](https://python-poetry.org/docs/) - for managing python dependencies
+### Development
 
-To deploy the bot, create and fill out `.env`, you can see an example in `.env_example`, along with `config.py`, for which you can find an example in `config_example.py`.
-Then simply run `make deploy` to start the bot in the background along with it's database.
+You will need the following utilities installed:
+
+- [Python 3.14](https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+Install the project with all dependencies by running `uv sync --dev` in the project folder. Then, activate the venv via `source .venv/bin/activate`.
 
 If you'd like to contribute, please make sure to run [`nox`](https://nox.thea.codes/en/stable/index.html) in the project folder before submitting your changes. This should format all your code to match the project.
