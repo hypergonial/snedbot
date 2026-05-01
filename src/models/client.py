@@ -67,7 +67,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         self._session: aiohttp.ClientSession | None = None
         self._db_cache = cache.DatabaseCache(self)
         self._mod = ModActions(self)
-        self._miru = miru.Client.from_arc(self)
+        self._miru = miru.Client.from_arc(self, ignore_unknown_interactions=True)
         self.add_injection_hook(self._cmd_injection_hook)
 
         # Some global variables
