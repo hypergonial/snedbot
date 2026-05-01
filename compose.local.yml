@@ -1,7 +1,7 @@
 services:
 
   sned-db:
-    image: postgres:14
+    image: postgres:${POSTGRES_VERSION:-14}
     restart: always
     expose:
       - ${POSTGRES_PORT:-5432}
@@ -16,7 +16,11 @@ services:
       - private
 
   sned:
-    image: ghcr.io/hypergonial/snedbot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        postgres_version: ${POSTGRES_VERSION:-14}
     environment:
       TOKEN: ${TOKEN:?err}
       DEV_MODE: ${DEV_MODE:-false}
