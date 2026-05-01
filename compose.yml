@@ -4,31 +4,31 @@ services:
     image: postgres:${POSTGRES_VERSION:-14}
     restart: always
     expose:
-      - $POSTGRES_PORT:-5432
+      - ${POSTGRES_PORT:-5432}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-sned}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err}
     volumes:
-     - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - private
 
   sned:
     build:
-        context: .
-        dockerfile: Dockerfile
-        args:
-          postgres_version: ${POSTGRES_VERSION:-14}
+      context: .
+      dockerfile: Dockerfile
+      args:
+        postgres_version: ${POSTGRES_VERSION:-14}
     environment:
-        TOKEN: ${TOKEN:?err}
-        POSTGRES_USER: ${POSTGRES_USER:-postgres}
-        POSTGRES_DB: ${POSTGRES_DB:-sned}
-        POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err}
-        PERSPECTIVE_API_KEY: ${PERSPECTIVE_API_KEY:?err}
-        DICTIONARYAPI_API_KEY: ${DICTIONARYAPI_API_KEY:?err}
+      TOKEN: ${TOKEN:?err}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-sned}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?err}
+      PERSPECTIVE_API_KEY: ${PERSPECTIVE_API_KEY:?err}
+      DICTIONARYAPI_API_KEY: ${DICTIONARYAPI_API_KEY:?err}
     depends_on:
       - sned-db
     restart: always

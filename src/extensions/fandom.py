@@ -64,7 +64,8 @@ async def fandom_cmd(
 @arc.slash_command(
     "annowiki",
     "Search an Anno Wiki for articles!",
-    guilds=Config().DEBUG_GUILDS or (581296099826860033, 372128553031958529),
+    pass_options=True,
+    guilds=Config().DEBUG_GUILDS or (372128553031958529),
 )
 async def annowiki_cmd(
     ctx: SnedContext,
