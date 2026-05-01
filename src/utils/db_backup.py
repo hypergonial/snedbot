@@ -27,9 +27,8 @@ async def backup_database() -> hikari.File:
     filename: str = f"{now.year}-{now.month}-{now.day}_{now.hour}_{now.minute}_{now.second}.pgdmp"
     backup_path: str = os.path.join(filepath, "db", "backup", filename)
 
-    os.environ["PGPASSWORD"] = password
-
     try:
+        os.environ["PGPASSWORD"] = password
         with open(backup_path, "wb") as out_file:
             ret = subprocess.run(
                 [
