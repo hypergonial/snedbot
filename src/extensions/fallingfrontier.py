@@ -5,6 +5,7 @@ import miru
 from src.config import Config
 from src.etc import const
 from src.models.client import SnedClient, SnedContext, SnedPlugin
+from src.utils import helpers
 
 TESTER_STAGING_ROLE = 971843694896513074
 TESTER_STAGING_CHANNEL = 971844463884382259
@@ -102,21 +103,20 @@ async def send_test_notice(
 ) -> None:
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    converter = lightbulb.converters.UserConverter(ctx)
     view = (
         miru.View()
         .add_item(miru.Button(label="Accept", style=hikari.ButtonStyle.SUCCESS, emoji="✔️", custom_id="FFTEST:ACCEPT"))
         .add_item(miru.Button(label="Decline", style=hikari.ButtonStyle.DANGER, emoji="✖️", custom_id="FFTEST:DECLINE"))
     )
-    failed = []
+    failed: list[str] = []
     user_str_list = (await recipients.read()).decode("utf-8").splitlines()
 
     for user_str in user_str_list[:25]:
-        try:
-            user = await converter.convert(user_str)
-            await user.send(TEST_NOTICE, components=view)
-        except (hikari.ForbiddenError, hikari.NotFoundError, ValueError, TypeError):
-            failed.append(user_str)
+        if user := helpers.parse_user(ctx, user_str.strip()):
+            try:
+                await user.send(TEST_NOTICE, components=view)
+            except hikari.ForbiddenError, hikari.NotFoundError, ValueError, TypeError:
+                failed.append(user_str)
 
     await ctx.respond(
         f"Sent testing notice to **{len(user_str_list) - len(failed)}/{len(user_str_list)}** users.\n\n**Failed to send to:** ```{' '.join(failed) if failed else 'All users were sent the notice.'}```"
@@ -141,19 +141,23 @@ async def send_test_key(
 ) -> None:
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
 
-    converter = lightbulb.converters.UserConverter(ctx)
-    failed = []
+    failed: list[str] = []
     recipients_list = (await recipients.read()).decode("utf-8").splitlines()
 
     for line in recipients_list[:25]:
-        try:
-            user_str, key = line.split(":", maxsplit=1)
-            user = await converter.convert(user_str.strip())
-            await user.send(
-                f"Hello!\nYour key for the Falling Frontier Testing Program is: ```{key.strip()}```\nYou may activate it by opening **Steam**, navigating to `Games > Activate a Product on Steam...`, and entering the key."
-            )
-        except (hikari.ForbiddenError, hikari.NotFoundError, ValueError, TypeError):
-            failed.append(line.split(":", maxsplit=1)[0])
+        if ":" not in line:
+            failed.append(line)
+            continue
+
+        user_str, key = line.split(":", maxsplit=1)
+
+        if user := helpers.parse_user(ctx, user_str.strip()):
+            try:
+                await user.send(
+                    f"Hello!\nYour key for the Falling Frontier Testing Program is: ```{key.strip()}```\nYou may activate it by opening **Steam**, navigating to `Games > Activate a Product on Steam...`, and entering the key."
+                )
+            except hikari.ForbiddenError, hikari.NotFoundError, ValueError, TypeError:
+                failed.append(line.split(":", maxsplit=1)[0])
 
     await ctx.respond(
         f"Sent testing keys to **{len(recipients_list) - len(failed)}/{len(recipients_list)}** users.\n\n**Failed to send to:** ```{' '.join(failed) if failed else 'All users were sent their key.'}```"

@@ -27,6 +27,7 @@ LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)"
 )
 INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
+USER_MENTION_REGEX = re.compile(r"<@!?(?P<user_id>[0-9]+)>")
 
 BADGE_EMOJI_MAPPING = {
     hikari.UserFlag.BUG_HUNTER_LEVEL_1: const.EMOJI_BUGHUNTER,
@@ -350,6 +351,28 @@ async def parse_message_link(ctx: SnedContext, message_link: str) -> hikari.Mess
         return None
 
     return message
+
+
+def parse_user(ctx: SnedContext, userish: str | hikari.Snowflake | hikari.PartialUser) -> hikari.User | None:
+    if isinstance(userish, (hikari.Snowflake, hikari.PartialUser)):
+        user = ctx.client.cache.get_user(userish)
+        return user
+
+    if userish.isdigit():
+        user = ctx.client.cache.get_user(int(userish))
+        return user
+
+    match = USER_MENTION_REGEX.match(userish)
+    if match:
+        user = ctx.client.cache.get_user(hikari.Snowflake(match.group("user_id")))
+        return user
+
+    if ctx.guild_id is None:
+        return
+
+    for user in ctx.client.cache.get_members_view_for_guild(ctx.guild_id).values():
+        if user.username == userish:
+            return user
 
 
 async def maybe_delete(message: hikari.PartialMessage) -> None:

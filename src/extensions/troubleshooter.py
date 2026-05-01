@@ -15,7 +15,7 @@ plugin = SnedPlugin("Troubleshooter")
 # Find missing channel perms issues
 # ...
 
-REQUIRED_PERMISSIONS = (
+REQUIRED_PERMISSIONS: hikari.Permissions = (
     hikari.Permissions.VIEW_AUDIT_LOG
     | hikari.Permissions.MANAGE_ROLES
     | hikari.Permissions.KICK_MEMBERS

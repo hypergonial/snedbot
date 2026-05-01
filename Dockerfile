@@ -35,4 +35,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
 
-CMD ["python3.13", "-O", "-m", "src"]
+CMD ["python3.14", "-O", "-m", "src"]
