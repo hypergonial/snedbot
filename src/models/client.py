@@ -53,7 +53,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         if not token:
             raise RuntimeError("TOKEN not found in environment.")
 
-        bot = hikari.GatewayBot(token=token, cache_settings=cache_settings, intents=intents, banner=None)
+        bot = hikari.GatewayBot(token=token, cache_settings=cache_settings, intents=intents, logs="INFO", banner=None)
 
         super().__init__(
             bot,
@@ -182,8 +182,13 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
 
     async def on_starting(self, _: hikari.StartingEvent) -> None:
         # Connect to the database, update schema, apply pending migrations
-        await self.db.connect()
-        await self.db.update_schema()
+        try:
+            await self.db.connect()
+            await self.db.update_schema()
+        except Exception as e:
+            logger.fatal(f"Failed to connect to the database or update schema: {e}")
+            exit(1)
+
         # Start scheduler, DB cache
         await self.db_cache.start()
         self.scheduler.start()

@@ -11,6 +11,9 @@ RUN apt-get install -y postgresql-client-${postgres_version}
 
 WORKDIR /app
 
+# Fix logs not showing up in Docker
+ENV PYTHONUNBUFFERED=1
+
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
 

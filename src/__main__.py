@@ -1,19 +1,24 @@
 #!/usr/bin/python3
 
 import asyncio
-import logging
 import os
 import pathlib
 import platform
 import re
+import sys
 
+from src.config import Config
 from src.models.client import SnedClient
 
 DOTENV_REGEX = re.compile(r"^(?P<identifier>[A-Za-z_]+[A-Za-z0-9_]*)=(?P<value>[^#]+)(#.*)?$")
 BASE_DIR = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
 
+if __name__ != "__main__":
+    print("This module is not meant to be imported! Exiting...", file=sys.stderr)
+    exit(1)
+
 if int(platform.python_version_tuple()[1]) < 14:
-    logging.fatal("Python version must be 3.14 or greater! Exiting...")
+    print("Python version must be 3.14 or greater! Exiting...", file=sys.stderr)
     exit(1)
 
 try:
@@ -25,17 +30,9 @@ try:
             if match.group("identifier") in os.environ:
                 continue
             os.environ[match.group("identifier")] = match.group("value").strip()
-
 except FileNotFoundError:
-    logging.info(".env file not found, using secrets from the environment instead.")
+    print("'.env' file not found, using values from the environment only.", file=sys.stderr)
 
-try:
-    from .config import Config
-except ImportError:
-    logging.fatal(
-        "Failed loading configuration. Please make sure 'config.py' exists in the root directory of the project and contains valid data."
-    )
-    exit(1)
 
 if os.name != "nt":  # Lol imagine using Windows
     try:
@@ -43,14 +40,15 @@ if os.name != "nt":  # Lol imagine using Windows
 
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())  # type: ignore
     except ImportError:
-        logging.warning(
-            "Failed to import uvloop! Make sure to install it via 'pip install uvloop' for enhanced performance!"
+        print(
+            "Failed to import uvloop! Make sure to install it via 'pip install uvloop' for enhanced performance!",
+            file=sys.stderr,
         )
 
-client = SnedClient(Config())
 
-if __name__ == "__main__":
-    client.app.run()
+client = SnedClient(Config())
+client.app.run()
+
 
 # Copyright (C) 2022-present hypergonial
 

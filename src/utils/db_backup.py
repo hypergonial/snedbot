@@ -6,10 +6,12 @@ import subprocess
 
 import hikari
 
+logger = logging.getLogger("db_backup")
+
 
 async def backup_database() -> hikari.File:
     """Attempts to back up the database via pg_dump into the db_backup directory."""
-    logging.info("Performing daily database backup...")
+    logger.info("Performing daily database backup...")
 
     username: str = os.getenv("POSTGRES_USER") or "postgres"
     password: str = os.getenv("POSTGRES_PASSWORD") or ""
@@ -57,7 +59,7 @@ async def backup_database() -> hikari.File:
     if return_code != 0:
         raise RuntimeError("pg_dump failed to create a database backup file!")
 
-    logging.info("Database backup complete!")
+    logger.info("Database backup complete!")
     return hikari.File(backup_path)
 
 
