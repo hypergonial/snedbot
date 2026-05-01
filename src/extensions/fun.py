@@ -627,7 +627,7 @@ async def typeracer(
             asyncio.create_task(message.add_reaction("✅"))  # noqa: RUF006
             end_trigger.set()
 
-        elif lev.distance(text.lower(), message.content.lower()) < 5:  # type: ignore
+        elif lev.distance(text.lower(), message.content.lower()) < 5:
             asyncio.create_task(message.add_reaction("❌"))  # noqa: RUF006
 
         return False

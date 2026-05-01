@@ -117,7 +117,7 @@ class Database:
         self._is_closed = True
 
     @asynccontextmanager
-    async def acquire(self) -> t.AsyncIterator[asyncpg.Connection[asyncpg.Record]]:
+    async def acquire(self) -> t.AsyncGenerator[asyncpg.Connection[asyncpg.Record]]:
         """Acquire a database connection from the connection pool."""
         con = await self.pool.acquire()
         try:

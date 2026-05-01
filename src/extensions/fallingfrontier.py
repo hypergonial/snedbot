@@ -35,7 +35,7 @@ plugin = SnedPlugin("Falling Frontier", default_enabled_guilds=Config().DEBUG_GU
 
 @plugin.listen()
 async def hydrate_autoresponse(event: hikari.GuildMessageCreateEvent) -> None:
-    if event.guild_id not in (FF_GUILD, 813803567445049414):  # pyright: ignore[reportUnnecessaryContains]
+    if event.guild_id not in (FF_GUILD, 813803567445049414):
         return
 
     if event.content and event.content == "Everyone this is your daily reminder to stay hydrated!":

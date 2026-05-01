@@ -177,7 +177,7 @@ class PerspectiveBoundsModal(miru.Modal):
         self.view._last_context = context  # type: ignore
         self.view.value = SettingValue(  # type: ignore
             raw_perspective_bounds={item.custom_id: value for item, value in context.values.items()}
-        )  # type: ignore
+        )
         self.view._input_event.set()
         self.view._input_event.clear()
 

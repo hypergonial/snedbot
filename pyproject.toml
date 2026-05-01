@@ -28,7 +28,7 @@ dependencies = [
 kosu = { git = "https://github.com/hypergonial/kosu.git" }
 
 [dependency-groups]
-dev = ["nox>=2026.2.9", "ruff>=0.15.0"]
+dev = ["nox>=2026.2.9", "ruff>=0.15.0", "pyright==1.1.409"]
 
 [tool.ruff]
 exclude = ["examples", "docs", "build"]
@@ -63,4 +63,7 @@ ignore_errors = true # I use pyright only because mypy dumb
 [tool.pyright]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
-reportPrivateUsage = "none"
+reportPrivateUsage = false
+reportMissingTypeStubs = true
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUninitializedInstanceVariable = "error"
