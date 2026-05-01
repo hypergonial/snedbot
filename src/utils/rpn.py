@@ -154,9 +154,7 @@ class Solver:
             return False
         op = OPS[c]
         top_op = OPS[top]
-        if c in ["^", "~"] and op.prec >= top_op.prec or op.prec > top_op.prec:
-            return False
-        return True
+        return not ((c in ["^", "~"] and op.prec >= top_op.prec) or op.prec > top_op.prec)
 
     def _to_polish_notation(self) -> None:
         """Convert an expression to polish notation.

@@ -335,7 +335,7 @@ async def star_show(
 
     try:
         orig_id = abs(int(id))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         embed = hikari.Embed(
             title="❌ Invalid value",
             description="Expected an integer value for parameter `id`.",

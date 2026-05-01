@@ -8,7 +8,6 @@ import hikari
 import miru
 
 from src.etc import const
-from src.models import Timer, events
 from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.models.timer import TimerEvent
 from src.models.views import AuthorOnlyNavigator
@@ -16,6 +15,8 @@ from src.utils import helpers
 
 if t.TYPE_CHECKING:
     from miru.ext import nav
+
+    from src.models import Timer, events
 
 plugin = SnedPlugin(name="Reminders")
 

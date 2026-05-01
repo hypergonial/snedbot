@@ -1,7 +1,10 @@
 import enum
+from typing import TYPE_CHECKING
 
 import attr
-import hikari
+
+if TYPE_CHECKING:
+    import hikari
 
 
 class TimerEvent(enum.Enum):

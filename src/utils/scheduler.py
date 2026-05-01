@@ -254,7 +254,7 @@ class Scheduler:
 
         except asyncio.CancelledError:
             raise
-        except (OSError, hikari.GatewayServerClosedConnectionError):
+        except OSError, hikari.GatewayServerClosedConnectionError:
             if self._current_task:
                 self._current_task.cancel()
             self._current_task = asyncio.create_task(self._dispatch_timers())

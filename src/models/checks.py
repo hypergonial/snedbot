@@ -7,7 +7,7 @@ from src.models.errors import BotRoleHierarchyError, RoleHierarchyError, UserBla
 from src.utils import helpers
 
 if t.TYPE_CHECKING:
-    from src.models.client import SnedContext  # noqa: TCH004
+    from src.models.client import SnedContext
 
 
 async def is_not_blacklisted(ctx: SnedContext) -> None:

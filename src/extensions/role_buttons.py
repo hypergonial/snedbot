@@ -195,7 +195,7 @@ async def rolebutton_listener(event: hikari.InteractionCreateEvent) -> None:
 
         await inter.execute(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    except (hikari.ForbiddenError, hikari.HTTPError):
+    except hikari.ForbiddenError, hikari.HTTPError:
         await inter.execute(
             embed=hikari.Embed(
                 title="❌ Insufficient permissions",

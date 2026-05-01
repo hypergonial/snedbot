@@ -225,7 +225,7 @@ class UserLogger:
             try:
                 await log_channel.send(embed=embed, attachment=file)
                 return
-            except (hikari.ForbiddenError, hikari.HTTPError, asyncio.TimeoutError):
+            except hikari.ForbiddenError, hikari.HTTPError, asyncio.TimeoutError:
                 return
 
         if self._queue.get(log_channel.id) is None:
