@@ -1,19 +1,17 @@
 import logging
 
+import arc
 import hikari
-import lightbulb
 import miru
+import toolbox
 
 from src.etc import const
-from src.models import SnedSlashContext
-from src.models.bot import SnedBot
-from src.models.context import SnedApplicationContext, SnedContext, SnedMessageContext, SnedUserContext
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.utils import helpers
 
 logger = logging.getLogger(__name__)
 
-reports = SnedPlugin("Reports")
+plugin = SnedPlugin("Reports")
 
 
 class ReportModal(miru.Modal):
@@ -68,7 +66,7 @@ async def report_error(ctx: SnedContext) -> None:
     )
 
 
-async def report_perms_error(ctx: SnedApplicationContext) -> None:
+async def report_perms_error(ctx: SnedContext) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title="❌ Oops!",
@@ -79,7 +77,7 @@ async def report_perms_error(ctx: SnedApplicationContext) -> None:
     )
 
 
-async def report(ctx: SnedApplicationContext, member: hikari.Member, message: hikari.Message | None = None) -> None:
+async def report(ctx: SnedContext, member: hikari.Member, message: hikari.Message | None = None) -> None:
     assert ctx.member is not None and ctx.guild_id is not None
 
     if member.id == ctx.member.id or member.is_bot:
@@ -93,17 +91,17 @@ async def report(ctx: SnedApplicationContext, member: hikari.Member, message: hi
         )
         return
 
-    records = await ctx.app.db_cache.get(table="reports", guild_id=ctx.guild_id)
+    records = await ctx.client.db_cache.get(table="reports", guild_id=ctx.guild_id)
 
     if not records or not records[0]["is_enabled"]:
         return await report_error(ctx)
 
-    channel = ctx.app.cache.get_guild_channel(records[0]["channel_id"])
+    channel = ctx.client.cache.get_guild_channel(records[0]["channel_id"])
     assert isinstance(channel, hikari.TextableGuildChannel)
     assert isinstance(channel, hikari.PermissibleGuildChannel)
 
     if not channel:
-        await ctx.app.db.execute(
+        await ctx.client.db.execute(
             """INSERT INTO reports (is_enabled, guild_id)
             VALUES ($1, $2)
             ON CONFLICT (guild_id) DO
@@ -111,12 +109,12 @@ async def report(ctx: SnedApplicationContext, member: hikari.Member, message: hi
             False,
             ctx.guild_id,
         )
-        await ctx.app.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
+        await ctx.client.db_cache.refresh(table="reports", guild_id=ctx.guild_id)
         return await report_error(ctx)
 
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    me = ctx.client.cache.get_member(ctx.guild_id, ctx.client.user_id)
     assert me is not None
-    perms = lightbulb.utils.permissions_in(channel, me)
+    perms = toolbox.calculate_permissions(me, channel)
 
     if not (perms & hikari.Permissions.SEND_MESSAGES):
         return await report_perms_error(ctx)
@@ -124,14 +122,16 @@ async def report(ctx: SnedApplicationContext, member: hikari.Member, message: hi
     assert ctx.interaction is not None
 
     modal = ReportModal(member)
-    await modal.send(ctx.interaction)
+    await ctx.respond_with_builder(modal.build_response(ctx.client.miru))
+    ctx.client.miru.start_modal(modal)
+
     await modal.wait()
 
     if not modal.last_context:  # Modal was closed/timed out
         return
 
-    role_ids = records[0]["pinged_role_ids"] or []
-    roles = filter(lambda r: r is not None, [ctx.app.cache.get_role(role_id) for role_id in role_ids])
+    role_ids: list[int] = records[0]["pinged_role_ids"] or []
+    roles = filter(lambda r: r is not None, [ctx.client.cache.get_role(role_id) for role_id in role_ids])
     role_mentions = [role.mention for role in roles if role is not None]
 
     embed = hikari.Embed(
@@ -147,7 +147,9 @@ async def report(ctx: SnedApplicationContext, member: hikari.Member, message: hi
     components: hikari.UndefinedOr[miru.View] = hikari.UNDEFINED
 
     if message:
-        components = miru.View().add_item(miru.Button(label="Associated Message", url=message.make_link(ctx.guild_id)))
+        components = miru.View().add_item(
+            miru.LinkButton(label="Associated Message", url=message.make_link(ctx.guild_id))
+        )
 
     await channel.send(
         " ".join(role_mentions) or hikari.UNDEFINED, embed=embed, components=components, role_mentions=True
@@ -163,34 +165,26 @@ async def report(ctx: SnedApplicationContext, member: hikari.Member, message: hi
     )
 
 
-@reports.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("user", "The user that is to be reported.", type=hikari.Member, required=True)
-@lightbulb.command("report", "Report a user to the moderation team of this server.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def report_cmd(ctx: SnedSlashContext, user: hikari.Member) -> None:
-    helpers.is_member(user)
+@plugin.include
+@arc.slash_command("report", "Report a user to the moderation team of this server")
+async def report_cmd(
+    ctx: SnedContext, user: arc.Option[hikari.Member, arc.MemberParams("The user that is to be reported.")]
+) -> None:
     await report(ctx, user)
 
 
-@reports.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("Report User", "Report the targeted user to the moderation team of this server.", pass_options=True)
-@lightbulb.implements(lightbulb.UserCommand)
-async def report_user_cmd(ctx: SnedUserContext, target: hikari.Member) -> None:
-    helpers.is_member(target)
-    await report(ctx, ctx.options.target)
+@plugin.include
+@arc.user_command("Report User")
+async def report_user_cmd(ctx: SnedContext, user: hikari.User) -> None:
+    if helpers.is_member(user):
+        await report(ctx, user)
 
 
-@reports.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command(
-    "Report Message", "Report the targeted message to the moderation team of this server.", pass_options=True
-)
-@lightbulb.implements(lightbulb.MessageCommand)
-async def report_msg_cmd(ctx: SnedMessageContext, target: hikari.Message) -> None:
+@plugin.include
+@arc.message_command("Report Message")
+async def report_msg_cmd(ctx: SnedContext, message: hikari.Message) -> None:
     assert ctx.guild_id is not None
-    member = ctx.app.cache.get_member(ctx.guild_id, target.author)
+    member = ctx.client.cache.get_member(ctx.guild_id, message.author)
     if not member:
         await ctx.respond(
             embed=hikari.Embed(
@@ -202,15 +196,17 @@ async def report_msg_cmd(ctx: SnedMessageContext, target: hikari.Message) -> Non
         )
         return
 
-    await report(ctx, member, ctx.options.target)
+    await report(ctx, member, message)
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(reports)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(reports)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

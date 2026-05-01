@@ -1,20 +1,24 @@
 import logging
+import typing as t
 from difflib import get_close_matches
 from itertools import chain
 
+import arc
 import hikari
-import lightbulb
 import miru
+import toolbox
 
 from src.etc import const
-from src.models import AuthorOnlyNavigator, SnedSlashContext, Tag
-from src.models.bot import SnedBot
-from src.models.plugin import SnedPlugin
+from src.models import AuthorOnlyNavigator, Tag
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.utils import helpers
+
+if t.TYPE_CHECKING:
+    from miru.ext import nav
 
 logger = logging.getLogger(__name__)
 
-tags = SnedPlugin("Tag", include_datastore=True)
+plugin = SnedPlugin("Tag")
 
 
 class TagEditorModal(miru.Modal):
@@ -62,13 +66,27 @@ class TagEditorModal(miru.Modal):
         self.tag_content = ctx.get_value_by_id("content")
 
 
-@tags.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option("ephemeral", "If True, sends the tag in a way that only you can see it.", type=bool, default=False)
-@lightbulb.option("name", "The name of the tag you want to call.", autocomplete=True)
-@lightbulb.command("tag", "Call a tag and display it's contents.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> None:
+async def tag_name_ac(data: arc.AutocompleteData[SnedClient, str]) -> list[str]:
+    """Autocomplete for tag names."""
+    if data.focused_value and data.guild_id:
+        return (await Tag.fetch_closest_names(str(data.focused_value), data.guild_id)) or []
+    return []
+
+
+async def tag_owned_name_ac(data: arc.AutocompleteData[SnedClient, str]) -> list[str]:
+    """Autocomplete for tag names that the user owns."""
+    if data.focused_value and data.guild_id:
+        return (await Tag.fetch_closest_owned_names(str(data.focused_value), data.guild_id, data.user.id)) or []
+    return []
+
+
+@plugin.include
+@arc.slash_command("tag", "Call a tag and display it's contents.")
+async def tag_cmd(
+    ctx: SnedContext,
+    name: arc.Option[str, arc.StrParams("The name of the tag you want to call.", autocomplete_with=tag_name_ac)],
+    ephemeral: arc.Option[bool, arc.BoolParams("If True, sends the tag in a way that only you can see it.")] = False,
+) -> None:
     assert ctx.guild_id is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id, add_use=True)
@@ -87,31 +105,17 @@ async def tag_cmd(ctx: SnedSlashContext, name: str, ephemeral: bool = False) -> 
     await ctx.respond(content=tag.parse_content(ctx), flags=flags)
 
 
-@tag_cmd.autocomplete("name")
-async def tag_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_names(str(option.value), interaction.guild_id)) or []
-    return []
+tags = plugin.include_slash_group("tags", "All commands for managing tags.")
 
 
-@tags.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("tags", "All commands for managing tags.")
-@lightbulb.implements(lightbulb.SlashCommandGroup)
-async def tag_group(ctx: SnedSlashContext) -> None:
-    pass
-
-
-@tag_group.child
-@lightbulb.command("create", "Create a new tag. Opens a modal to specify the details.")
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_create(ctx: SnedSlashContext) -> None:
+@tags.include
+@arc.slash_subcommand("create", "Create a new tag. Opens a modal to specify the details.")
+async def tag_create(ctx: SnedContext) -> None:
     assert ctx.guild_id is not None and ctx.member is not None
 
     modal = TagEditorModal()
-    await modal.send(ctx.interaction)
+    await ctx.respond_with_builder(modal.build_response(ctx.client.miru))
+    ctx.client.miru.start_modal(modal)
     await modal.wait()
     if not modal.last_context:
         return
@@ -148,11 +152,14 @@ async def tag_create(ctx: SnedSlashContext) -> None:
     )
 
 
-@tag_group.child
-@lightbulb.option("name", "The name of the tag to get information about.", autocomplete=True)
-@lightbulb.command("info", "Display information about the specified tag.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_info(ctx: SnedSlashContext, name: str) -> None:
+@tags.include
+@arc.slash_subcommand("info", "Display information about the specified tag.")
+async def tag_info(
+    ctx: SnedContext,
+    name: arc.Option[
+        str, arc.StrParams("The name of the tag to get information about.", autocomplete_with=tag_name_ac)
+    ],
+) -> None:
     assert ctx.guild_id is not None
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
@@ -167,9 +174,9 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
         )
         return
 
-    owner = ctx.app.cache.get_member(ctx.guild_id, tag.owner_id) or tag.owner_id
+    owner = ctx.client.cache.get_member(ctx.guild_id, tag.owner_id) or tag.owner_id
     creator = (
-        (ctx.app.cache.get_member(ctx.guild_id, tag.creator_id) or tag.creator_id) if tag.creator_id else "Unknown"
+        (ctx.client.cache.get_member(ctx.guild_id, tag.creator_id) or tag.creator_id) if tag.creator_id else "Unknown"
     )
     aliases = ", ".join(tag.aliases) if tag.aliases else None
 
@@ -184,21 +191,13 @@ async def tag_info(ctx: SnedSlashContext, name: str) -> None:
     await ctx.respond(embed=embed)
 
 
-@tag_info.autocomplete("name")
-async def tag_info_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_names(str(option.value), interaction.guild_id)) or []
-    return []
-
-
-@tag_group.child
-@lightbulb.option("alias", "The alias to add to this tag.")
-@lightbulb.option("name", "The tag to add an alias for.", autocomplete=True)
-@lightbulb.command("alias", "Adds an alias to a tag you own.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
+@tags.include
+@arc.slash_subcommand("alias", "Adds an alias to a tag you own.")
+async def tag_alias(
+    ctx: SnedContext,
+    name: arc.Option[str, arc.StrParams("The tag to add an alias for.", autocomplete_with=tag_owned_name_ac)],
+    alias: arc.Option[str, arc.StrParams("The alias to add to this tag.")],
+) -> None:
     assert ctx.guild_id is not None
 
     alias_tag = await Tag.fetch(alias.casefold(), ctx.guild_id)
@@ -254,21 +253,13 @@ async def tag_alias(ctx: SnedSlashContext, name: str, alias: str) -> None:
         return
 
 
-@tag_alias.autocomplete("name")
-async def tag_alias_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
-    return []
-
-
-@tag_group.child
-@lightbulb.option("alias", "The name of the alias to remove.")
-@lightbulb.option("name", "The tag to remove the alias from.", autocomplete=True)
-@lightbulb.command("delalias", "Remove an alias from a tag you own.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
+@tags.include
+@arc.slash_subcommand("delalias", "Remove an alias from a tag you own.")
+async def tag_delalias(
+    ctx: SnedContext,
+    name: arc.Option[str, arc.StrParams("The tag to remove the alias from.", autocomplete_with=tag_owned_name_ac)],
+    alias: arc.Option[str, arc.StrParams("The name of the alias to remove.")],
+) -> None:
     assert ctx.guild_id is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
@@ -309,26 +300,16 @@ async def tag_delalias(ctx: SnedSlashContext, name: str, alias: str) -> None:
         return
 
 
-@tag_delalias.autocomplete("name")
-async def tag_delalias_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
-    return []
-
-
-@tag_group.child
-@lightbulb.option("receiver", "The user to receive the tag.", type=hikari.Member)
-@lightbulb.option("name", "The name of the tag to transfer.", autocomplete=True)
-@lightbulb.command(
+@tags.include
+@arc.slash_subcommand(
     "transfer",
     "Transfer ownership of a tag to another user, letting them modify or delete it.",
-    pass_options=True,
 )
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member) -> None:
-    helpers.is_member(receiver)
+async def tag_transfer(
+    ctx: SnedContext,
+    name: arc.Option[str, arc.StrParams("The name of the tag to transfer.", autocomplete_with=tag_owned_name_ac)],
+    receiver: arc.Option[hikari.Member, arc.MemberParams("The user to receive the tag.")],
+) -> None:
     assert ctx.guild_id is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
@@ -357,34 +338,23 @@ async def tag_transfer(ctx: SnedSlashContext, name: str, receiver: hikari.Member
         return
 
 
-@tag_transfer.autocomplete("name")
-async def tag_transfer_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
-    return []
-
-
-@tag_group.child
-@lightbulb.option("name", "The name of the tag to claim.", autocomplete=True)
-@lightbulb.command(
+@tags.include
+@arc.slash_subcommand(
     "claim",
     "Claim a tag that has been created by a user that has since left the server.",
-    pass_options=True,
 )
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
+async def tag_claim(
+    ctx: SnedContext,
+    name: arc.Option[str, arc.StrParams("The name of the tag to claim.", autocomplete_with=tag_name_ac)],
+) -> None:
     assert ctx.guild_id is not None and ctx.member is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if tag:
-        members = ctx.app.cache.get_members_view_for_guild(ctx.guild_id)
+        members = ctx.client.cache.get_members_view_for_guild(ctx.guild_id)
         if tag.owner_id not in members or (
-            helpers.includes_permissions(
-                lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
-            )
+            helpers.includes_permissions(toolbox.calculate_permissions(ctx.member), hikari.Permissions.MANAGE_MESSAGES)
             and tag.owner_id != ctx.member.id
         ):
             tag.owner_id = ctx.author.id
@@ -421,20 +391,12 @@ async def tag_claim(ctx: SnedSlashContext, name: str) -> None:
         return
 
 
-@tag_claim.autocomplete("name")
-async def tag_claim_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
-    return []
-
-
-@tag_group.child
-@lightbulb.option("name", "The name of the tag to edit.", autocomplete=True)
-@lightbulb.command("edit", "Edit the content of a tag you own.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
+@tags.include
+@arc.slash_subcommand("edit", "Edit the content of a tag you own.")
+async def tag_edit(
+    ctx: SnedContext,
+    name: arc.Option[str, arc.StrParams("The name of the tag to edit.", autocomplete_with=tag_owned_name_ac)],
+) -> None:
     assert ctx.member is not None and ctx.guild_id is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
@@ -451,7 +413,9 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
         return
 
     modal = TagEditorModal(name=tag.name, content=tag.content)
-    await modal.send(ctx.interaction)
+    await ctx.respond_with_builder(modal.build_response(ctx.client.miru))
+    ctx.client.miru.start_modal(modal)
+
     await modal.wait()
     if not modal.last_context:
         return
@@ -471,27 +435,19 @@ async def tag_edit(ctx: SnedSlashContext, name: str) -> None:
     )
 
 
-@tag_edit.autocomplete("name")
-async def tag_edit_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
-    return []
-
-
-@tag_group.child
-@lightbulb.option("name", "The name of the tag to delete.", autocomplete=True)
-@lightbulb.command("delete", "Delete a tag you own.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
+@tags.include
+@arc.slash_subcommand("delete", "Delete a tag you own.")
+async def tag_delete(
+    ctx: SnedContext,
+    name: arc.Option[str, arc.StrParams("The name of the tag to delete.", autocomplete_with=tag_owned_name_ac)],
+) -> None:
     assert ctx.member is not None and ctx.guild_id is not None
 
     tag = await Tag.fetch(name.casefold(), ctx.guild_id)
 
     if tag and (
         (tag.owner_id == ctx.author.id)
-        or helpers.includes_permissions(lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES)
+        or helpers.includes_permissions(toolbox.calculate_permissions(ctx.member), hikari.Permissions.MANAGE_MESSAGES)
     ):
         await tag.delete()
 
@@ -515,20 +471,12 @@ async def tag_delete(ctx: SnedSlashContext, name: str) -> None:
         return
 
 
-@tag_delete.autocomplete("name")
-async def tag_delete_name_ac(
-    option: hikari.AutocompleteInteractionOption, interaction: hikari.AutocompleteInteraction
-) -> list[str]:
-    if option.value and interaction.guild_id:
-        return (await Tag.fetch_closest_owned_names(str(option.value), interaction.guild_id, interaction.user)) or []
-    return []
-
-
-@tag_group.child
-@lightbulb.option("owner", "Only show tags that are owned by this user.", type=hikari.User, required=False)
-@lightbulb.command("list", "List all tags this server has.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_list(ctx: SnedSlashContext, owner: hikari.User | None = None) -> None:
+@tags.include
+@arc.slash_subcommand("list", "List all tags this server has.")
+async def tag_list(
+    ctx: SnedContext,
+    owner: arc.Option[hikari.User | None, arc.UserParams("Only show tags that are owned by this user.")] = None,
+) -> None:
     assert ctx.member is not None and ctx.guild_id is not None
 
     tags = await Tag.fetch_all(ctx.guild_id, owner)
@@ -538,7 +486,7 @@ async def tag_list(ctx: SnedSlashContext, owner: hikari.User | None = None) -> N
         # Only show 8 tags per page
         tags_pages = [tags_fmt[i * 8 : (i + 1) * 8] for i in range((len(tags_fmt) + 8 - 1) // 8)]
 
-        embeds = [
+        embeds: list[str | hikari.Embed | t.Sequence[hikari.Embed] | nav.Page] = [
             hikari.Embed(
                 title=f"💬 Available tags{f' owned by {owner.username}' if owner else ''}:",
                 description="\n".join(contents),
@@ -547,8 +495,9 @@ async def tag_list(ctx: SnedSlashContext, owner: hikari.User | None = None) -> N
             for contents in tags_pages
         ]
 
-        navigator = AuthorOnlyNavigator(ctx, pages=embeds)  # type: ignore
-        await navigator.send(ctx.interaction)
+        navigator = AuthorOnlyNavigator(ctx.author, pages=embeds)
+        await ctx.respond_with_builder(await navigator.build_response_async(ctx.client.miru))
+        ctx.client.miru.start_view(navigator)
 
     else:
         await ctx.respond(
@@ -560,11 +509,12 @@ async def tag_list(ctx: SnedSlashContext, owner: hikari.User | None = None) -> N
         )
 
 
-@tag_group.child
-@lightbulb.option("query", "The tag name or alias to search for.")
-@lightbulb.command("search", "Search for a tag name or alias.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def tag_search(ctx: SnedSlashContext, query: str) -> None:
+@tags.include
+@arc.slash_subcommand("search", "Search for a tag name or alias.")
+async def tag_search(
+    ctx: SnedContext,
+    query: arc.Option[str, arc.StrParams("The tag name or alias to search for.", autocomplete_with=tag_name_ac)],
+) -> None:
     assert ctx.member is not None and ctx.guild_id is not None
 
     tags = await Tag.fetch_all(ctx.guild_id)
@@ -601,12 +551,14 @@ async def tag_search(ctx: SnedSlashContext, query: str) -> None:
         )
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(tags)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(tags)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

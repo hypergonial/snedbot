@@ -1,6 +1,3 @@
-import lightbulb
-
-
 class TagAlreadyExistsError(Exception):
     """Raised when a tag is trying to get created but already exists."""
 
@@ -9,11 +6,11 @@ class TagNotFoundError(Exception):
     """Raised when a tag is not found, although most functions just return None."""
 
 
-class RoleHierarchyError(lightbulb.CheckFailure):
+class RoleHierarchyError(Exception):
     """Raised when an action fails due to role hierarchy."""
 
 
-class BotRoleHierarchyError(lightbulb.CheckFailure):
+class BotRoleHierarchyError(Exception):
     """Raised when an action fails due to the bot's role hierarchy."""
 
 

@@ -5,7 +5,7 @@ import typing as t
 import hikari
 
 if t.TYPE_CHECKING:
-    from src.models.bot import SnedBot
+    from src.models.client import SnedClient
 
 import logging
 
@@ -24,18 +24,18 @@ class AuditLogCache:
         of entries exceed this number, the oldest entries will be discarded.
     """
 
-    def __init__(self, bot: SnedBot, capacity: int = 10) -> None:
+    def __init__(self, client: SnedClient, capacity: int = 10) -> None:
         self._cache: dict[hikari.Snowflake, dict[hikari.AuditLogEventType, list[hikari.AuditLogEntry]]] = {}
         self._capacity = capacity
-        self._bot = bot
+        self._client = client
 
     async def start(self) -> None:
         """Start the audit log cache listener."""
-        self._bot.event_manager.subscribe(hikari.AuditLogEntryCreateEvent, self._listen)
+        self._client.subscribe(hikari.AuditLogEntryCreateEvent, self._listen)
 
     async def stop(self) -> None:
         """Stop the audit log cache listener."""
-        self._bot.event_manager.unsubscribe(hikari.AuditLogEntryCreateEvent, self._listen)
+        self._client.unsubscribe(hikari.AuditLogEntryCreateEvent, self._listen)
         self._cache = {}
 
     async def _listen(self, event: hikari.AuditLogEntryCreateEvent) -> None:

@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-import typing as t
-
+import arc
 import hikari
-import lightbulb
+import toolbox
 
 import src.etc.const as const
-from src.models.plugin import SnedPlugin
-
-if t.TYPE_CHECKING:
-    from src.models import SnedBot
-    from src.models.context import SnedSlashContext
-
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 
 help = SnedPlugin("Help")
 
@@ -21,7 +15,7 @@ help_embeds = {
     None: hikari.Embed(
         title="ℹ️ __Help__",
         description="""**Welcome to Sned Help!**
-            
+
 To get started with using the bot, simply press `/` to reveal all commands! If you would like to get help about a specific topic, use `/help topic_name`.
 
 If you need assistance, found a bug, or just want to hang out, please join our [support server](https://discord.gg/KNKr8FPmJa)!
@@ -33,7 +27,7 @@ Thank you for using Sned!""",
     "admin_home": hikari.Embed(
         title="ℹ️ __Help__",
         description="""**Welcome to Sned Help!**
-            
+
 To get started with using the bot, simply press `/` to reveal all commands! If you would like to get help about a specific topic, use `/help topic_name`.
 
 You may begin configuring the bot via the `/settings` command, which shows all relevant settings & lets you modify them.
@@ -81,32 +75,34 @@ If you need any assistance in configuring the bot, do not hesitate to join our [
 }
 
 
-@help.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.option(
-    "topic",
-    "A specific topic to get help about.",
-    required=False,
-    choices=["time-formatting", "configuration", "permissions"],
-)
-@lightbulb.command("help", "Get help regarding various subjects of the bot's functionality.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def help_cmd(ctx: SnedSlashContext, topic: str | None = None) -> None:
+@help.include
+@arc.slash_command("help", "Get help regarding various subjects of the bot's functionality.")
+async def help_cmd(
+    ctx: SnedContext,
+    topic: arc.Option[
+        str | None,
+        arc.StrParams(
+            "A specific topic to get help about.", choices=["time-formatting", "configuration", "permissions"]
+        ),
+    ] = None,
+) -> None:
     if ctx.member:
         topic = (
             topic or "admin_home"
-            if (lightbulb.utils.permissions_for(ctx.member) & hikari.Permissions.MANAGE_GUILD)
+            if (toolbox.calculate_permissions(ctx.member) & hikari.Permissions.MANAGE_GUILD)
             else topic
         )
     await ctx.respond(embed=help_embeds[topic])
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(help)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(help)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(help)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(help)
 
 
 # Copyright (C) 2022-present hypergonial

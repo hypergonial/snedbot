@@ -1,21 +1,21 @@
 import enum
 import logging
+import typing as t
 
+import arc
 import hikari
-import lightbulb
 import miru
+from miru.ext import nav
 
 import src.models as models
 from src.etc import const
-from src.models import SnedBot, SnedSlashContext
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.models.rolebutton import RoleButton, RoleButtonMode
 from src.utils import helpers
-from src.utils.ratelimiter import MemberBucket, RateLimiter
 
 logger = logging.getLogger(__name__)
 
-role_buttons = SnedPlugin("Rolebuttons")
+plugin = SnedPlugin("Rolebuttons", default_permissions=hikari.Permissions.MANAGE_ROLES)
 
 BUTTON_STYLES = {
     "Blurple": hikari.ButtonStyle.PRIMARY,
@@ -29,7 +29,7 @@ BUTTON_MODES = {
     "Remove": RoleButtonMode.REMOVE_ONLY,
 }
 
-role_button_ratelimiter = RateLimiter(2, 1, MemberBucket, wait=False)
+role_button_ratelimiter = arc.utils.RateLimiter[hikari.Member](2, 1, get_key_with=lambda m: f"{m.id}{m.guild_id}")
 
 
 class RoleButtonConfirmType(enum.Enum):
@@ -89,22 +89,25 @@ class RoleButtonConfirmModal(miru.Modal):
         )
 
 
-@role_buttons.listener(miru.ComponentInteractionCreateEvent, bind=True)
-async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteractionCreateEvent) -> None:
+@plugin.listen()
+async def rolebutton_listener(event: hikari.InteractionCreateEvent) -> None:
     """Statelessly listen for rolebutton interactions."""
+    if not isinstance(event.interaction, hikari.ComponentInteraction) or not event.interaction.guild_id:
+        return
+
     if not event.interaction.custom_id.startswith("RB:"):
         return
+
+    inter = event.interaction
 
     entry_id = int(event.interaction.custom_id.split(":")[1])
     role_id = int(event.interaction.custom_id.split(":")[2])
 
-    if not event.context.guild_id:
-        return
-
-    role = plugin.app.cache.get_role(role_id)
+    role = plugin.client.cache.get_role(role_id)
 
     if not role:
-        await event.context.respond(
+        await inter.create_initial_response(
+            hikari.ResponseType.MESSAGE_CREATE,
             embed=hikari.Embed(
                 title="❌ Orphaned",
                 description="The role this button was pointing to was deleted! Contact an administrator!",
@@ -114,10 +117,11 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         )
         return
 
-    assert event.context.app_permissions is not None
+    assert inter.app_permissions is not None and inter.member is not None
 
-    if not helpers.includes_permissions(event.context.app_permissions, hikari.Permissions.MANAGE_ROLES):
-        await event.context.respond(
+    if not helpers.includes_permissions(inter.app_permissions, hikari.Permissions.MANAGE_ROLES):
+        await inter.create_initial_response(
+            hikari.ResponseType.MESSAGE_CREATE,
             embed=hikari.Embed(
                 title="❌ Missing Permissions",
                 description="Bot does not have `Manage Roles` permissions! Contact an administrator!",
@@ -127,9 +131,11 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         )
         return
 
-    await role_button_ratelimiter.acquire(event.context)
-    if role_button_ratelimiter.is_rate_limited(event.context):
-        await event.context.respond(
+    try:
+        await role_button_ratelimiter.acquire(inter.member, wait=False)
+    except arc.utils.RateLimiterExhaustedError:
+        await inter.create_initial_response(
+            hikari.ResponseType.MESSAGE_CREATE,
             embed=hikari.Embed(
                 title="❌ Slow Down!",
                 description="You are clicking too fast!",
@@ -139,14 +145,13 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         )
         return
 
-    await event.context.defer(hikari.ResponseType.DEFERRED_MESSAGE_CREATE, flags=hikari.MessageFlag.EPHEMERAL)
+    await inter.create_initial_response(hikari.ResponseType.DEFERRED_MESSAGE_CREATE, flags=hikari.MessageFlag.EPHEMERAL)
 
     try:
-        assert event.context.member is not None
         role_button = await RoleButton.fetch(entry_id)
 
         if not role_button:  # This should theoretically never happen, but I do not trust myself
-            await event.context.respond(
+            await inter.execute(
                 embed=hikari.Embed(
                     title="❌ Missing Data",
                     description="The rolebutton you clicked on is missing data, or was improperly deleted! Contact an administrator!",
@@ -156,9 +161,9 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
             )
             return
 
-        if role.id in event.context.member.role_ids:
+        if role.id in inter.member.role_ids:
             if role_button.mode in [RoleButtonMode.TOGGLE, RoleButtonMode.REMOVE_ONLY]:
-                await event.context.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
+                await inter.member.remove_role(role, reason=f"Removed by role-button (ID: {entry_id})")
                 embed = hikari.Embed(
                     title=f"✅ {role_button.remove_title or 'Role removed'}",
                     description=f"{role_button.remove_description or f'Removed role: {role.mention}'}",
@@ -173,7 +178,7 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
 
         else:
             if role_button.mode in [RoleButtonMode.TOGGLE, RoleButtonMode.ADD_ONLY]:
-                await event.context.member.add_role(role, reason=f"Granted by role-button (ID: {entry_id})")
+                await inter.member.add_role(role, reason=f"Granted by role-button (ID: {entry_id})")
                 embed = hikari.Embed(
                     title=f"✅ {role_button.add_title or 'Role added'}",
                     description=f"{role_button.add_description or f'Added role: {role.mention}'}",
@@ -188,10 +193,10 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
                     color=0xFF0000,
                 ).set_footer("This button is set to only remove roles, not add them.")
 
-        await event.context.respond(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
+        await inter.execute(embed=embed, flags=hikari.MessageFlag.EPHEMERAL)
 
-    except (hikari.ForbiddenError, hikari.HTTPError):
-        await event.context.respond(
+    except hikari.ForbiddenError, hikari.HTTPError:
+        await inter.execute(
             embed=hikari.Embed(
                 title="❌ Insufficient permissions",
                 description="Failed changing role due to an issue with permissions and/or role hierarchy! Please contact an administrator!",
@@ -201,18 +206,12 @@ async def rolebutton_listener(plugin: SnedPlugin, event: miru.ComponentInteracti
         )
 
 
-@role_buttons.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_ROLES, dm_enabled=False)
-@lightbulb.command("rolebutton", "Commands relating to rolebuttons.")
-@lightbulb.implements(lightbulb.SlashCommandGroup)
-async def rolebutton(ctx: SnedSlashContext) -> None:
-    pass
+rolebutton = plugin.include_slash_group("rolebutton", "Commands relating to rolebuttons.")
 
 
-@rolebutton.child
-@lightbulb.command("list", "List all registered rolebuttons on this server.")
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_list(ctx: SnedSlashContext) -> None:
+@rolebutton.include
+@arc.slash_subcommand("list", "List all registered rolebuttons on this server.")
+async def rolebutton_list(ctx: SnedContext) -> None:
     assert ctx.guild_id is not None
 
     buttons = await RoleButton.fetch_all(ctx.guild_id)
@@ -228,10 +227,10 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
         )
         return
 
-    paginator = lightbulb.utils.StringPaginator(max_chars=500)
+    paginator = nav.Paginator(max_len=500)
     for button in buttons:
-        role = ctx.app.cache.get_role(button.role_id)
-        channel = ctx.app.cache.get_guild_channel(button.channel_id)
+        role = ctx.client.cache.get_role(button.role_id)
+        channel = ctx.client.cache.get_guild_channel(button.channel_id)
 
         if role and channel:
             paginator.add_line(f"**#{button.id}** - {channel.mention} - {role.mention}")
@@ -239,29 +238,27 @@ async def rolebutton_list(ctx: SnedSlashContext) -> None:
         else:
             paginator.add_line(f"**#{button.id}** - C: `{button.channel_id}` - R: `{button.role_id}`")
 
-    embeds = [
+    embeds: list[str | hikari.Embed | t.Sequence[hikari.Embed] | nav.Page] = [
         hikari.Embed(
             title="Rolebuttons on this server:",
             description=page,
             color=const.EMBED_BLUE,
         )
-        for page in paginator.build_pages()
+        for page in paginator.pages
     ]
 
-    navigator = models.AuthorOnlyNavigator(ctx, pages=embeds)  # type: ignore
-    await navigator.send(ctx.interaction)
+    navigator = models.AuthorOnlyNavigator(ctx.author, pages=embeds)
+    await ctx.respond_with_builder(await navigator.build_response_async(ctx.client.miru))
 
 
-@rolebutton.child
-@lightbulb.option(
-    "button_id",
-    "The ID of the rolebutton to delete. You can get this via /rolebutton list",
-    type=int,
-    min_value=0,
-)
-@lightbulb.command("delete", "Delete a rolebutton.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
+@rolebutton.include
+@arc.slash_subcommand("delete", "Delete a rolebutton.")
+async def rolebutton_del(
+    ctx: SnedContext,
+    button_id: arc.Option[
+        int, arc.IntParams("The ID of the rolebutton to delete. You can get this via /rolebutton list", min=0)
+    ],
+) -> None:
     assert ctx.guild_id is not None
 
     button = await RoleButton.fetch(button_id)
@@ -299,35 +296,32 @@ async def rolebutton_del(ctx: SnedSlashContext, button_id: int) -> None:
     )
 
 
-@rolebutton.child
-@lightbulb.option(
-    "mode",
-    "The mode of operation for this rolebutton.",
-    choices=["Toggle - Add & remove roles (default)", "Add - Only add roles", "Remove - Only remove roles"],
-    required=False,
-)
-@lightbulb.option(
-    "style", "Change the style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False
-)
-@lightbulb.option(
-    "label", "Change the label that should appear on the button. Type 'removelabel' to remove it.", required=False
-)
-@lightbulb.option("emoji", "Change the emoji that should appear in the button.", type=str, required=False)
-@lightbulb.option("role", "Change the role handed out by this button.", type=hikari.Role, required=False)
-@lightbulb.option(
-    "button_id", "The ID of the rolebutton to edit. You can get this via /rolebutton list", type=int, min_value=0
-)
-@lightbulb.command(
-    "edit",
-    "Edit an existing rolebutton.",
-    pass_options=True,
-)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
+@rolebutton.include
+@arc.slash_subcommand("edit", "Edit an existing rolebutton.")
+async def rolebutton_edit(
+    ctx: SnedContext,
+    button_id: arc.Option[
+        int, arc.IntParams("The ID of the rolebutton to edit. You can get this via /rolebutton list", min=0)
+    ],
+    role: arc.Option[hikari.Role | None, arc.RoleParams("The role that should be handed out by the button.")] = None,
+    emoji: arc.Option[str | None, arc.StrParams("The emoji that should appear in the button.")] = None,
+    style: arc.Option[
+        str | None, arc.StrParams("The style of the button.", choices=["Blurple", "Grey", "Red", "Green"])
+    ] = None,
+    label: arc.Option[
+        str | None, arc.StrParams("The label that should appear on the button. Type 'removelabel' to remove it.")
+    ] = None,
+    mode: arc.Option[
+        str | None,
+        arc.StrParams(
+            "The mode of operation for this rolebutton.",
+            choices=["Toggle - Add & remove roles (default)", "Add - Only add roles", "Remove - Only remove roles"],
+        ),
+    ] = None,
+) -> None:
     assert ctx.guild_id is not None and ctx.member is not None
-    params = {opt: value for opt, value in kwargs.items() if value is not None}
 
-    button = await RoleButton.fetch(params.pop("button_id"))
+    button = await RoleButton.fetch(button_id)
 
     if not button or button.guild_id != ctx.guild_id:
         await ctx.respond(
@@ -340,19 +334,19 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
         )
         return
 
-    if label := params.get("label"):
-        params["label"] = label if label.casefold() != "removelabel" else None
+    if label:
+        button.label = label if label.casefold() != "removelabel" else None
 
-    if style := params.pop("style", None):
-        params["style"] = BUTTON_STYLES[style]
+    if style is not None:
+        button.style = BUTTON_STYLES[style]
 
-    if mode := params.pop("mode", None):
-        params["mode"] = BUTTON_MODES[mode.split(" -")[0]]
+    if mode is not None:
+        button.mode = BUTTON_MODES[mode.split(" -")[0]]
 
-    if emoji := params.get("emoji"):
-        params["emoji"] = hikari.Emoji.parse(emoji)
+    if emoji:
+        button.emoji = hikari.Emoji.parse(emoji)
 
-    if role := params.pop("role", None):
+    if role is not None:
         if role.is_managed or role.is_premium_subscriber_role or role.id == ctx.guild_id:
             await ctx.respond(
                 embed=hikari.Embed(
@@ -388,10 +382,7 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
             )
             return
 
-        params["role_id"] = role.id
-
-    for param, value in params.items():
-        setattr(button, param, value)
+        button.role_id = role.id
 
     try:
         await button.update(ctx.member)
@@ -414,46 +405,34 @@ async def rolebutton_edit(ctx: SnedSlashContext, **kwargs) -> None:
     await ctx.respond(embed=embed)
 
 
-@rolebutton.child
-@lightbulb.option(
-    "mode",
-    "The mode of operation for this rolebutton.",
-    choices=["Toggle - Add & remove roles (default)", "Add - Only add roles", "Remove - Only remove roles"],
-    required=False,
-)
-@lightbulb.option("label", "The label that should appear on the button.", required=False)
-@lightbulb.option("style", "The style of the button.", choices=["Blurple", "Grey", "Red", "Green"], required=False)
-@lightbulb.option("emoji", "The emoji that should appear in the button.", type=str)
-@lightbulb.option("role", "The role that should be handed out by the button.", type=hikari.Role)
-@lightbulb.option(
-    "message_link",
-    "The link of a message that MUST be from the bot, the rolebutton will be attached here.",
-)
-@lightbulb.command(
-    "add",
-    "Add a new rolebutton.",
-    pass_options=True,
-)
-@lightbulb.implements(lightbulb.SlashSubCommand)
+@rolebutton.include
+@arc.slash_subcommand("add", "Add a new rolebutton.")
 async def rolebutton_add(
-    ctx: SnedSlashContext,
-    message_link: str,
-    role: hikari.Role,
-    emoji: str,
-    style: str | None = None,
-    label: str | None = None,
-    mode: str | None = None,
+    ctx: SnedContext,
+    message_link: arc.Option[
+        str, arc.StrParams("The link of a message that MUST be from the bot, the rolebutton will be attached here.")
+    ],
+    role: arc.Option[hikari.Role, arc.RoleParams("The role that should be handed out by the button.")],
+    emoji: arc.Option[str, arc.StrParams("The emoji that should appear in the button.")],
+    style: arc.Option[
+        str, arc.StrParams("The style of the button.", choices=["Blurple", "Grey", "Red", "Green"])
+    ] = "Grey",
+    label: arc.Option[str | None, arc.StrParams("The label that should appear on the button.")] = None,
+    mode: arc.Option[
+        str,
+        arc.StrParams(
+            "The mode of operation for this rolebutton.",
+            choices=["Toggle - Add & remove roles (default)", "Add - Only add roles", "Remove - Only remove roles"],
+        ),
+    ] = "Toggle - Add & remove roles (default)",
 ) -> None:
     assert ctx.guild_id is not None and ctx.member is not None
-
-    style = style or "Grey"
-    mode = mode or "Toggle - Add & remove roles"
 
     message = await helpers.parse_message_link(ctx, message_link)
     if not message:
         return
 
-    if message.author.id != ctx.app.user_id:
+    if message.author.id != ctx.client.user_id:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Message not authored by bot",
@@ -531,29 +510,21 @@ async def rolebutton_add(
     await ctx.respond(
         embed=hikari.Embed(
             title="✅ Done!",
-            description=f"A new rolebutton for role {ctx.options.role.mention} in channel <#{message.channel_id}> has been created!",
+            description=f"A new rolebutton for role {role.mention} in channel <#{message.channel_id}> has been created!",
             color=const.EMBED_GREEN,
         ).set_footer(f"Button ID: {button.id}")
     )
 
 
-@rolebutton.child
-@lightbulb.option(
-    "prompt_type",
-    "'add' is displayed to the user when the role is added, 'remove' is when it is removed.",
-    choices=["add", "remove"],
-)
-@lightbulb.option(
-    "button_id",
-    "The ID of the rolebutton to set a prompt for. You can get this via /rolebutton list",
-    type=int,
-    min_value=0,
-)
-@lightbulb.command(
-    "setprompt", "Set a custom confirmation prompt to display when the button is clicked.", pass_options=True
-)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def rolebutton_setprompt(ctx: SnedSlashContext, button_id: int, prompt_type: str) -> None:
+@rolebutton.include
+@arc.slash_subcommand("setprompt", "Set a custom confirmation prompt to display when the button is clicked.")
+async def rolebutton_setprompt(
+    ctx: SnedContext,
+    button_id: arc.Option[
+        int, arc.IntParams("The ID of the rolebutton to set a prompt for. You can get this via /rolebutton list", min=0)
+    ],
+    prompt_type: arc.Option[str, arc.StrParams("The type of prompt to set.", choices=["add", "remove"])],
+) -> None:
     button = await RoleButton.fetch(button_id)
     if not button or button.guild_id != ctx.guild_id:
         await ctx.respond(
@@ -567,15 +538,18 @@ async def rolebutton_setprompt(ctx: SnedSlashContext, button_id: int, prompt_typ
         return
 
     modal = RoleButtonConfirmModal(button, RoleButtonConfirmType(prompt_type))
-    await modal.send(ctx.interaction)
+    await ctx.respond_with_builder(modal.build_response(ctx.client.miru))
+    ctx.client.miru.start_modal(modal)
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(role_buttons)
+@arc.loader
+def load(bot: SnedClient) -> None:
+    bot.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(role_buttons)
+@arc.unloader
+def unload(bot: SnedClient) -> None:
+    bot.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

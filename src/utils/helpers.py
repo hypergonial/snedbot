@@ -6,17 +6,18 @@ import typing as t
 import unicodedata
 from contextlib import suppress
 
+import arc
 import hikari
-import lightbulb
 import pytz
+import toolbox
+from miru.ext import nav
 
 from src.etc import const
 from src.models import errors
 from src.models.db_user import DatabaseUser
 
 if t.TYPE_CHECKING:
-    from src.models import SnedBot
-    from src.models.context import SnedApplicationContext, SnedContext
+    from src.models.client import SnedClient, SnedContext
     from src.models.journal import JournalEntry
 
 MESSAGE_LINK_REGEX = re.compile(
@@ -26,6 +27,7 @@ LINK_REGEX = re.compile(
     r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)"
 )
 INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
+USER_MENTION_REGEX = re.compile(r"<@!?(?P<user_id>[0-9]+)>")
 
 BADGE_EMOJI_MAPPING = {
     hikari.UserFlag.BUG_HUNTER_LEVEL_1: const.EMOJI_BUGHUNTER,
@@ -63,13 +65,13 @@ def utcnow() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> datetime.datetime:
+async def usernow(client: SnedClient, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> datetime.datetime:
     """A short-hand function to return a datetime from the user's preferred timezone.
 
     Parameters
     ----------
-    bot : SnedBot
-        The bot instance.
+    client : SnedClient
+        The client instance.
     user : hikari.SnowflakeishOr[hikari.User]
         The user whose timezone preference to use.
 
@@ -78,7 +80,7 @@ async def usernow(bot: SnedBot, user: hikari.SnowflakeishOr[hikari.PartialUser])
     datetime.datetime
         The current time in the user's timezone of preference.
     """
-    records = await bot.db_cache.get(table="preferences", user_id=hikari.Snowflake(user), limit=1)
+    records = await client.db_cache.get(table="preferences", user_id=hikari.Snowflake(user), limit=1)
     timezone = records[0].get("timezone") if records else "UTC"
     assert timezone is not None
 
@@ -121,7 +123,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
     db_user = await DatabaseUser.fetch(user.id, ctx.guild_id)
     journal = await db_user.fetch_journal()
 
-    member = ctx.app.cache.get_member(ctx.guild_id, user)
+    member = ctx.client.cache.get_member(ctx.guild_id, user)
 
     if member:
         roles_list = [role.mention for role in sort_roles(member.get_roles()) if role.id != ctx.guild_id]
@@ -135,18 +137,18 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
 **• User ID:** `{member.id}`
 **• Bot:** `{member.is_bot}`
 **• Account creation date:** {format_dt(member.created_at)} ({format_dt(member.created_at, style="R")})
-**• Join date:** {format_dt(member.joined_at)} ({format_dt(member.joined_at, style="R")})
+**• Join date:** {format_dt(member.joined_at) if member.joined_at else None} ({format_dt(member.joined_at, style="R") if member.joined_at else None})
 **• Badges:** {"   ".join(get_badges(member)) or "`-`"}
 **• Warns:** `{db_user.warns}`
 **• Timed out:** {f"Until: {format_dt(comms_disabled_until)}" if comms_disabled_until is not None else "`-`"}
-**• Journal:** `{f"{len(journal)} entries" if journal else "No entries"}` 
+**• Journal:** `{f"{len(journal)} entries" if journal else "No entries"}`
 **• Roles:** {roles}""",
             color=get_color(member),
         )
-        user = await ctx.app.rest.fetch_user(user.id)
+        user = await ctx.client.rest.fetch_user(user.id)
         embed.set_thumbnail(member.display_avatar_url)
-        if user.banner_url:
-            embed.set_image(user.banner_url)
+        if user.banner_hash:
+            embed.set_image(user.make_banner_url())
 
     else:
         embed = hikari.Embed(
@@ -166,14 +168,14 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
             color=const.EMBED_BLUE,
         )
         embed.set_thumbnail(user.display_avatar_url)
-        user = await ctx.app.rest.fetch_user(user.id)
-        if user.banner_url:
-            embed.set_image(user.banner_url)
+        user = await ctx.client.rest.fetch_user(user.id)
+        if user.banner_hash:
+            embed.set_image(user.make_banner_url())
 
     assert ctx.member is not None
 
-    if ctx.member.id in ctx.app.owner_ids:
-        records = await ctx.app.db_cache.get(table="blacklist", guild_id=0, user_id=user.id, limit=1)
+    if ctx.member.id in ctx.client.owner_ids:
+        records = await ctx.client.db_cache.get(table="blacklist", user_id=user.id, limit=1)
         is_blacklisted = bool(records) and records[0]["user_id"] == user.id
         embed.description = f"{embed.description}\n**• Blacklisted:** `{is_blacklisted}`"
 
@@ -186,9 +188,7 @@ def includes_permissions(permissions: hikari.Permissions, should_include: hikari
         return True
 
     missing_perms = ~permissions & should_include
-    if missing_perms is not hikari.Permissions.NONE:
-        return False
-    return True
+    return missing_perms is hikari.Permissions.NONE
 
 
 def normalize_string(string: str, strict: bool = False) -> str:
@@ -219,20 +219,18 @@ def is_above(me: hikari.Member, member: hikari.Member) -> bool:
     assert me_top_role is not None
     assert member_top_role is not None
 
-    if me_top_role.position > member_top_role.position:
-        return True
-    return False
+    return me_top_role.position > member_top_role.position
 
 
 def can_harm(
     me: hikari.Member, member: hikari.Member, permission: hikari.Permissions, *, raise_error: bool = False
 ) -> bool:
     """Returns True if "member" can be harmed by "me", also checks if "me" has "permission"."""
-    perms = lightbulb.utils.permissions_for(me)
+    perms = toolbox.calculate_permissions(me)
 
     if not includes_permissions(perms, permission):
         if raise_error:
-            raise lightbulb.BotMissingRequiredPermission(perms=permission)
+            raise arc.BotMissingPermissionsError(permission)
         return False
 
     if not is_above(me, member):
@@ -253,21 +251,15 @@ def can_harm(
 
 def is_url(string: str, *, fullmatch: bool = True) -> bool:
     """Returns True if the provided string is an URL, otherwise False."""
-    if fullmatch and LINK_REGEX.fullmatch(string) or not fullmatch and LINK_REGEX.match(string):
-        return True
-
-    return False
+    return bool((fullmatch and LINK_REGEX.fullmatch(string)) or (not fullmatch and LINK_REGEX.match(string)))
 
 
 def is_invite(string: str, *, fullmatch: bool = True) -> bool:
     """Returns True if the provided string is a Discord invite, otherwise False."""
-    if fullmatch and INVITE_REGEX.fullmatch(string) or not fullmatch and INVITE_REGEX.match(string):
-        return True
-
-    return False
+    return bool((fullmatch and INVITE_REGEX.fullmatch(string)) or (not fullmatch and INVITE_REGEX.match(string)))
 
 
-def is_member(user: hikari.PartialUser) -> bool:  # Such useful
+def is_member(user: hikari.PartialUser) -> t.TypeGuard[hikari.Member]:
     """Determine if the passed object is a member or not, otherwise raise an error.
     Basically equivalent to `assert isinstance(user, hikari.Member)` but with a fancier error.
     """
@@ -277,7 +269,7 @@ def is_member(user: hikari.PartialUser) -> bool:  # Such useful
     raise errors.MemberExpectedError(f"Expected an instance of hikari.Member, not {user.__class__.__name__}!")
 
 
-async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> hikari.Message | None:
+async def parse_message_link(ctx: SnedContext, message_link: str) -> hikari.Message | None:
     """Parse a message_link string into a message object.
 
     Parameters
@@ -326,18 +318,28 @@ async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> 
         )
         return None
 
-    channel = ctx.app.cache.get_guild_channel(channel_id)
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
-    assert me is not None and isinstance(channel, hikari.TextableGuildChannel)
+    channel = ctx.client.cache.get_guild_channel(channel_id)
+    me = ctx.client.cache.get_member(ctx.guild_id, ctx.client.user_id)
+    assert me is not None
 
-    if channel and isinstance(channel, hikari.PermissibleGuildChannel):  # Make reasonable attempt at checking perms
-        perms = lightbulb.utils.permissions_in(channel, me)
+    if isinstance(channel, hikari.TextableGuildChannel):  # Make reasonable attempt at checking perms
+        perms = toolbox.calculate_permissions(me, channel)
         if not (perms & hikari.Permissions.READ_MESSAGE_HISTORY):
-            raise lightbulb.BotMissingRequiredPermission(perms=hikari.Permissions.READ_MESSAGE_HISTORY)
+            raise arc.BotMissingPermissionsError(hikari.Permissions.READ_MESSAGE_HISTORY)
+    else:
+        await ctx.respond(
+            embed=hikari.Embed(
+                title="❌ Invalid channel",
+                description="There are no messages in this channel.",
+                color=const.ERROR_COLOR,
+            ),
+            flags=hikari.MessageFlag.EPHEMERAL,
+        )
+        return
 
     try:
-        message = await ctx.app.rest.fetch_message(channel_id, message_id)
-    except (hikari.NotFoundError, hikari.ForbiddenError):
+        message = await ctx.client.rest.fetch_message(channel_id, message_id)
+    except hikari.NotFoundError, hikari.ForbiddenError:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Unknown message",
@@ -351,12 +353,34 @@ async def parse_message_link(ctx: SnedApplicationContext, message_link: str) -> 
     return message
 
 
+def parse_user(ctx: SnedContext, userish: str | hikari.Snowflake | hikari.PartialUser) -> hikari.User | None:
+    if isinstance(userish, (hikari.Snowflake, hikari.PartialUser)):
+        user = ctx.client.cache.get_user(userish)
+        return user
+
+    if userish.isdigit():
+        user = ctx.client.cache.get_user(int(userish))
+        return user
+
+    match = USER_MENTION_REGEX.match(userish)
+    if match:
+        user = ctx.client.cache.get_user(hikari.Snowflake(match.group("user_id")))
+        return user
+
+    if ctx.guild_id is None:
+        return
+
+    for user in ctx.client.cache.get_members_view_for_guild(ctx.guild_id).values():
+        if user.username == userish:
+            return user
+
+
 async def maybe_delete(message: hikari.PartialMessage) -> None:
     with suppress(hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         await message.delete()
 
 
-async def maybe_edit(message: hikari.PartialMessage, *args, **kwargs) -> None:
+async def maybe_edit(message: hikari.PartialMessage, *args: t.Any, **kwargs: t.Any) -> None:
     with suppress(hikari.NotFoundError, hikari.ForbiddenError, hikari.HTTPError):
         await message.edit(*args, **kwargs)
 
@@ -395,7 +419,7 @@ def format_reason(
 
 def build_journal_pages(entries: list[JournalEntry]) -> list[hikari.Embed]:
     """Build a list of embeds to send to a user containing journal entries, with pagination."""
-    paginator = lightbulb.utils.StringPaginator(max_chars=1500)
+    paginator = nav.Paginator(max_len=1500)
     for entry in entries:
         paginator.add_line(f"`#{entry.id}` {entry.display_content}")
 
@@ -405,7 +429,7 @@ def build_journal_pages(entries: list[JournalEntry]) -> list[hikari.Embed]:
             description=page,
             color=const.EMBED_BLUE,
         )
-        for page in paginator.build_pages()
+        for page in paginator.pages
     ]
     return embeds
 

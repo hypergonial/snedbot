@@ -10,7 +10,7 @@ import hikari
 from src.models.db import DatabaseModel
 
 if t.TYPE_CHECKING:
-    from src.models.context import SnedContext
+    from src.models.client import SnedContext
 
 
 @attr.define()
@@ -68,9 +68,7 @@ class Tag(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_closest_names(
-        cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> list[str] | None:
+    async def fetch_closest_names(cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[str]:
         """Fetch the closest tagnames for the provided name.
 
         Parameters
@@ -89,10 +87,10 @@ class Tag(DatabaseModel):
         # TODO: Figure out how to fuzzymatch within arrays via SQL
         results = await cls._db.fetch("""SELECT tagname, aliases FROM tags WHERE guild_id = $1""", guild_id)
 
-        names = [result["tagname"] for result in results] if results else []
+        names: list[str] = [result["tagname"] for result in results] if results else []
 
-        if results is not None:
-            names += list(chain(*[result.get("aliases") or [] for result in results]))
+        if results:
+            names += list(chain(*[result.get("aliases") or [] for result in results]))  # type: ignore
 
         return get_close_matches(name, names)
 
@@ -102,7 +100,7 @@ class Tag(DatabaseModel):
         name: str,
         guild: hikari.SnowflakeishOr[hikari.PartialGuild],
         owner: hikari.SnowflakeishOr[hikari.PartialUser],
-    ) -> list[str] | None:
+    ) -> list[str]:
         """Fetch the closest tagnames for the provided name and owner.
 
         Parameters
@@ -126,10 +124,10 @@ class Tag(DatabaseModel):
             """SELECT tagname, aliases FROM tags WHERE guild_id = $1 AND owner_id = $2""", guild_id, owner_id
         )
 
-        names = [result["tagname"] for result in results] if results else []
+        names: list[str] = [result["tagname"] for result in results] if results else []
 
-        if results is not None:
-            names += list(chain(*[result.get("aliases") or [] for result in results]))
+        if results:
+            names += list(chain(*[result.get("aliases") or [] for result in results]))  # type: ignore
 
         return get_close_matches(name, names)
 

@@ -1,23 +1,21 @@
 import logging
 
+import arc
 import hikari
-import lightbulb
 
 from src.etc import const, get_perm_str
-from src.models import SnedSlashContext
-from src.models.bot import SnedBot
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 
 logger = logging.getLogger(__name__)
 
-troubleshooter = SnedPlugin("Troubleshooter")
+plugin = SnedPlugin("Troubleshooter")
 
 # Find perms issues
 # Find automod config issues
 # Find missing channel perms issues
 # ...
 
-REQUIRED_PERMISSIONS = (
+REQUIRED_PERMISSIONS: hikari.Permissions = (
     hikari.Permissions.VIEW_AUDIT_LOG
     | hikari.Permissions.MANAGE_ROLES
     | hikari.Permissions.KICK_MEMBERS
@@ -67,15 +65,19 @@ PERM_DESCRIPTIONS = {
 }
 
 
-@troubleshooter.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_GUILD, dm_enabled=False)
-@lightbulb.command("troubleshoot", "Diagnose and locate common configuration issues.")
-@lightbulb.implements(lightbulb.SlashCommand)
-async def troubleshoot(ctx: SnedSlashContext) -> None:
-    assert ctx.interaction.app_permissions is not None
+@plugin.include
+@arc.slash_command(
+    "troubleshoot",
+    "Diagnose and locate common configuration issues.",
+    default_permissions=hikari.Permissions.MANAGE_GUILD,
+    invocation_contexts=(hikari.ApplicationContextType.GUILD,),
+)
+async def troubleshoot(ctx: SnedContext) -> None:
+    assert ctx.app_permissions is not None
+    assert ctx.guild_id is not None
 
-    missing_perms = ~ctx.interaction.app_permissions & REQUIRED_PERMISSIONS
-    content_list = []
+    missing_perms = ~ctx.app_permissions & REQUIRED_PERMISSIONS
+    content_list: list[str] = []
 
     if missing_perms is not hikari.Permissions.NONE:
         content_list.append("**Missing Permissions:**")
@@ -97,15 +99,17 @@ async def troubleshoot(ctx: SnedSlashContext) -> None:
             color=const.ERROR_COLOR,
         )
 
-    await ctx.mod_respond(embed=embed)
+    await ctx.respond(embed=embed, flags=(await ctx.client.mod.get_msg_flags(ctx.guild_id)))
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(troubleshooter)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(troubleshooter)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

@@ -1,11 +1,47 @@
+[project]
+name = "snedbot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "aiodns>=4.0.0",
+    "aiohttp>=3.13.5",
+    "asyncpg>=0.31.0",
+    "asyncpg-stubs>=0.31.2",
+    "brotli>=1.2.0",
+    "ciso8601>=2.3.3",
+    "dateparser>=1.4.0",
+    "hikari>=2.5.0",
+    "hikari-arc>=2.3.0",
+    "hikari-miru>=4.2.0",
+    "hikari-toolbox>=0.1.7",
+    "kosu",
+    "levenshtein>=0.27.3",
+    "pillow>=12.2.0",
+    "psutil>=7.2.2",
+    "types-pillow>=10.2.0.20240822",
+    "uvloop>=0.22.1",
+]
+
+[tool.uv.sources]
+kosu = { git = "https://github.com/hypergonial/kosu.git" }
+
+[dependency-groups]
+dev = ["nox>=2026.2.9", "ruff>=0.15.0", "pyright==1.1.409"]
+
 [tool.ruff]
 exclude = ["examples", "docs", "build"]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
 select = [
-    "E", 
-    "F", 
-    "I", 
-    "TCH", 
-    "N", 
+    "E",
+    "F",
+    "I",
+    "TCH",
+    "N",
     "D2",
     "D3",
     "D415",
@@ -18,43 +54,16 @@ select = [
     "RUF",
 ]
 ignore = ["F405", "F403", "E501", "D203", "D205", "D213", "RUF001"]
-fixable = ["I", "TCH", "D"]
-line-length = 120
-target-version = "py311"
+fixable = ["I", "TCH", "D", "RUF", "SIM"]
+
 
 [tool.mypy]
 ignore_errors = true # I use pyright only because mypy dumb
 
 [tool.pyright]
-pythonVersion = "3.11"
-typeCheckingMode = "basic"
-
-[tool.poetry]
-name = "snedbot"
-version = "0.1.0" # I do not actually update this, lol
-description = "Your friendly neighbourhood multi-purpose Discord bot."
-authors = ["hypergonial <46067571+hypergonial@users.noreply.github.com>"]
-license = "GNU GPL-v3"
-
-[tool.poetry.dependencies]
-python = ">=3.11,<3.13"
-dateparser = "^1.1.8"
-psutil = "^5.9.6"
-Pillow = "^10.2.0"
-asyncpg = "^0.28.0"
-Levenshtein = "^0.23.0"
-uvloop = {version = "==0.18.0", platform="linux"}
-aiodns = "~=3.1.1"
-Brotli = "~=1.0"
-ciso8601 = "~=2.3"
-kosu = {git = "https://github.com/hypergonial/kosu.git"}
-hikari-lightbulb = "~=2.3.5"
-hikari-miru = "~=3.3.1"
-
-[tool.poetry.dev-dependencies]
-nox = "^2023.4.22"
-ruff = "^0.1.14"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportPrivateUsage = false
+reportMissingTypeStubs = true
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUninitializedInstanceVariable = "error"

@@ -110,7 +110,7 @@ class DictionaryEntry:
 
     @classmethod
     def from_dict(cls, data: dict[str, t.Any]) -> DictionaryEntry:
-        et = data.get("et", None)
+        et = data.get("et")
         try:
             if et and et[0][0] == "text":
                 et = re.sub(r"[{]\S+[}]", "", et[0][1])
@@ -121,10 +121,10 @@ class DictionaryEntry:
             id=data["meta"]["id"],
             word=data["meta"]["id"].split(":")[0],
             definitions=data["shortdef"],
-            functional_label=data.get("fl", None),
+            functional_label=data.get("fl"),
             offensive=data["meta"].get("offensive") or False,
             etymology=et,
-            date=data.get("date", None),
+            date=data.get("date"),
         )
 
 
@@ -142,7 +142,7 @@ class DictionaryClient:
             self._session = aiohttp.ClientSession()
         return self._session
 
-    async def get_urban_entries(self, word: str) -> list[UrbanEntry]:
+    async def fetch_urban_entries(self, word: str) -> list[UrbanEntry]:
         """Get entries for a word from the Urban dictionary.
 
         Parameters
@@ -209,7 +209,7 @@ class DictionaryClient:
 
         return results
 
-    async def get_mw_entries(self, word: str) -> list[DictionaryEntry]:
+    async def fetch_mw_entries(self, word: str) -> list[DictionaryEntry]:
         """Get entries for a word from the Merriam-Webster dictionary.
 
         Parameters

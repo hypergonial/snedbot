@@ -1,5 +1,3 @@
-import asyncio
-import datetime
 import logging
 import os
 import pathlib
@@ -7,82 +5,31 @@ import typing as t
 from contextlib import suppress
 
 import aiohttp
+import arc
 import hikari
 import kosu
-import lightbulb
 import miru
+import toolbox
 
 import src.utils.db_backup as db_backup
-from src.config import Config
 from src.models.audit_log import AuditLogCache
-from src.models.context import *
 from src.models.db import Database
-from src.models.errors import UserBlacklistedError
 from src.models.mod_actions import ModActions
+from src.models.response_provider import ResponseProvider
 from src.utils import cache, helpers, scheduler
-from src.utils.tasks import IntervalLoop
+from src.utils.userlogger import UserLogger
+
+if t.TYPE_CHECKING:
+    import datetime
+
+    from src.config import Config
 
 
-async def is_not_blacklisted(ctx: SnedContext) -> bool:
-    """Evaluate if the user is blacklisted or not.
-
-    Parameters
-    ----------
-    ctx : SnedContext
-        The context to evaluate under.
-
-    Returns
-    -------
-    bool
-        A boolean determining if the user is blacklisted or not.
-
-    Raises
-    ------
-    UserBlacklistedError
-        The user is blacklisted.
-    """
-    records = await ctx.app.db_cache.get(table="blacklist", user_id=ctx.user.id)
-
-    if not records:
-        return True
-
-    raise UserBlacklistedError("User is blacklisted from using the application.")
+logger = logging.getLogger(__name__)
 
 
-class SnedBot(lightbulb.BotApp):
-    """A customized subclass of lightbulb.BotApp.
-
-    Parameters
-    ----------
-    config : Config
-        The bot configuration to initialize the bot with.
-        See the included config_example.py for formatting help.
-    """
-
-    __slots__: t.Sequence[str] = (
-        "_started",
-        "_is_started",
-        "_config",
-        "_db",
-        "_session",
-        "_db_cache",
-        "_mod",
-        "_perspective",
-        "_scheduler",
-        "_audit_log_cache",
-        "_initial_guilds",
-        "_start_time",
-        "dev_mode",
-        "skip_first_db_backup",
-        "_user_id",
-        "_base_dir",
-        "_db_backup_loop",
-    )
-
+class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
     def __init__(self, config: Config) -> None:
-        self._started = asyncio.Event()
-        self._is_started = False
-
         cache_settings = hikari.impl.CacheSettings(
             components=hikari.api.CacheComponents.ALL, max_messages=100000, max_dm_channel_ids=50
         )
@@ -106,15 +53,12 @@ class SnedBot(lightbulb.BotApp):
         if not token:
             raise RuntimeError("TOKEN not found in environment.")
 
+        bot = hikari.GatewayBot(token=token, cache_settings=cache_settings, intents=intents, banner=None)
+
         super().__init__(
-            token=token,
-            cache_settings=cache_settings,
+            bot,
             default_enabled_guilds=default_enabled_guilds,
-            intents=intents,
-            owner_ids=(163979124820541440,),
-            prefix="dev",
-            help_class=None,
-            banner=None,
+            invocation_contexts=(hikari.ApplicationContextType.GUILD,),
         )
 
         # Initizaling configuration and database
@@ -123,22 +67,21 @@ class SnedBot(lightbulb.BotApp):
         self._session: aiohttp.ClientSession | None = None
         self._db_cache = cache.DatabaseCache(self)
         self._mod = ModActions(self)
-        miru.install(self)
+        self._miru = miru.Client.from_arc(self)
+        self.add_injection_hook(self._cmd_injection_hook)
 
         # Some global variables
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[2])
-        self._db_backup_loop = IntervalLoop(self.backup_db, seconds=3600 * 24)
-        self.skip_first_db_backup = True  # Set to False to backup DB on bot startup too
+        self._db_backup_loop = arc.utils.IntervalLoop(self.backup_db, seconds=3600 * 24)
+        self.skip_db_backup = True  # Set to False to backup DB on bot startup too
         self._user_id: hikari.Snowflake | None = None
         self._perspective: kosu.Client | None = None
         self._scheduler = scheduler.Scheduler(self)
+        self._userlogger = UserLogger(self)
         self._audit_log_cache: AuditLogCache = AuditLogCache(self)
         self._initial_guilds: list[hikari.Snowflake] = []
         self._start_time: datetime.datetime | None = None
-
-        self.check(is_not_blacklisted)
-
-        self.start_listeners()
+        self.subscribe_listeners()
 
     @property
     def user_id(self) -> hikari.Snowflake:
@@ -147,14 +90,6 @@ class SnedBot(lightbulb.BotApp):
             raise hikari.ComponentStateConflictError("The bot is not yet initialized, user_id is unavailable.")
 
         return self._user_id
-
-    @property
-    def is_ready(self) -> bool:
-        """Indicates if the application is ready to accept instructions or not.
-
-        Alias for BotApp.is_alive
-        """
-        return self.is_alive
 
     @property
     def base_dir(self) -> str:
@@ -184,6 +119,11 @@ class SnedBot(lightbulb.BotApp):
         return self._scheduler
 
     @property
+    def userlogger(self) -> UserLogger:
+        """The userlogger instance of the bot."""
+        return self._userlogger
+
+    @property
     def perspective(self) -> kosu.Client:
         """The perspective client of the bot."""
         if self._perspective is None:
@@ -208,9 +148,9 @@ class SnedBot(lightbulb.BotApp):
         return self._audit_log_cache
 
     @property
-    def is_started(self) -> bool:
-        """Boolean indicating if the bot has started up or not."""
-        return self._is_started
+    def miru(self) -> miru.Client:
+        """The miru client of the bot."""
+        return self._miru
 
     @property
     def start_time(self) -> datetime.datetime:
@@ -219,50 +159,21 @@ class SnedBot(lightbulb.BotApp):
             raise hikari.ComponentStateConflictError("The bot is not started yet, 'start_time' cannot be retrieved.")
         return self._start_time
 
-    def start_listeners(self) -> None:
+    def subscribe_listeners(self) -> None:
         """Start all listeners located in this class."""
         self.subscribe(hikari.StartingEvent, self.on_starting)
         self.subscribe(hikari.StartedEvent, self.on_started)
         self.subscribe(hikari.GuildAvailableEvent, self.on_guild_available)
-        self.subscribe(lightbulb.LightbulbStartedEvent, self.on_lightbulb_started)
+        self.subscribe(arc.StartedEvent, self.on_arc_started)
         self.subscribe(hikari.MessageCreateEvent, self.on_message)
         self.subscribe(hikari.StoppingEvent, self.on_stopping)
         self.subscribe(hikari.StoppedEvent, self.on_stop)
         self.subscribe(hikari.GuildJoinEvent, self.on_guild_join)
         self.subscribe(hikari.GuildLeaveEvent, self.on_guild_leave)
 
-    async def wait_until_started(self) -> None:
-        """Wait until the bot has started up."""
-        await asyncio.wait_for(self._started.wait(), timeout=None)
-
-    async def get_slash_context(
-        self,
-        event: hikari.InteractionCreateEvent,
-        command: lightbulb.SlashCommand,
-        cls: t.Type[lightbulb.SlashContext] = SnedSlashContext,
-    ) -> SnedSlashContext:
-        return await super().get_slash_context(event, command, cls)  # type: ignore
-
-    async def get_user_context(
-        self,
-        event: hikari.InteractionCreateEvent,
-        command: lightbulb.UserCommand,
-        cls: t.Type[lightbulb.UserContext] = SnedUserContext,
-    ) -> SnedUserContext:
-        return await super().get_user_context(event, command, cls)  # type: ignore
-
-    async def get_message_context(
-        self,
-        event: hikari.InteractionCreateEvent,
-        command: lightbulb.MessageCommand,
-        cls: t.Type[lightbulb.MessageContext] = SnedMessageContext,
-    ) -> SnedMessageContext:
-        return await super().get_message_context(event, command, cls)  # type: ignore
-
-    async def get_prefix_context(
-        self, event: hikari.MessageCreateEvent, cls: t.Type[lightbulb.PrefixContext] = SnedPrefixContext
-    ) -> SnedPrefixContext | None:
-        return await super().get_prefix_context(event, cls)  # type: ignore
+    async def _cmd_injection_hook(self, ctx: arc.Context[t.Self], inj_ctx: arc.InjectorOverridingContext) -> None:
+        """Called on every invocation of a command, allows for injection of invocation-specific dependencies."""
+        inj_ctx.set_type_dependency(ResponseProvider, ResponseProvider(ctx))  # type: ignore
 
     async def on_guild_available(self, event: hikari.GuildAvailableEvent) -> None:
         if self.is_started:
@@ -282,22 +193,23 @@ class SnedBot(lightbulb.BotApp):
             self._perspective = kosu.Client(perspective_api_key, do_not_store=True)
 
         # Load all extensions
-        self.load_extensions_from(os.path.join(self.base_dir, "src", "extensions"), must_exist=True)
+        self.load_extensions_from(os.path.join(self.base_dir, "src", "extensions"))
 
     async def on_started(self, _: hikari.StartedEvent) -> None:
+        self._userlogger.start()
         self._db_backup_loop.start()
 
-        user = self.get_me()
+        user = self.app.get_me()
         self._user_id = user.id if user else None
 
-        logging.info(f"Startup complete, initialized as {user}.")
+        logger.info(f"Startup complete, initialized as {user}.")
         activity = hikari.Activity(name="@Sned", type=hikari.ActivityType.LISTENING)
-        await self.update_presence(activity=activity)
+        await self.app.update_presence(activity=activity)
 
         if self.dev_mode:
-            logging.warning("Developer mode is enabled!")
+            logger.warning("Developer mode is enabled!")
 
-    async def on_lightbulb_started(self, _: lightbulb.LightbulbStartedEvent) -> None:
+    async def on_arc_started(self, _: arc.StartedEvent[t.Self]) -> None:
         # Insert all guilds the bot is member of into the db global config on startup
         async with self.db.acquire() as con:
             for guild_id in self._initial_guilds:
@@ -307,7 +219,7 @@ class SnedBot(lightbulb.BotApp):
                     ON CONFLICT (guild_id) DO NOTHING""",
                     guild_id,
                 )
-            logging.info(f"Connected to {len(self._initial_guilds)} guilds.")
+            logger.info(f"Connected to {len(self._initial_guilds)} guilds.")
             self._initial_guilds = []
 
         # Set this here so all guild_ids are in DB
@@ -317,30 +229,29 @@ class SnedBot(lightbulb.BotApp):
         self.unsubscribe(hikari.GuildAvailableEvent, self.on_guild_available)
 
     async def on_stopping(self, _: hikari.StoppingEvent) -> None:
-        logging.info("Bot is shutting down...")
+        logger.info("Bot is shutting down...")
         self.scheduler.stop()
 
     async def on_stop(self, _: hikari.StoppedEvent) -> None:
         await self.db.close()
-        logging.info("Closed database connection.")
+        logger.info("Closed database connection.")
 
     async def on_message(self, event: hikari.MessageCreateEvent) -> None:
         if not event.content:
             return
 
-        if self.is_ready and self.db_cache.is_ready and event.is_human:
+        if self.is_started and self.db_cache.is_ready and event.is_human:
             mentions = [f"<@{self.user_id}>", f"<@!{self.user_id}>"]
 
             if event.content in mentions:
-                me = self.get_me()
+                me = self.app.get_me()
                 await event.message.respond(
                     embed=hikari.Embed(
                         title="Beep Boop!",
                         description="Use `/` to access my commands and see what I can do!",
                         color=0xFEC01D,
-                    ).set_thumbnail(me.avatar_url if me else None)
+                    ).set_thumbnail(me.make_avatar_url() if me else None)
                 )
-                return
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
         await self.db.register_guild(event.guild_id)
@@ -353,7 +264,7 @@ class SnedBot(lightbulb.BotApp):
 
         assert me is not None
 
-        if not channel or not (hikari.Permissions.SEND_MESSAGES & lightbulb.utils.permissions_in(channel, me)):
+        if not channel or not (hikari.Permissions.SEND_MESSAGES & toolbox.calculate_permissions(me, channel)):
             return
 
         assert isinstance(channel, hikari.TextableGuildChannel)
@@ -364,19 +275,19 @@ class SnedBot(lightbulb.BotApp):
                     title="Beep Boop!",
                     description="""I have been summoned to this server. Type `/` to see what I can do!\n\nIf you have `Manage Server` permissions, you may configure the bot via `/settings`!""",
                     color=0xFEC01D,
-                ).set_thumbnail(me.avatar_url)
+                ).set_thumbnail(me.make_avatar_url())
             )
-        logging.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")
+        logger.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")
 
     async def on_guild_leave(self, event: hikari.GuildLeaveEvent) -> None:
         await self.db.wipe_guild(event.guild_id, keep_record=False)
-        logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
+        logger.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
 
     async def backup_db(self) -> None:
         """Backs up the database to a file and, if configured, sends it to the specified channel."""
-        if self.skip_first_db_backup:
-            logging.info("Skipping database backup for this day...")
-            self.skip_first_db_backup = False
+        if self.skip_db_backup:
+            logger.info("Skipping database backup for this day...")
+            self.skip_db_backup = False
             return
 
         file = await db_backup.backup_database()
@@ -388,22 +299,10 @@ class SnedBot(lightbulb.BotApp):
                 f"Database Backup: {helpers.format_dt(helpers.utcnow())}",
                 attachment=file,
             )
-            return logging.info("Database backup complete, database backed up and sent to specified Discord channel.")
+            return logger.info("Database backup complete, database backed up and sent to specified Discord channel.")
 
-        logging.info("Database backup complete.")
+        logger.info("Database backup complete.")
 
 
-# Copyright (C) 2022-present hypergonial
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see: https://www.gnu.org/licenses
+SnedContext = arc.Context[SnedClient]
+SnedPlugin = arc.GatewayPluginBase[SnedClient]

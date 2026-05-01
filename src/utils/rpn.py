@@ -52,7 +52,7 @@ def _pow(a: Fraction, b: Fraction) -> Fraction:
     return Fraction(a**b)
 
 
-OPS: dict[str, Operator] = {
+OPS: dict[str, Operator[t.Any]] = {
     "+": BinaryOperator("+", 0, lambda a, b: a + b),
     "-": BinaryOperator("-", 0, lambda a, b: a - b),
     "*": BinaryOperator("*", 1, lambda a, b: a * b),
@@ -94,7 +94,7 @@ class Solver:
         InvalidExpressionError
             If the expression is invalid.
         """
-        stack = []
+        stack: list[str] = []
         for i, c in enumerate(self._expr):
             if c not in VALID_CHARS:
                 raise InvalidExpressionError(f"Illegal character at position {i + 1}: {c}")
@@ -154,9 +154,7 @@ class Solver:
             return False
         op = OPS[c]
         top_op = OPS[top]
-        if c in ["^", "~"] and op.prec >= top_op.prec or op.prec > top_op.prec:
-            return False
-        return True
+        return not ((c in ["^", "~"] and op.prec >= top_op.prec) or op.prec > top_op.prec)
 
     def _to_polish_notation(self) -> None:
         """Convert an expression to polish notation.
@@ -178,7 +176,7 @@ class Solver:
             If the expression is invalid.
         """
         result: list[str] = [""]
-        stack = []
+        stack: list[str] = []
         for c in self._expr:
             if c.isspace():
                 continue
@@ -223,7 +221,7 @@ class Solver:
         self._validate()
         self._preprocess()
         self._to_polish_notation()
-        stack = []
+        stack: list[Fraction] = []
         for c in self._rpn:
             if c not in OPS:
                 stack.append(Fraction(c))

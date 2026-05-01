@@ -96,7 +96,7 @@ class OptionsModal(miru.Modal):
 
     async def callback(self, context: miru.ModalContext) -> None:
         self.view.value = SettingValue(modal_values=context.values, is_done=True)
-        self.view._last_context = context
+        self.view._last_context = context  # type: ignore
         self.view._input_event.set()
         self.view._input_event.clear()
         self.view._done_event.set()
@@ -174,10 +174,10 @@ class PerspectiveBoundsModal(miru.Modal):
         self.view = view
 
     async def callback(self, context: miru.ModalContext) -> None:
-        self.view._last_context = context
-        self.view.value = SettingValue(
+        self.view._last_context = context  # type: ignore
+        self.view.value = SettingValue(  # type: ignore
             raw_perspective_bounds={item.custom_id: value for item, value in context.values.items()}
-        )  # type: ignore
+        )
         self.view._input_event.set()
         self.view._input_event.clear()
 
@@ -190,7 +190,7 @@ class PerspectiveBoundsModal(miru.Modal):
 class OptionsTextSelect(miru.TextSelect, SettingsItem):
     """Select that sets view value to first selected option's value."""
 
-    def __init__(self, with_done: bool = False, **kwargs):
+    def __init__(self, with_done: bool = False, **kwargs: t.Any):
         super().__init__(**kwargs)
         self.with_done = with_done
 
@@ -203,7 +203,7 @@ class OptionsTextSelect(miru.TextSelect, SettingsItem):
 
 
 class OptionsRoleSelect(miru.RoleSelect, SettingsItem):
-    def __init__(self, with_done: bool = False, **kwargs):
+    def __init__(self, with_done: bool = False, **kwargs: t.Any):
         super().__init__(**kwargs)
         self.with_done = with_done
 
@@ -216,7 +216,7 @@ class OptionsRoleSelect(miru.RoleSelect, SettingsItem):
 
 
 class OptionsChannelSelect(miru.ChannelSelect, SettingsItem):
-    def __init__(self, with_done: bool = False, **kwargs):
+    def __init__(self, with_done: bool = False, **kwargs: t.Any):
         super().__init__(**kwargs)
         self.with_done = with_done
 
@@ -231,7 +231,7 @@ class OptionsChannelSelect(miru.ChannelSelect, SettingsItem):
 class BackButton(OptionButton):
     """Go back to page that ctx.parent is set to."""
 
-    def __init__(self, parent: str, **kwargs) -> None:
+    def __init__(self, parent: str, **kwargs: t.Any) -> None:
         super().__init__(style=hikari.ButtonStyle.PRIMARY, custom_id=parent, label="Back", emoji="⬅️")
         self.kwargs = kwargs
 
@@ -246,7 +246,7 @@ class BackButton(OptionButton):
 class DoneButton(miru.Button, SettingsItem):
     """Button that signals to the view the action being waited for is done."""
 
-    def __init__(self, parent: str, **kwargs) -> None:
+    def __init__(self, parent: str, **kwargs: t.Any) -> None:
         super().__init__(style=hikari.ButtonStyle.SUCCESS, custom_id=f"done:{parent}", label="Done", emoji="✔️")
         self.kwargs = kwargs
 

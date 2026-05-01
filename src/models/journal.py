@@ -164,6 +164,7 @@ class JournalEntry(DatabaseModel):
                 self.created_at.timestamp(),
                 self.entry_type.value,
             )
+            assert record is not None
             self.id = record.get("id")
             return
 

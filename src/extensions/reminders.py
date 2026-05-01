@@ -3,18 +3,23 @@ import json
 import logging
 import typing as t
 
+import arc
 import hikari
-import lightbulb
 import miru
 
 from src.etc import const
-from src.models import SnedBot, SnedSlashContext, Timer, events
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
+from src.models.events import TimerCompleteEvent  # noqa: TC001
 from src.models.timer import TimerEvent
 from src.models.views import AuthorOnlyNavigator
 from src.utils import helpers
 
-reminders = SnedPlugin(name="Reminders")
+if t.TYPE_CHECKING:
+    from miru.ext import nav
+
+    from src.models import Timer
+
+plugin = SnedPlugin(name="Reminders")
 
 logger = logging.getLogger(__name__)
 
@@ -36,26 +41,22 @@ class SnoozeSelect(miru.TextSelect):
             placeholder="Snooze reminder...",
         )
 
-    async def callback(self, ctx: miru.ViewContext) -> None:
+    @plugin.inject_dependencies
+    async def callback(self, ctx: miru.ViewContext, client: SnedClient = miru.inject()) -> None:
         assert isinstance(self.view, SnoozeView)
 
         expiry = helpers.utcnow() + datetime.timedelta(minutes=int(self.values[0]))
-        assert (
-            self.view.reminder_message.embeds[0].description
-            and isinstance(ctx.app, SnedBot)
-            and ctx.guild_id
-            and isinstance(self.view, SnoozeView)
-        )
+        assert self.view.reminder_message.embeds[0].description and ctx.guild_id and isinstance(self.view, SnoozeView)
         message = self.view.reminder_message.embeds[0].description.split("\n\n[Jump to original message!](")[0]
 
-        reminder_data = {
+        reminder_data: dict[str, t.Any] = {
             "message": message,
             "jump_url": ctx.message.make_link(ctx.guild_id),
             "additional_recipients": [],
             "is_snoozed": True,
         }
 
-        timer = await ctx.app.scheduler.create_timer(
+        timer = await client.scheduler.create_timer(
             expiry,
             TimerEvent.REMINDER,
             ctx.guild_id,
@@ -90,18 +91,25 @@ class SnoozeView(miru.View):
         return await super().on_timeout()
 
 
-@reminders.listener(miru.ComponentInteractionCreateEvent, bind=True)
-async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentInteractionCreateEvent) -> None:
-    if not event.context.custom_id.startswith(("RMSS:", "RMAR:")):
+@plugin.listen()
+@plugin.inject_dependencies
+async def reminder_component_handler(
+    event: hikari.InteractionCreateEvent, miru_client: miru.Client = arc.inject()
+) -> None:
+    inter = event.interaction
+
+    if not isinstance(inter, hikari.ComponentInteraction) or inter.guild_id is None:
         return
 
-    assert event.context.guild_id is not None
+    if not inter.custom_id.startswith(("RMSS:", "RMAR:")):
+        return
 
-    if event.context.custom_id.startswith("RMSS:"):  # Snoozes
-        author_id = hikari.Snowflake(event.context.custom_id.split(":")[1])
+    if inter.custom_id.startswith("RMSS:"):  # Snoozes
+        author_id = hikari.Snowflake(inter.custom_id.split(":")[1])
 
-        if author_id != event.context.user.id:
-            await event.context.respond(
+        if author_id != inter.user.id:
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE,
                 embed=hikari.Embed(
                     title="❌ Invalid interaction",
                     description="You cannot snooze someone else's reminder!",
@@ -111,15 +119,15 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
             )
             return
 
-        if not event.context.message.embeds:
+        if not inter.message.embeds:
             return
 
-        view = miru.View.from_message(event.context.message)
-        view.children[0].disabled = True  # type: ignore
-        await event.context.edit_response(components=view)
+        view = miru.View.from_message(inter.message)
+        view.children[0].disabled = True
+        await inter.create_initial_response(hikari.ResponseType.MESSAGE_UPDATE, components=view)
 
-        view = SnoozeView(event.context.message)  # I literally added InteractionResponse just for this
-        resp = await event.context.respond(
+        view = SnoozeView(inter.message)
+        msg = await inter.execute(
             embed=hikari.Embed(
                 title="🕔 Select a snooze duration!",
                 description="Select a duration to snooze the reminder for!",
@@ -128,17 +136,18 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
             components=view,
             flags=hikari.MessageFlag.EPHEMERAL,
         )
-        await view.start(await resp.retrieve_message())
+        miru_client.start_view(view, bind_to=msg)
 
     else:  # Reminder additional recipients
-        timer_id = int(event.context.custom_id.split(":")[1])
+        timer_id = int(inter.custom_id.split(":")[1])
         try:
-            timer: Timer = await plugin.app.scheduler.get_timer(timer_id, event.context.guild_id)
-            if timer.channel_id != event.context.channel_id or timer.event != TimerEvent.REMINDER:
+            timer: Timer = await plugin.client.scheduler.get_timer(timer_id, inter.guild_id)
+            if timer.channel_id != inter.channel_id or timer.event != TimerEvent.REMINDER:
                 raise ValueError
 
         except ValueError:
-            await event.context.respond(
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE,
                 embed=hikari.Embed(
                     title="❌ Invalid interaction",
                     description="Oops! It looks like this reminder is no longer valid!",
@@ -146,16 +155,16 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,
             )
-            view = miru.View.from_message(event.context.message)
+            view = miru.View.from_message(inter.message)
 
             for item in view.children:
-                if isinstance(item, miru.Button):
-                    item.disabled = True
-            await event.context.message.edit(components=view)
+                item.disabled = True
+            await inter.message.edit(components=view)
             return
 
-        if timer.user_id == event.context.user.id:
-            await event.context.respond(
+        if timer.user_id == inter.user.id:
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE,
                 embed=hikari.Embed(
                     title="❌ Invalid interaction",
                     description="You cannot do this on your own reminder.",
@@ -168,9 +177,10 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
         assert timer.notes is not None
         notes: dict[str, t.Any] = json.loads(timer.notes)
 
-        if event.context.user.id not in notes["additional_recipients"]:
+        if inter.user.id not in notes["additional_recipients"]:
             if len(notes["additional_recipients"]) > 50:
-                await event.context.respond(
+                await inter.create_initial_response(
+                    hikari.ResponseType.MESSAGE_CREATE,
                     embed=hikari.Embed(
                         title="❌ Invalid interaction",
                         description="Oops! Looks like too many people signed up for this reminder. Try creating a new reminder! (Max cap: 50)",
@@ -180,10 +190,11 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
                 )
                 return
 
-            notes["additional_recipients"].append(event.context.user.id)
+            notes["additional_recipients"].append(inter.user.id)
             timer.notes = json.dumps(notes)
-            await plugin.app.scheduler.update_timer(timer)
-            await event.context.respond(
+            await plugin.client.scheduler.update_timer(timer)
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE,
                 embed=hikari.Embed(
                     title="✅ Signed up to reminder",
                     description="You will be notified when this reminder is due!",
@@ -193,10 +204,11 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
             )
 
         else:
-            notes["additional_recipients"].remove(event.context.user.id)
+            notes["additional_recipients"].remove(inter.user.id)
             timer.notes = json.dumps(notes)
-            await plugin.app.scheduler.update_timer(timer)
-            await event.context.respond(
+            await plugin.client.scheduler.update_timer(timer)
+            await inter.create_initial_response(
+                hikari.ResponseType.MESSAGE_CREATE,
                 embed=hikari.Embed(
                     title="✅ Removed from reminder",
                     description="Removed you from the list of recipients!",
@@ -206,22 +218,21 @@ async def reminder_component_handler(plugin: SnedPlugin, event: miru.ComponentIn
             )
 
 
-@reminders.command
-@lightbulb.app_command_permissions(None, dm_enabled=False)
-@lightbulb.command("reminder", "Manage reminders!")
-@lightbulb.implements(lightbulb.SlashCommandGroup)
-async def reminder(ctx: SnedSlashContext) -> None:
-    pass
+reminder = plugin.include_slash_group("reminder", "Manage reminders!")
 
 
-@reminder.child
-@lightbulb.option("message", "The message that should be sent to you when this reminder expires.")
-@lightbulb.option(
-    "when", "When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'"
-)
-@lightbulb.command("create", "Create a new reminder.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_create(ctx: SnedSlashContext, when: str, message: str | None = None) -> None:
+@reminder.include
+@arc.slash_subcommand("create", "Create a new reminder.")
+async def reminder_create(
+    ctx: SnedContext,
+    when: arc.Option[
+        str,
+        arc.StrParams("When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'"),
+    ],
+    message: arc.Option[
+        str | None, arc.StrParams("The message that should be sent to you when this reminder expires.")
+    ] = None,
+) -> None:
     assert ctx.guild_id is not None
 
     if message and len(message) >= 1000:
@@ -236,7 +247,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: str | None 
         return
 
     try:
-        time = await ctx.app.scheduler.convert_time(when, user=ctx.user, future_time=True)
+        time = await ctx.client.scheduler.convert_time(when, user=ctx.user, future_time=True)
 
     except ValueError as error:
         await ctx.respond(
@@ -277,7 +288,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: str | None 
         "additional_recipients": [],
     }
 
-    timer = await ctx.app.scheduler.create_timer(
+    timer = await ctx.client.scheduler.create_timer(
         expires=time,
         event=TimerEvent.REMINDER,
         guild=ctx.guild_id,
@@ -286,7 +297,7 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: str | None 
         notes=json.dumps(reminder_data),
     )
 
-    proxy = await ctx.respond(
+    resp = await ctx.respond(
         embed=hikari.Embed(
             title="✅ Reminder set",
             description=f"Reminder set for: {helpers.format_dt(time)} ({helpers.format_dt(time, style='R')})\n\n**Message:**\n{message}",
@@ -294,21 +305,22 @@ async def reminder_create(ctx: SnedSlashContext, when: str, message: str | None 
         ).set_footer(f"Reminder ID: {timer.id}  •  If this looks wrong, please set your timezone using /timezone"),
         components=miru.View().add_item(miru.Button(label="Remind me too!", emoji="✉️", custom_id=f"RMAR:{timer.id}")),
     )
-    reminder_data["jump_url"] = (await proxy.message()).make_link(ctx.guild_id)
+    reminder_data["jump_url"] = (await resp.retrieve_message()).make_link(ctx.guild_id)
     timer.notes = json.dumps(reminder_data)
 
-    await ctx.app.scheduler.update_timer(timer)
+    await ctx.client.scheduler.update_timer(timer)
 
 
-@reminder.child
-@lightbulb.option("id", "The ID of the timer to delete. You can get this via /reminder list", type=int)
-@lightbulb.command("delete", "Delete a currently pending reminder.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
+@reminder.include
+@arc.slash_subcommand("delete", "Delete a currently pending reminder.")
+async def reminder_del(
+    ctx: SnedContext,
+    id: arc.Option[int, arc.IntParams("The ID of the timer to delete. You can get this via /reminder list")],
+) -> None:
     assert ctx.guild_id is not None
 
     try:
-        await ctx.app.scheduler.cancel_timer(id, ctx.guild_id, ctx.author.id)
+        await ctx.client.scheduler.cancel_timer(id, ctx.guild_id, ctx.author.id)
     except ValueError:
         await ctx.respond(
             embed=hikari.Embed(
@@ -329,11 +341,10 @@ async def reminder_del(ctx: SnedSlashContext, id: int) -> None:
     )
 
 
-@reminder.child
-@lightbulb.command("list", "List your currently pending reminders.")
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def reminder_list(ctx: SnedSlashContext) -> None:
-    records = await ctx.app.db.fetch(
+@reminder.include
+@arc.slash_subcommand("list", "List your currently pending reminders.")
+async def reminder_list(ctx: SnedContext) -> None:
+    records = await ctx.client.db.fetch(
         """SELECT * FROM timers WHERE guild_id = $1 AND user_id = $2 AND event = 'reminder' ORDER BY expires""",
         ctx.guild_id,
         ctx.author.id,
@@ -349,7 +360,7 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
         )
         return
 
-    reminders = []
+    reminders: list[str] = []
 
     for record in records:
         time = datetime.datetime.fromtimestamp(record["expires"])
@@ -363,17 +374,18 @@ async def reminder_list(ctx: SnedSlashContext) -> None:
 
     reminders_pages = [reminders[i * 10 : (i + 1) * 10] for i in range((len(reminders) + 10 - 1) // 10)]
 
-    pages = [
+    pages: list[str | hikari.Embed | t.Sequence[hikari.Embed] | nav.Page] = [
         hikari.Embed(title="✉️ Your reminders:", description="\n".join(content), color=const.EMBED_BLUE)
         for content in reminders_pages
     ]
-    # FIXME: wtf typing
-    navigator = AuthorOnlyNavigator(ctx, pages=pages, timeout=600)  # type: ignore
-    await navigator.send(ctx.interaction)
+
+    navigator = AuthorOnlyNavigator(ctx.author, pages=pages, timeout=600)
+    builder = await navigator.build_response_async(ctx.client.miru)
+    await ctx.respond_with_builder(builder)
 
 
-@reminders.listener(events.TimerCompleteEvent, bind=True)
-async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
+@plugin.listen()
+async def on_reminder(event: TimerCompleteEvent):
     """Listener for expired reminders."""
     if event.timer.event != TimerEvent.REMINDER:
         return
@@ -411,7 +423,7 @@ async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
     )
 
     try:
-        await plugin.app.rest.create_message(
+        await plugin.client.rest.create_message(
             event.timer.channel_id,
             content=" ".join([user.mention for user in to_ping]),
             embed=embed,
@@ -435,12 +447,14 @@ async def on_reminder(plugin: SnedPlugin, event: events.TimerCompleteEvent):
             logger.info(f"Failed to deliver a reminder to user {user}.")
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(reminders)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(reminders)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

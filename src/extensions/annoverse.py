@@ -1,15 +1,13 @@
+import arc
 import hikari
-import lightbulb
+import toolbox
 
 import src.etc.const as const
 from src.config import Config
-from src.models.bot import SnedBot
-from src.models.context import SnedContext
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.utils import helpers
 
-annoverse = SnedPlugin("Annoverse")
-annoverse.default_enabled_guilds = Config().DEBUG_GUILDS or (372128553031958529,)
+plugin = SnedPlugin("Annoverse", default_enabled_guilds=Config().DEBUG_GUILDS or (372128553031958529,))
 
 QUESTIONS_CHANNEL_ID = 955463477760229397
 OUTPUT_CHANNEL_ID = 955463511767654450
@@ -17,11 +15,9 @@ OUTPUT_CHANNEL_ID = 955463511767654450
 question_counters: dict[hikari.Snowflake, int] = {}
 
 
-@annoverse.command
-@lightbulb.option("question", "The question you want to ask!")
-@lightbulb.command("ask", "Ask a question on the roundtable!", pass_options=True)
-@lightbulb.implements(lightbulb.SlashCommand)
-async def ask_cmd(ctx: SnedContext, question: str) -> None:
+@plugin.include
+@arc.slash_command("ask", "Ask a question on the roundtable!")
+async def ask_cmd(ctx: SnedContext, question: arc.Option[str, arc.StrParams("The question you want to ask!")]) -> None:
     assert ctx.member is not None and ctx.interaction is not None
 
     if ctx.channel_id != QUESTIONS_CHANNEL_ID:
@@ -45,7 +41,7 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
         question_counters.get(ctx.author.id)
         and question_counters[ctx.author.id] >= 3
         and not helpers.includes_permissions(
-            lightbulb.utils.permissions_for(ctx.member), hikari.Permissions.MANAGE_MESSAGES
+            toolbox.calculate_permissions(ctx.member), hikari.Permissions.MANAGE_MESSAGES
         )
     ):
         if ctx.interaction.locale == "de":
@@ -64,7 +60,7 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
         return
 
     await ctx.respond(hikari.ResponseType.DEFERRED_MESSAGE_CREATE)
-    await ctx.app.rest.create_message(OUTPUT_CHANNEL_ID, f"{ctx.member.mention} **asks:** {question[:500]}")
+    await ctx.client.rest.create_message(OUTPUT_CHANNEL_ID, f"{ctx.member.mention} **asks:** {question[:500]}")
     if not question_counters.get(ctx.author.id):
         question_counters[ctx.author.id] = 0
     question_counters[ctx.author.id] += 1
@@ -84,12 +80,14 @@ async def ask_cmd(ctx: SnedContext, question: str) -> None:
     await ctx.respond(embed=embed)
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(annoverse)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(annoverse)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

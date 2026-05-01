@@ -1,22 +1,18 @@
 import datetime
 import enum
-import json
 import logging
 import re
 import typing as t
 
+import arc
 import hikari
 import kosu
-import lightbulb
 
-import src.utils as utils
 from src.etc import const
-from src.etc.settings_static import default_automod_policies, notices
-from src.models.bot import SnedBot
+from src.etc.settings_static import notices
+from src.models.client import SnedClient, SnedPlugin
 from src.models.events import AutoModMessageFlagEvent
-from src.models.plugin import SnedPlugin
 from src.utils import helpers
-from src.utils.ratelimiter import MemberBucket
 
 INVITE_REGEX = re.compile(r"(?:https?://)?discord(?:app)?\.(?:com/invite|gg)/[a-zA-Z0-9]+/?")
 """Used to detect and handle Discord invites."""
@@ -25,17 +21,18 @@ URL_REGEX = re.compile(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0
 DISCORD_FORMATTING_REGEX = re.compile(r"<\S+>")
 """Remove Discord-specific formatting. Performance is key so some false-positives are acceptable here."""
 
-SPAM_RATELIMITER = utils.RateLimiter(10, 8, bucket=MemberBucket, wait=False)
-PUNISH_RATELIMITER = utils.RateLimiter(30, 1, bucket=MemberBucket, wait=False)
-ATTACH_SPAM_RATELIMITER = utils.RateLimiter(30, 2, bucket=MemberBucket, wait=False)
-LINK_SPAM_RATELIMITER = utils.RateLimiter(30, 2, bucket=MemberBucket, wait=False)
-ESCALATE_PREWARN_RATELIMITER = utils.RateLimiter(30, 1, bucket=MemberBucket, wait=False)
-ESCALATE_RATELIMITER = utils.RateLimiter(30, 1, bucket=MemberBucket, wait=False)
+MEMBER_KEY_FUNC: t.Callable[[hikari.PartialMessage], str] = lambda m: f"{m.author.id if m.author else None}{m.guild_id}"  # noqa: E731
+
+SPAM_RATELIMITER = arc.utils.RateLimiter[hikari.PartialMessage](10, 8, get_key_with=MEMBER_KEY_FUNC)
+PUNISH_RATELIMITER = arc.utils.RateLimiter[hikari.PartialMessage](30, 1, get_key_with=MEMBER_KEY_FUNC)
+ATTACH_SPAM_RATELIMITER = arc.utils.RateLimiter[hikari.PartialMessage](30, 2, get_key_with=MEMBER_KEY_FUNC)
+LINK_SPAM_RATELIMITER = arc.utils.RateLimiter[hikari.PartialMessage](30, 2, get_key_with=MEMBER_KEY_FUNC)
+ESCALATE_PREWARN_RATELIMITER = arc.utils.RateLimiter[hikari.PartialMessage](30, 1, get_key_with=MEMBER_KEY_FUNC)
+ESCALATE_RATELIMITER = arc.utils.RateLimiter[hikari.PartialMessage](30, 1, get_key_with=MEMBER_KEY_FUNC)
 
 logger = logging.getLogger(__name__)
 
-automod = SnedPlugin("Auto-Moderation", include_datastore=True)
-automod.d.actions = lightbulb.utils.DataStore()
+plugin = SnedPlugin("Auto-Moderation")
 
 
 class AutomodActionType(enum.Enum):
@@ -63,48 +60,6 @@ class AutoModState(enum.Enum):
     PERMABAN = "permaban"
 
 
-# TODO: Purge this cursed abomination
-async def get_policies(guild: hikari.SnowflakeishOr[hikari.Guild]) -> dict[str, t.Any]:
-    """Return auto-moderation policies for the specified guild.
-
-    Parameters
-    ----------
-    guild : hikari.SnowflakeishOr[hikari.Guild]
-        The guild to get policies for.
-
-    Returns
-    -------
-    dict[str, t.Any]
-        The guild's auto-moderation policies.
-    """
-    guild_id = hikari.Snowflake(guild)
-
-    records = await automod.app.db_cache.get(table="mod_config", guild_id=guild_id)
-
-    policies = json.loads(records[0]["automod_policies"]) if records else default_automod_policies
-
-    for key in default_automod_policies:
-        if key not in policies:
-            policies[key] = default_automod_policies[key]
-
-        for nested_key in default_automod_policies[key]:
-            if nested_key not in policies[key]:
-                policies[key][nested_key] = default_automod_policies[key][nested_key]
-
-    invalid = []
-    for key in policies:
-        if key not in default_automod_policies:
-            invalid.append(key)
-
-    for key in invalid:
-        policies.pop(key)
-
-    return policies
-
-
-automod.d.actions.get_policies = get_policies
-
-
 def can_automod_punish(me: hikari.Member, offender: hikari.Member) -> bool:
     """Determine if automod can punish a member.
     This checks all required permissions and if the member is a cool person or not.
@@ -130,13 +85,10 @@ def can_automod_punish(me: hikari.Member, offender: hikari.Member) -> bool:
 
     assert offender.guild_id is not None
 
-    if offender.id in automod.app.owner_ids:
+    if offender.id in plugin.client.owner_ids:
         return False  # Hyper is always a good person
 
-    if not helpers.can_harm(me, offender, permission=required_perms):
-        return False
-
-    return True
+    return helpers.can_harm(me, offender, permission=required_perms)
 
 
 # TODO: Split this
@@ -171,8 +123,8 @@ async def punish(
     assert message.guild_id is not None
     assert message.author is not hikari.UNDEFINED
 
-    offender = offender or automod.app.cache.get_member(message.guild_id, message.author.id)
-    me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
+    offender = offender or plugin.client.cache.get_member(message.guild_id, message.author.id)
+    me = plugin.client.cache.get_member(message.guild_id, plugin.client.user_id)
     assert offender is not None and me is not None
 
     if not skip_check and not can_automod_punish(me, offender):
@@ -201,9 +153,9 @@ async def punish(
         silencers.append(AutoModState.ESCALATE.value)
 
     if state in silencers:
-        await PUNISH_RATELIMITER.acquire(message)
-
-        if PUNISH_RATELIMITER.is_rate_limited(message):
+        try:
+            await PUNISH_RATELIMITER.acquire(message, wait=False)
+        except arc.utils.RateLimiterExhaustedError:
             return
 
     if not original_action:
@@ -218,9 +170,13 @@ async def punish(
         await helpers.maybe_delete(message)
 
     if state == AutoModState.FLAG.value:
-        return await automod.app.dispatch(
+        return plugin.client.app.dispatch(
             AutoModMessageFlagEvent(
-                automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
+                plugin.client.app,
+                message,
+                offender,
+                message.guild_id,
+                f"Message flagged by auto-moderator for {reason}.",
             )
         )
 
@@ -234,21 +190,26 @@ async def punish(
             ),
             user_mentions=True,
         )
-        return await automod.app.dispatch(
+        return plugin.client.app.dispatch(
             AutoModMessageFlagEvent(
-                automod.app, message, offender, message.guild_id, f"Message flagged by auto-moderator for {reason}."
+                plugin.client.app,
+                message,
+                offender,
+                message.guild_id,
+                f"Message flagged by auto-moderator for {reason}.",
             )
         )
 
     if state == AutoModState.WARN.value:
-        embed = await automod.app.mod.warn(offender, me, f"Warned by auto-moderator for {reason}.")
+        embed = await plugin.client.mod.warn(offender, me, f"Warned by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
     elif state == AutoModState.ESCALATE.value:
-        await ESCALATE_PREWARN_RATELIMITER.acquire(message)
-
-        if not ESCALATE_PREWARN_RATELIMITER.is_rate_limited(message):
+        try:
+            # Check if the user has been warned before
+            await ESCALATE_PREWARN_RATELIMITER.acquire(message, wait=False)
+            # If not, issue a notice
             await message.respond(
                 content=offender.mention,
                 embed=hikari.Embed(
@@ -258,28 +219,29 @@ async def punish(
                 ),
                 user_mentions=True,
             )
-            return await automod.app.dispatch(
+            return plugin.client.app.dispatch(
                 AutoModMessageFlagEvent(
-                    automod.app,
+                    plugin.client.app,
                     message,
                     offender,
                     message.guild_id,
                     f"Message flagged by auto-moderator for {reason} ({action.name}).",
                 )
             )
-
-        elif ESCALATE_PREWARN_RATELIMITER.is_rate_limited(message):
-            embed = await automod.app.mod.warn(
-                offender,
-                me,
-                f"Warned by auto-moderator for previous offenses ({action.name}).",
-            )
-            await message.respond(embed=embed)
-            return
-
-        else:
-            await ESCALATE_RATELIMITER.acquire(message)
-            if ESCALATE_RATELIMITER.is_rate_limited(message):
+        except hikari.RateLimitTooLongError:
+            # If yes, then check if we should escalate
+            try:
+                await ESCALATE_RATELIMITER.acquire(message, wait=False)
+                # If not, issue a warning
+                embed = await plugin.client.mod.warn(
+                    offender,
+                    me,
+                    f"Warned by auto-moderator for previous offenses ({action.name}).",
+                )
+                await message.respond(embed=embed)
+                return
+            except arc.utils.RateLimiterExhaustedError:
+                # Escalate to a full punishment
                 return await punish(
                     message=message,
                     policies=policies,
@@ -290,7 +252,7 @@ async def punish(
                 )
 
     elif state == AutoModState.TIMEOUT.value:
-        embed = await automod.app.mod.timeout(
+        embed = await plugin.client.mod.timeout(
             offender,
             me,
             helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
@@ -300,19 +262,19 @@ async def punish(
         return
 
     elif state == AutoModState.KICK.value:
-        embed = await automod.app.mod.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
+        embed = await plugin.client.mod.kick(offender, me, reason=f"Kicked by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
     elif state == AutoModState.SOFTBAN.value:
-        embed = await automod.app.mod.ban(
+        embed = await plugin.client.mod.ban(
             offender, me, soft=True, reason=f"Soft-banned by auto-moderator for {reason}.", days_to_delete=1
         )
         await message.respond(embed=embed)
         return
 
     elif state == AutoModState.TEMPBAN.value:
-        embed = await automod.app.mod.ban(
+        embed = await plugin.client.mod.ban(
             offender,
             me,
             duration=helpers.utcnow() + datetime.timedelta(minutes=temp_dur),
@@ -322,7 +284,7 @@ async def punish(
         return
 
     elif state == AutoModState.PERMABAN.value:
-        embed = await automod.app.mod.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
+        embed = await plugin.client.mod.ban(offender, me, reason=f"Permanently banned by auto-moderator for {reason}.")
         await message.respond(embed=embed)
         return
 
@@ -372,8 +334,12 @@ async def detect_spam(message: hikari.PartialMessage, policies: dict[str, t.Any]
     bool
         Whether or not the analysis should proceed to the next check.
     """
-    await SPAM_RATELIMITER.acquire(message)
-    if policies["spam"]["state"] != AutoModState.DISABLED.value and SPAM_RATELIMITER.is_rate_limited(message):
+    if policies["spam"]["state"] == AutoModState.DISABLED.value:
+        return True
+
+    try:
+        await SPAM_RATELIMITER.acquire(message, wait=False)
+    except arc.utils.RateLimiterExhaustedError:
         await punish(message, policies, AutomodActionType.SPAM, reason="spam")
         return False
     return True
@@ -394,14 +360,14 @@ async def detect_attach_spam(message: hikari.PartialMessage, policies: dict[str,
     bool
         Whether or not the analysis should proceed to the next check.
     """
-    if policies["attach_spam"]["state"] != AutoModState.DISABLED.value and message.attachments:
-        await ATTACH_SPAM_RATELIMITER.acquire(message)
+    if policies["attach_spam"]["state"] == AutoModState.DISABLED.value or not message.attachments:
+        return True
 
-        if ATTACH_SPAM_RATELIMITER.is_rate_limited(message):
-            await punish(
-                message, policies, AutomodActionType.ATTACH_SPAM, reason="posting images/attachments too quickly"
-            )
-            return False
+    try:
+        await ATTACH_SPAM_RATELIMITER.acquire(message, wait=False)
+    except arc.utils.RateLimiterExhaustedError:
+        await punish(message, policies, AutomodActionType.ATTACH_SPAM, reason="posting images/attachments too quickly")
+        return False
     return True
 
 
@@ -488,31 +454,30 @@ async def detect_link_spam(message: hikari.PartialMessage, policies: dict[str, t
     bool
         Whether or not the analysis should proceed to the next check.
     """
-    if not message.content:
+    if not message.content or policies["link_spam"]["state"] == AutoModState.DISABLED.value:
         return True
 
-    if policies["link_spam"]["state"] != AutoModState.DISABLED.value:
-        link_matches = URL_REGEX.findall(message.content)
-        if len(link_matches) > 7:
+    link_matches = URL_REGEX.findall(message.content)
+    if len(link_matches) > 7:
+        await punish(
+            message,
+            policies,
+            AutomodActionType.LINK_SPAM,
+            reason="having too many links in a single message",
+        )
+        return False
+
+    if link_matches:
+        try:
+            await LINK_SPAM_RATELIMITER.acquire(message, wait=False)
+        except arc.utils.RateLimiterExhaustedError:
             await punish(
                 message,
                 policies,
                 AutomodActionType.LINK_SPAM,
-                reason="having too many links in a single message",
+                reason="posting links too quickly",
             )
             return False
-
-        if link_matches:
-            await LINK_SPAM_RATELIMITER.acquire(message)
-
-            if LINK_SPAM_RATELIMITER.is_rate_limited(message):
-                await punish(
-                    message,
-                    policies,
-                    AutomodActionType.LINK_SPAM,
-                    reason="posting links too quickly",
-                )
-                return False
     return True
 
 
@@ -566,7 +531,7 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
     assert message.guild_id and message.member
 
     if policies["perspective"]["state"] != AutoModState.DISABLED.value:
-        me = automod.app.cache.get_member(message.guild_id, automod.app.user_id)
+        me = plugin.client.cache.get_member(message.guild_id, plugin.client.user_id)
         assert me is not None
 
         # This is a pretty expensive check so we'll only do it if we have to
@@ -588,7 +553,7 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
             return True
 
         try:
-            resp: kosu.AnalysisResponse = await automod.app.perspective.analyze(message.content, persp_attribs)
+            resp: kosu.AnalysisResponse = await plugin.client.perspective.analyze(message.content, persp_attribs)
         except kosu.PerspectiveException as e:
             logger.debug(f"Perspective failed to analyze a message: {e}")
         else:
@@ -607,11 +572,8 @@ async def detect_perspective(message: hikari.PartialMessage, policies: dict[str,
     return True
 
 
-@automod.listener(hikari.GuildMessageCreateEvent, bind=True)
-@automod.listener(hikari.GuildMessageUpdateEvent, bind=True)
-async def scan_messages(
-    plugin: SnedPlugin, event: hikari.GuildMessageCreateEvent | hikari.GuildMessageUpdateEvent
-) -> None:
+@plugin.listen()
+async def scan_messages(event: hikari.GuildMessageCreateEvent | hikari.GuildMessageUpdateEvent) -> None:
     """Scan messages for all possible offences."""
     message = event.message
 
@@ -619,7 +581,7 @@ async def scan_messages(
         # Probably a partial update, ignore it
         return
 
-    if not plugin.app.is_started or not plugin.app.db_cache.is_ready:
+    if not plugin.client.is_started or not plugin.client.db_cache.is_ready:
         return
 
     if message.guild_id is None:
@@ -628,7 +590,7 @@ async def scan_messages(
     if not message.member or message.member.is_bot:
         return
 
-    policies = await get_policies(message.guild_id)
+    policies = await plugin.client.mod.get_automod_policies(message.guild_id)
 
     if isinstance(event, hikari.GuildMessageUpdateEvent):
         all(
@@ -655,12 +617,14 @@ async def scan_messages(
         )
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(automod)
+@arc.loader
+def load(client: SnedClient) -> None:
+    client.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(automod)
+@arc.unloader
+def unload(client: SnedClient) -> None:
+    client.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

@@ -2,19 +2,18 @@ import logging
 import re
 import typing as t
 
+import arc
 import hikari
-import lightbulb
+import toolbox
 
 from src.etc import const
-from src.models.bot import SnedBot
-from src.models.context import SnedApplicationContext, SnedMessageContext, SnedSlashContext
-from src.models.plugin import SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.models.starboard import StarboardEntry, StarboardSettings
 from src.utils import helpers
 
 logger = logging.getLogger(__name__)
 
-starboard = SnedPlugin("Starboard")
+plugin = SnedPlugin("Starboard")
 
 IMAGE_URL_REGEX = re.compile(
     r"https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()!@:%_\+.~#?&\/\/=]*)(?:[.]jpe?g|png|gif|bmp|webp)[-a-zA-Z0-9@:%._\+~#=?&]*"
@@ -67,7 +66,7 @@ def create_starboard_payload(
         The payload as keyword arguments.
     """
     guild_id = hikari.Snowflake(guild)
-    member = starboard.app.cache.get_member(guild_id, message.author.id)
+    member = plugin.client.cache.get_member(guild_id, message.author.id)
     emoji = [emoji for emoji, value in STAR_MAPPING.items() if value <= stars][-1]
 
     content = f"{emoji} **{stars}{' (Forced)' if force_starred else ''}** <#{message.channel_id}>"
@@ -151,7 +150,7 @@ async def star_message(
         if not is_starrable():
             return
         payload = create_starboard_payload(guild, message, stars=stars, force_starred=force_starred)
-        starboard_msg_id = (await starboard.app.rest.create_message(settings.channel_id, **payload)).id
+        starboard_msg_id = (await plugin.client.rest.create_message(settings.channel_id, **payload)).id
         entry = StarboardEntry(
             guild_id=hikari.Snowflake(guild),
             channel_id=message.channel_id,
@@ -170,67 +169,14 @@ async def star_message(
 
     try:
         payload = create_starboard_payload(guild, message, stars=stars, force_starred=force_starred)
-        await starboard.app.rest.edit_message(settings.channel_id, starboard_msg_id, **payload)
+        await plugin.client.rest.edit_message(settings.channel_id, starboard_msg_id, **payload)
     # Starboard message was deleted or missing
     except hikari.NotFoundError:
         await entry.delete()
         await star_message(message, guild, settings, stars)
 
 
-@starboard.listener(hikari.GuildReactionDeleteEvent, bind=True)
-@starboard.listener(hikari.GuildReactionAddEvent, bind=True)
-async def on_reaction(
-    plugin: SnedPlugin, event: hikari.GuildReactionAddEvent | hikari.GuildReactionDeleteEvent
-) -> None:
-    """Listen for reactions & star messages where appropriate."""
-    if not event.is_for_emoji("⭐") or not plugin.app.is_started:
-        return
-
-    settings = await StarboardSettings.fetch(event.guild_id)
-
-    if settings.excluded_channels and event.channel_id in settings.excluded_channels:
-        return
-
-    me = plugin.app.cache.get_member(event.guild_id, plugin.app.user_id)
-
-    if not me:
-        return
-
-    if settings.channel_id and (channel := plugin.app.cache.get_guild_channel(settings.channel_id)):
-        perms = lightbulb.utils.permissions_in(channel, me)
-        if not helpers.includes_permissions(
-            perms,
-            hikari.Permissions.SEND_MESSAGES
-            | hikari.Permissions.VIEW_CHANNEL
-            | hikari.Permissions.READ_MESSAGE_HISTORY,
-        ):
-            return
-
-    elif settings.channel_id:
-        # We store a channel_id but the channel was deleted, so we get rid of all data
-        async with plugin.app.db.acquire() as con:
-            await con.execute("""UPDATE starboard SET channel_id = null WHERE guild_id = $1""", event.guild_id)
-            await con.execute("""DELETE FROM starboard_entries WHERE guild_id = $1""", event.guild_id)
-        await plugin.app.db_cache.refresh(table="starboard", guild_id=event.guild_id)
-        await plugin.app.db_cache.refresh(table="starboard_entries", guild_id=event.guild_id)
-        return
-
-    # Check perms if channel is cached
-    if channel := plugin.app.cache.get_guild_channel(event.channel_id):
-        perms = lightbulb.utils.permissions_in(channel, me)
-        if not helpers.includes_permissions(
-            perms,
-            hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
-        ):
-            return
-
-    message: hikari.Message = await plugin.app.rest.fetch_message(event.channel_id, event.message_id)
-    stars = next((reaction.count for reaction in message.reactions if str(reaction.emoji) == "⭐"), 0)
-
-    await star_message(message, event.guild_id, settings, stars)
-
-
-async def force_star(ctx: SnedApplicationContext, message: hikari.Message) -> None:
+async def force_star(ctx: SnedContext, message: hikari.Message) -> None:
     """Force star a message.
 
     Parameters
@@ -264,21 +210,21 @@ async def force_star(ctx: SnedApplicationContext, message: hikari.Message) -> No
         )
         return
 
-    me = ctx.app.cache.get_member(ctx.guild_id, ctx.app.user_id)
+    me = ctx.client.cache.get_member(ctx.guild_id, ctx.client.user_id)
 
     if not me:
         return
 
-    if settings.channel_id and (channel := ctx.app.cache.get_guild_channel(settings.channel_id)):
-        perms = lightbulb.utils.permissions_in(channel, me)
+    if settings.channel_id and (channel := ctx.client.cache.get_guild_channel(settings.channel_id)):
+        perms = toolbox.calculate_permissions(me, channel)
         if not helpers.includes_permissions(
             perms,
             hikari.Permissions.SEND_MESSAGES
             | hikari.Permissions.VIEW_CHANNEL
             | hikari.Permissions.READ_MESSAGE_HISTORY,
         ):
-            raise lightbulb.BotMissingRequiredPermission(
-                perms=hikari.Permissions.SEND_MESSAGES
+            raise arc.BotMissingPermissionsError(
+                hikari.Permissions.SEND_MESSAGES
                 | hikari.Permissions.VIEW_CHANNEL
                 | hikari.Permissions.READ_MESSAGE_HISTORY
             )
@@ -286,10 +232,10 @@ async def force_star(ctx: SnedApplicationContext, message: hikari.Message) -> No
     else:
         # We store a channel_id but the channel was deleted, so we get rid of all data
         if settings.channel_id:
-            async with ctx.app.db.acquire() as con:
+            async with ctx.client.db.acquire() as con:
                 await con.execute("""UPDATE starboard SET channel_id = null WHERE guild_id = $1""", ctx.guild_id)
                 await con.execute("""DELETE FROM starboard_entries WHERE guild_id = $1""", ctx.guild_id)
-            await ctx.app.db_cache.refresh(table="starboard", guild_id=ctx.guild_id)
+            await ctx.client.db_cache.refresh(table="starboard", guild_id=ctx.guild_id)
 
         await ctx.respond(
             embed=hikari.Embed(
@@ -324,24 +270,72 @@ async def force_star(ctx: SnedApplicationContext, message: hikari.Message) -> No
     )
 
 
-@starboard.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
-@lightbulb.command("star", "Handle the starboard.")
-@lightbulb.implements(lightbulb.SlashCommandGroup)
-async def star(_: SnedSlashContext) -> None:
-    pass
+@plugin.listen()
+async def on_reaction(event: hikari.GuildReactionAddEvent | hikari.GuildReactionDeleteEvent) -> None:
+    """Listen for reactions & star messages where appropriate."""
+    if not event.is_for_emoji("⭐") or not plugin.client.is_started:
+        return
+
+    settings = await StarboardSettings.fetch(event.guild_id)
+
+    if settings.excluded_channels and event.channel_id in settings.excluded_channels:
+        return
+
+    me = plugin.client.cache.get_member(event.guild_id, plugin.client.user_id)
+
+    if not me:
+        return
+
+    if settings.channel_id and (channel := plugin.client.cache.get_guild_channel(settings.channel_id)):
+        perms = toolbox.calculate_permissions(me, channel)
+        if not helpers.includes_permissions(
+            perms,
+            hikari.Permissions.SEND_MESSAGES
+            | hikari.Permissions.VIEW_CHANNEL
+            | hikari.Permissions.READ_MESSAGE_HISTORY,
+        ):
+            return
+
+    elif settings.channel_id:
+        # We store a channel_id but the channel was deleted, so we get rid of all data
+        async with plugin.client.db.acquire() as con:
+            await con.execute("""UPDATE starboard SET channel_id = null WHERE guild_id = $1""", event.guild_id)
+            await con.execute("""DELETE FROM starboard_entries WHERE guild_id = $1""", event.guild_id)
+        await plugin.client.db_cache.refresh(table="starboard", guild_id=event.guild_id)
+        await plugin.client.db_cache.refresh(table="starboard_entries", guild_id=event.guild_id)
+        return
+
+    # Check perms if channel is cached
+    if channel := plugin.client.cache.get_guild_channel(event.channel_id):
+        perms = toolbox.calculate_permissions(me, channel)
+        if not helpers.includes_permissions(
+            perms,
+            hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
+        ):
+            return
+
+    message: hikari.Message = await plugin.client.rest.fetch_message(event.channel_id, event.message_id)
+    stars = next((reaction.count for reaction in message.reactions if str(reaction.emoji) == "⭐"), 0)
+
+    await star_message(message, event.guild_id, settings, stars)
 
 
-@star.child
-@lightbulb.option("id", "The ID of the starboard entry. You can find this in the footer of the entry.")
-@lightbulb.command("show", "Show a starboard entry.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def star_show(ctx: SnedSlashContext, id: str) -> None:
+star = plugin.include_slash_group(
+    "star", "Handle the starboard.", default_permissions=hikari.Permissions.MANAGE_MESSAGES
+)
+
+
+@star.include
+@arc.slash_subcommand("show", "Show a starboard entry.")
+async def star_show(
+    ctx: SnedContext,
+    id: arc.Option[str, arc.StrParams("The ID of the starboard entry. You can find this in the footer of the entry.")],
+) -> None:
     assert ctx.guild_id is not None
 
     try:
         orig_id = abs(int(id))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         embed = hikari.Embed(
             title="❌ Invalid value",
             description="Expected an integer value for parameter `id`.",
@@ -368,19 +362,21 @@ async def star_show(ctx: SnedSlashContext, id: str) -> None:
         await ctx.respond(embed=embed)
         return
 
-    message = await ctx.app.rest.fetch_message(settings.channel_id, entry.entry_message_id)
+    message = await ctx.client.rest.fetch_message(settings.channel_id, entry.entry_message_id)
     await ctx.respond(
         f"Showing entry: `{orig_id}`\n[Jump to entry!]({message.make_link(ctx.guild_id)})", embed=message.embeds[0]
     )
 
 
-@star.child
-@lightbulb.option(
-    "link", 'The link to the message. You can get this by right-clicking and choosing "Copy Message Link".'
-)
-@lightbulb.command("force", "Force a message onto the starboard.", pass_options=True)
-@lightbulb.implements(lightbulb.SlashSubCommand)
-async def star_force(ctx: SnedSlashContext, link: str) -> None:
+@star.include
+@arc.slash_subcommand("force", "Force a message onto the starboard.")
+async def star_force(
+    ctx: SnedContext,
+    link: arc.Option[
+        str,
+        arc.StrParams('The link to the message. You can get this by right-clicking and choosing "Copy Message Link".'),
+    ],
+) -> None:
     message = await helpers.parse_message_link(ctx, link)
     if not message:
         return
@@ -388,20 +384,20 @@ async def star_force(ctx: SnedSlashContext, link: str) -> None:
     await force_star(ctx, message)
 
 
-@starboard.command
-@lightbulb.app_command_permissions(hikari.Permissions.MANAGE_MESSAGES, dm_enabled=False)
-@lightbulb.command("Force Star", "Force a message onto the starboard.", pass_options=True)
-@lightbulb.implements(lightbulb.MessageCommand)
-async def star_force_context(ctx: SnedMessageContext, target: hikari.Message) -> None:
-    await force_star(ctx, target)
+@plugin.include
+@arc.message_command("Force Star")
+async def star_force_context(ctx: SnedContext, message: hikari.Message) -> None:
+    await force_star(ctx, message)
 
 
-def load(bot: SnedBot) -> None:
-    bot.add_plugin(starboard)
+@arc.loader
+def load(bot: SnedClient) -> None:
+    bot.add_plugin(plugin)
 
 
-def unload(bot: SnedBot) -> None:
-    bot.remove_plugin(starboard)
+@arc.unloader
+def unload(bot: SnedClient) -> None:
+    bot.remove_plugin(plugin)
 
 
 # Copyright (C) 2022-present hypergonial

@@ -1,8 +1,14 @@
 {
+    "editor.tabCompletion": "onlySnippets",
     "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
     "editor.formatOnSave": true,
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"
     },
     "autoDocstring.docstringFormat": "numpy",
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "makefile.configureOnOpen": false,
 }

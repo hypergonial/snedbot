@@ -1,16 +1,11 @@
+import typing as t
+
 import hikari
 import miru
 
-from src.models.mod_actions import ModerationFlags
-
 # Static values for the settings extension
 
-mod_flags_strings = {
-    ModerationFlags.DM_USERS_ON_PUNISH: "DM users after punishment",
-    ModerationFlags.IS_EPHEMERAL: "Send mod commands ephemerally",
-}
-
-default_automod_policies = {
+default_automod_policies: dict[str, t.Any] = {
     "invites": {
         "state": "disabled",
         "temp_dur": 15,
@@ -99,7 +94,7 @@ default_automod_policies = {
 }
 
 # Policy state configuration
-policy_states = {
+policy_states: dict[str, t.Any] = {
     "disabled": {"name": "Disabled", "excludes": [], "description": "Disable this policy.", "emoji": "🚫"},
     "flag": {"name": "Flag", "excludes": ["spam"], "description": "Log message to 'Auto-Mod Flagging'.", "emoji": "🚩"},
     "notice": {
@@ -223,8 +218,8 @@ policy_strings = {
     },
     "escalate": {
         "name": "Escalation",
-        "description": """This event is triggered when any other policy's punishment is set to escalation, and escalates measures, culminating in the punishment specified below. 
-        
+        "description": """This event is triggered when any other policy's punishment is set to escalation, and escalates measures, culminating in the punishment specified below.
+
 **The flow is the following:**
 **1.** The user is given a notice
 **2.** If ignored, the user is warned
@@ -235,7 +230,7 @@ Other parameters such as the duration of temporary punishment (if temporary), th
     "perspective": {
         "name": "Perspective",
         "description": """Uses advanced machine learning algorithms to detect and filter out potentially toxic messages. Learn more about Perspective [here](https://www.perspectiveapi.com/).
-        
+
 Below you can set the percentages after which action will be taken based on the Perspective action-types. It is recommended to set at least a `0.85` (85%) confidence rate or higher for all values.
 ​
 Staff members are encouraged to play around with the percentages with only the `Flag` state selected, to test the sensitiveness of the system. Perspective is not a replacement for human moderators, and should not be treated as such.
