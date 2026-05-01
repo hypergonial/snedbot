@@ -22,6 +22,8 @@ try:
             match = DOTENV_REGEX.match(line)
             if not match:
                 continue
+            if match.group("identifier") in os.environ:
+                continue
             os.environ[match.group("identifier")] = match.group("value").strip()
 
 except FileNotFoundError:

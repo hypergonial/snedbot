@@ -23,6 +23,10 @@ services:
         postgres_version: ${POSTGRES_VERSION:-14}
     environment:
       TOKEN: ${TOKEN:?err}
+      DEV_MODE: ${DEV_MODE:-false}
+      ERROR_LOGGING_CHANNEL: ${ERROR_LOGGING_CHANNEL:-}
+      DB_BACKUP_CHANNEL: ${DB_BACKUP_CHANNEL:-}
+      DEBUG_GUILDS: ${DEBUG_GUILDS:-}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-sned}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
