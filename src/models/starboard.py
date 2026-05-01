@@ -42,7 +42,7 @@ class StarboardSettings(DatabaseModel):
         )
 
     @classmethod
-    async def fetch(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> StarboardSettings:
+    async def fetch(cls, guild: hikari.Snowflakeish | hikari.PartialGuild) -> StarboardSettings:
         """Fetch the starboard settings for a guild from the database. If they do not exist, return default values."""
         records = await cls._client.db_cache.get(table="starboard", guild_id=hikari.Snowflake(guild), limit=1)
         if not records:
@@ -97,7 +97,7 @@ class StarboardEntry(DatabaseModel):
         )
 
     @classmethod
-    async def fetch(cls, original_message: hikari.SnowflakeishOr[hikari.PartialMessage]) -> StarboardEntry | None:
+    async def fetch(cls, original_message: hikari.Snowflakeish | hikari.PartialMessage) -> StarboardEntry | None:
         """Fetch the starboard entry for a message from the database, if one exists."""
         records = await cls._client.db_cache.get(
             table="starboard_entries", orig_msg_id=hikari.Snowflake(original_message), limit=1

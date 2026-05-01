@@ -103,7 +103,7 @@ class UserLogger:
             traceback.print_exception(error.__class__, error, error.__traceback__, file=sys.stderr)
 
     async def get_log_channel_id(
-        self, log_event: LogEvent, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        self, log_event: LogEvent, guild: hikari.Snowflakeish | hikari.PartialGuild
     ) -> int | None:
         """Get the channel ID for a given log event.
 
@@ -111,7 +111,7 @@ class UserLogger:
         ----------
         log_event : str
             The event to get the channel ID for.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild to get the channel ID for.
 
         Returns
@@ -130,9 +130,7 @@ class UserLogger:
 
         return log_channels.get(log_event.value) if log_channels else None
 
-    async def get_log_channel_ids_view(
-        self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]
-    ) -> dict[str, int | None]:
+    async def get_log_channel_ids_view(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> dict[str, int | None]:
         """Return a mapping of log_event:channel_id."""
         records = await self._client.db_cache.get(table="log_config", guild_id=hikari.Snowflake(guild), limit=1)
 
@@ -149,8 +147,8 @@ class UserLogger:
     async def set_log_channel(
         self,
         log_event: LogEvent,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        channel: hikari.SnowflakeishOr[hikari.PartialChannel] | None = None,
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        channel: hikari.Snowflakeish | hikari.PartialChannel | None = None,
     ) -> None:
         """Sets logging channel for a given logging event."""
         guild_id = hikari.Snowflake(guild)
@@ -176,8 +174,8 @@ class UserLogger:
         self,
         log_event: LogEvent,
         log_content: hikari.Embed,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        file: hikari.UndefinedOr[hikari.Resourceish] = hikari.UNDEFINED,
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        file: hikari.Resourceish | hikari.UndefinedType = hikari.UNDEFINED,
         bypass: bool = False,
     ) -> None:
         """Log log_content into the channel assigned to log_event, if any.
@@ -188,9 +186,9 @@ class UserLogger:
             The channel associated with this event to post it under.
         log_content : hikari.Embed
             What needs to be logged.
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild: hikari.Snowflakeish | hikari.PartialGuild
             The guild to send the log entry in.
-        file : Optional[hikari.File], optional
+        file : hikari.File | None, optional
             An attachment, if any, by default None
         bypass : bool, optional
             If bypassing guild log freeze is desired, by default False
@@ -237,13 +235,13 @@ class UserLogger:
 
         self._queue[log_channel.id].append(embed)
 
-    async def freeze_logging(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
+    async def freeze_logging(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> None:
         """Call to temporarily suspend logging in the given guild. Useful if a log-spammy command is being executed."""
         guild_id = hikari.Snowflake(guild)
         if guild_id not in self._frozen_guilds:
             self._frozen_guilds.append(guild_id)
 
-    async def unfreeze_logging(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
+    async def unfreeze_logging(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> None:
         """Call to stop suspending the logging in a given guild."""
         await asyncio.sleep(5)  # For any pending actions, kinda crappy solution, but audit logs suck :/
         guild_id = hikari.Snowflake(guild)

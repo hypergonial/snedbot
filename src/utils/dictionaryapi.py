@@ -152,7 +152,7 @@ class DictionaryClient:
 
         Returns
         -------
-        List[UrbanEntry]
+        list[UrbanEntry]
             A list of dictionary entries for the word.
 
         Raises
@@ -179,12 +179,12 @@ class DictionaryClient:
 
         Parameters
         ----------
-        word : Optional[str]
+        word : str | None
             The word to get results for.
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of strings representing the autocomplete results.
 
         Raises
@@ -219,7 +219,7 @@ class DictionaryClient:
 
         Returns
         -------
-        List[DictionaryEntry]
+        list[DictionaryEntry]
             A list of dictionary entries for the word.
 
         Raises

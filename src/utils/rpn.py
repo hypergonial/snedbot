@@ -137,7 +137,7 @@ class Solver:
         ----------
         c : str
             The current operand.
-        stack : List[str]
+        stack : list[str]
             The stack of operands.
 
         Returns

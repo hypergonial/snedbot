@@ -65,14 +65,14 @@ def utcnow() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-async def usernow(client: SnedClient, user: hikari.SnowflakeishOr[hikari.PartialUser]) -> datetime.datetime:
+async def usernow(client: SnedClient, user: hikari.Snowflakeish | hikari.PartialUser) -> datetime.datetime:
     """A short-hand function to return a datetime from the user's preferred timezone.
 
     Parameters
     ----------
     client : SnedClient
         The client instance.
-    user : hikari.SnowflakeishOr[hikari.User]
+    user : hikari.Snowflakeish | hikari.PartialUser
         The user whose timezone preference to use.
 
     Returns
@@ -281,7 +281,7 @@ async def parse_message_link(ctx: SnedContext, message_link: str) -> hikari.Mess
 
     Returns
     -------
-    Optional[hikari.Message]
+    hikari.Message | None
         The message object, if found.
 
     Raises
@@ -394,9 +394,9 @@ def format_reason(
     ----------
     reason : str | None, optional
         The reason for the action, by default None
-    moderator : Optional[hikari.Member], optional
+    moderator : hikari.Member | None, optional
         The moderator who executed the action, by default None
-    max_length : Optional[int], optional
+    max_length : int | None, optional
         The maximum allowed length of the reason, by default 512
 
     Returns

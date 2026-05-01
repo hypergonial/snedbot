@@ -63,14 +63,14 @@ class DatabaseCache:
             The table to get values from
         cache_only : bool, optional
             Set to True if fetching from the database is undesirable, by default False
-        limit : Optional[int], optional
+        limit : int | None, optional
             The maximum amount of rows to return, by default None
         **kwargs: t.Any, optional
             Keyword-only arguments that denote columns to filter values.
 
         Returns
         -------
-        Optional[List[Dict[str, Any]]]
+        list[dict[str, t.Any]] | None
             A list of dicts representing the rows in the specified table.
         """
         if not self.is_ready:
@@ -120,7 +120,7 @@ class DatabaseCache:
         for record in records:
             self._cache[table].append(dict(record))
 
-    async def wipe(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
+    async def wipe(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> None:
         """Discards the entire cache for a guild."""
         if not self.is_ready:
             return

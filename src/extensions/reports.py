@@ -144,7 +144,7 @@ async def report(ctx: SnedContext, member: hikari.Member, message: hikari.Messag
         color=const.WARN_COLOR,
     )
 
-    components: hikari.UndefinedOr[miru.View] = hikari.UNDEFINED
+    components: hikari.UndefinedType | miru.View = hikari.UNDEFINED
 
     if message:
         components = miru.View().add_item(

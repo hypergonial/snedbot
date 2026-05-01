@@ -23,7 +23,7 @@ async def search_fandom(site: str, query: str) -> str | None:
 
     Returns
     -------
-    Optional[str]
+    str | None
         A formatted string ready to display to the end user. `None` if no results were found.
     """
     async with plugin.client.session.get(yarl.URL(FANDOM_QUERY_URL.format(query=query, site=site))) as response:

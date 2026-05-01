@@ -72,7 +72,7 @@ class Scheduler:
         self,
         timestr: str,
         *,
-        user: hikari.SnowflakeishOr[hikari.PartialUser] | None = None,
+        user: hikari.Snowflakeish | hikari.PartialUser | None = None,
         conversion_mode: ConversionMode | None = None,
         future_time: bool = False,
     ) -> datetime.datetime:
@@ -82,7 +82,7 @@ class Scheduler:
         ----------
         timestr : str
             The string containing the time.
-        user : hikari.SnowflakeishOr[hikari.PartialUser], optional
+        user : hikari.Snowflakeish | hikari.PartialUser, optional
             The user whose preferences will be used in the case of timezones, by default None
         force_mode : str | None, optional
             If specified, forces either 'relative' or 'absolute' conversion, by default None
@@ -189,7 +189,7 @@ class Scheduler:
 
         Returns
         -------
-        Optional[Timer]
+        Timer | None
             The timer object that was found, if any.
         """
         await self.client.wait_until_started()
@@ -289,8 +289,8 @@ class Scheduler:
     async def get_timer(
         self,
         entry_id: int,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        user: hikari.Snowflakeish | hikari.PartialUser | None = None,
     ) -> Timer:
         """Retrieve a currently pending timer.
 
@@ -298,9 +298,9 @@ class Scheduler:
         ----------
         entry_id : int
             The ID of the timer object.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild this timer belongs to.
-        user : hikari.SnowflakeishOr[hikari.PartialUser], optional
+        user : hikari.Snowflakeish | hikari.PartialUser, optional
             The user this timer belongs to, by default None
 
         Returns
@@ -349,9 +349,9 @@ class Scheduler:
         self,
         expires: datetime.datetime,
         event: TimerEvent,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        user: hikari.SnowflakeishOr[hikari.PartialUser],
-        channel: hikari.SnowflakeishOr[hikari.TextableChannel] | None = None,
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        user: hikari.Snowflakeish | hikari.PartialUser,
+        channel: hikari.Snowflakeish | hikari.TextableChannel | None = None,
         *,
         notes: str | None = None,
     ) -> Timer:
@@ -363,11 +363,11 @@ class Scheduler:
             The expiry date of the timer. Must be in the future.
         event : TimerEvent
             The event string to identify this timer by.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild this timer belongs to.
-        user : hikari.SnowflakeishOr[hikari.PartialUser]
+        user : hikari.Snowflakeish | hikari.PartialUser
             The user this timer belongs to.
-        channel : hikari.SnowflakeishOr[hikari.TextableChannel], optional
+        channel : hikari.Snowflakeish | hikari.TextableChannel, optional
             The channel to bind this timer to, by default None
         notes : str | None, optional
             Optional parameters or data to include, by default None
@@ -421,8 +421,8 @@ class Scheduler:
     async def cancel_timer(
         self,
         entry_id: int,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        user: t.Optional[hikari.SnowflakeishOr[hikari.PartialUser]] = None,
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        user: hikari.Snowflakeish | hikari.PartialUser | None = None,
     ) -> Timer:
         """Prematurely cancel a timer before expiry. Returns the cancelled timer.
 
@@ -430,9 +430,9 @@ class Scheduler:
         ----------
         entry_id : int
             The ID of the timer to be cancelled.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the timer belongs to.
-        user : hikari.SnowflakeishOr[hikari.PartialUser], optional
+        user : hikari.Snowflakeish | hikari.PartialUser, optional
             The user to filter the timer by, by default None
 
         Returns

@@ -91,7 +91,7 @@ class JournalEntry(DatabaseModel):
 
     @classmethod
     async def fetch(
-        cls, id: int, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        cls, id: int, user: hikari.Snowflakeish | hikari.PartialUser, guild: hikari.Snowflakeish | hikari.PartialGuild
     ) -> t.Self | None:
         """Fetch a journal entry from the database.
 
@@ -99,14 +99,14 @@ class JournalEntry(DatabaseModel):
         ----------
         id : int
             The ID of the journal entry.
-        user : hikari.SnowflakeishOr[hikari.PartialUser]
+        user : hikari.Snowflakeish | hikari.PartialUser
             The user this entry belongs to.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild this entry belongs to.
 
         Returns
         -------
-        Optional[JournalEntry]
+        JournalEntry | None
             The journal entry from the database, if found.
         """
         record = await cls._db.fetchrow(
@@ -121,20 +121,20 @@ class JournalEntry(DatabaseModel):
 
     @classmethod
     async def fetch_journal(
-        cls, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        cls, user: hikari.Snowflakeish | hikari.PartialUser, guild: hikari.Snowflakeish | hikari.PartialGuild
     ) -> list[t.Self]:
         """Fetch a user's journal from the database.
 
         Parameters
         ----------
-        user : hikari.SnowflakeishOr[hikari.PartialUser]
+        user : hikari.Snowflakeish | hikari.PartialUser
             The user to fetch the journal for.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild this entry belongs to.
 
         Returns
         -------
-        List[JournalEntry]
+        list[JournalEntry]
             The journal entries from the database sorted by creation date.
         """
         records = await cls._db.fetch(

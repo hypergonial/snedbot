@@ -56,15 +56,15 @@ class DatabaseUser(DatabaseModel):
 
     @classmethod
     async def fetch(
-        cls, user: hikari.SnowflakeishOr[hikari.PartialUser], guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        cls, user: hikari.Snowflakeish | hikari.PartialUser, guild: hikari.Snowflakeish | hikari.PartialGuild
     ) -> t.Self:
         """Fetch a user from the database. If not present, returns a default DatabaseUser object.
 
         Parameters
         ----------
-        user : hikari.SnowflakeishOr[hikari.PartialUser]
+        user : hikari.Snowflakeish | hikari.PartialUser
             The user to retrieve database information for.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the user belongs to.
 
         Returns
@@ -90,17 +90,17 @@ class DatabaseUser(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[t.Self]:
+    async def fetch_all(cls, guild: hikari.Snowflakeish | hikari.PartialGuild) -> list[t.Self]:
         """Fetch all stored user data that belongs to the specified guild.
 
         Parameters
         ----------
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the users belongs to.
 
         Returns
         -------
-        List[DatabaseUser]
+        list[DatabaseUser]
             A list of objects representing stored user data.
         """
         records = await cls._db.fetch("""SELECT * FROM users WHERE guild_id = $1""", hikari.Snowflake(guild))
@@ -124,7 +124,7 @@ class DatabaseUser(DatabaseModel):
 
         Returns
         -------
-        List[JournalEntry]
+        list[JournalEntry]
             A list of journal entries for this user.
         """
         return await JournalEntry.fetch_journal(self.id, self.guild_id)

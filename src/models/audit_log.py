@@ -43,27 +43,27 @@ class AuditLogCache:
         self.add(event.guild_id, event.entry)
 
     def get(
-        self, guild: hikari.SnowflakeishOr[hikari.PartialGuild], action_type: hikari.AuditLogEventType
+        self, guild: hikari.Snowflakeish | hikari.PartialGuild, action_type: hikari.AuditLogEventType
     ) -> list[hikari.AuditLogEntry]:
         """Get all audit log entries for a guild and event type.
 
         Parameters
         ----------
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild: hikari.Snowflakeish | hikari.PartialGuild
             The guild or it's ID.
         action_type: hikari.AuditLogEventType
             The event type.
 
         Returns
         -------
-        List[hikari.AuditLogEntry]
+        list[hikari.AuditLogEntry]
             The audit log entries.
         """
         return self._cache.get(hikari.Snowflake(guild), {}).get(action_type, [])
 
     def get_first_by(
         self,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
         action_type: hikari.AuditLogEventType,
         predicate: t.Callable[[hikari.AuditLogEntry], bool],
     ) -> hikari.AuditLogEntry | None:
@@ -71,7 +71,7 @@ class AuditLogCache:
 
         Parameters
         ----------
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild: hikari.Snowflakeish | hikari.PartialGuild
             The guild or it's ID.
         action_type: hikari.AuditLogEventType
             The event type.
@@ -80,7 +80,7 @@ class AuditLogCache:
 
         Returns
         -------
-        Optional[hikari.AuditLogEntry]
+        hikari.AuditLogEntry | None
             The first audit log entry that matches the predicate, or None if no entry matches.
         """
         for entry in reversed(self.get(guild, action_type)):
@@ -89,12 +89,12 @@ class AuditLogCache:
 
         return None
 
-    def add(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild], entry: hikari.AuditLogEntry) -> None:
+    def add(self, guild: hikari.Snowflakeish | hikari.PartialGuild, entry: hikari.AuditLogEntry) -> None:
         """Add a new audit log entry to the cache.
 
         Parameters
         ----------
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild: hikari.Snowflakeish | hikari.PartialGuild
             The guild or it's ID.
         entry: hikari.AuditLogEntry
             The audit log entry to add.

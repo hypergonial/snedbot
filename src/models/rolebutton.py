@@ -87,7 +87,7 @@ class RoleButton(DatabaseModel):
 
         Returns
         -------
-        Optional[RoleButton]
+        RoleButton | None
             The resolved rolebutton object, if found.
         """
         record = await cls._db.fetchrow("""SELECT * FROM button_roles WHERE entry_id = $1""", id)
@@ -111,17 +111,17 @@ class RoleButton(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_all(cls, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[t.Self]:
+    async def fetch_all(cls, guild: hikari.Snowflakeish | hikari.PartialGuild) -> list[t.Self]:
         """Fetch all rolebuttons that belong to a given guild.
 
         Parameters
         ----------
-        guild: SnowflakeishOr[hikari.PartialGuild]
+        guild: Snowflakeish | hikari.PartialGuild
             The guild the rolebuttons belong to.
 
         Returns
         -------
-        List[RoleButton]
+        list[RoleButton]
             A list of rolebuttons belonging to the specified guild.
         """
         records = await cls._db.fetch("""SELECT * FROM button_roles WHERE guild_id = $1""", hikari.Snowflake(guild))
@@ -150,9 +150,9 @@ class RoleButton(DatabaseModel):
     @classmethod
     async def create(
         cls,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
         message: hikari.Message,
-        role: hikari.SnowflakeishOr[hikari.PartialRole],
+        role: hikari.Snowflakeish | hikari.PartialRole,
         emoji: hikari.Emoji,
         style: hikari.ButtonStyle,
         mode: RoleButtonMode,
@@ -163,21 +163,21 @@ class RoleButton(DatabaseModel):
 
         Parameters
         ----------
-        guild : SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild to create the button in.
         message : hikari.Message
             The message to attach the button to.
-        role : SnowflakeishOr[hikari.PartialRole]
+        role : hikari.Snowflakeish | hikari.PartialRole
             The role that should be handed out by the button.
         emoji : hikari.Emoji
             The emoji that should appear on the button.
-        label : Optional[str]
+        label : str | None
             The label of the button.
         style : hikari.ButtonStyle
             The style of the button.
         mode : RoleButtonMode
             The mode of operation of the button.
-        moderator : Optional[hikari.PartialUser]
+        moderator : hikari.PartialUser | None
             The user to log the rolebutton creation under.
 
         Returns
@@ -241,7 +241,7 @@ class RoleButton(DatabaseModel):
 
         Parameters
         ----------
-        moderator : Optional[hikari.PartialUser]
+        moderator : hikari.PartialUser | None
             The user to log the rolebutton update under.
 
         Raises
@@ -290,7 +290,7 @@ class RoleButton(DatabaseModel):
 
         Parameters
         ----------
-        moderator : Optional[hikari.PartialUser]
+        moderator : hikari.PartialUser | None
             The user to log the rolebutton deletion under.
 
         Raises

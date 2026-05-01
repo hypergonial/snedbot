@@ -55,7 +55,7 @@ class SnedGuildEvent(SnedEvent):
 
         Returns
         -------
-        Optional[hikari.guilds.GatewayGuild]
+        hikari.guilds.GatewayGuild | None
             The guild this event relates to, or `builtins.None` if not known.
         """
         if not isinstance(self.app, hikari.CacheAware):

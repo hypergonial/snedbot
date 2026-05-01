@@ -79,12 +79,12 @@ class ModActions:
         # TODO: Add when miru templates exist
         self._client.subscribe(hikari.InteractionCreateEvent, self.handle_mod_buttons)
 
-    async def get_settings(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> ModerationSettings:
+    async def get_settings(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> ModerationSettings:
         """Get moderation settings for a guild.
 
         Parameters
         ----------
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild to get moderation settings for.
 
         Returns
@@ -98,12 +98,12 @@ class ModActions:
 
         return ModerationSettings()
 
-    async def get_msg_flags(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> hikari.MessageFlag:
+    async def get_msg_flags(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> hikari.MessageFlag:
         """Get the message flags for a guild.
 
         Parameters
         ----------
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild to get message flags for.
 
         Returns
@@ -117,17 +117,17 @@ class ModActions:
             else hikari.MessageFlag.NONE
         )
 
-    async def is_ephemeral(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> bool:
+    async def is_ephemeral(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> bool:
         """Check if responses to moderation actions should be done ephemerally."""
         return bool((await self.get_settings(hikari.Snowflake(guild))).flags & ModerationFlags.IS_EPHEMERAL)
 
     # TODO: Purge this cursed abomination
-    async def get_automod_policies(self, guild: hikari.SnowflakeishOr[hikari.Guild]) -> dict[str, t.Any]:
+    async def get_automod_policies(self, guild: hikari.Snowflakeish | hikari.Guild) -> dict[str, t.Any]:
         """Return auto-moderation policies for the specified guild.
 
         Parameters
         ----------
-        guild : hikari.SnowflakeishOr[hikari.Guild]
+        guild : hikari.Snowflakeish | hikari.Guild
             The guild to get policies for.
 
         Returns
@@ -161,7 +161,7 @@ class ModActions:
 
     async def pre_mod_actions(
         self,
-        guild: hikari.SnowflakeishOr[hikari.Guild],
+        guild: hikari.Snowflakeish | hikari.Guild,
         target: hikari.Member | hikari.User,
         action_type: ActionType,
         reason: str | None = None,
@@ -196,7 +196,7 @@ class ModActions:
 
     async def post_mod_actions(
         self,
-        guild: hikari.SnowflakeishOr[hikari.Guild],
+        guild: hikari.Snowflakeish | hikari.Guild,
         target: hikari.Member | hikari.User,
         action_type: ActionType,
         reason: str | None = None,
@@ -633,19 +633,19 @@ class ModActions:
 
         Parameters
         ----------
-        user : Union[hikari.User, hikari.Member]
+        user : hikari.User | hikari.Member
             The user that needs to be banned.
         guild_id : Snowflake
             The guild this ban is taking place in.
         moderator : hikari.Member
             The moderator to log the ban under.
-        duration : Optional[str], optional
+        duration : str | None, optional
             If specified, the duration of the ban, by default None
         soft : bool, optional
             If True, the ban is a softban, by default False
         days_to_delete : int, optional
             The days of message history to delete, by default 1
-        reason : Optional[str], optional
+        reason : str | None, optional
             The reason for the ban, by default hikari.UNDEFINED
 
         Returns
@@ -795,7 +795,7 @@ class ModActions:
             The member that needs to be kicked.
         moderator : hikari.Member
             The moderator to log the kick under.
-        reason : Optional[str], optional
+        reason : str | None, optional
             The reason for the kick, by default None
 
         Returns

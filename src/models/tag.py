@@ -27,7 +27,7 @@ class Tag(DatabaseModel):
 
     @classmethod
     async def fetch(
-        cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild], add_use: bool = False
+        cls, name: str, guild: hikari.Snowflakeish | hikari.PartialGuild, add_use: bool = False
     ) -> t.Self | None:
         """Fetches a tag from the database.
 
@@ -35,14 +35,14 @@ class Tag(DatabaseModel):
         ----------
         name : str
             The name of the tag to fetch.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the tag is located in.
         add_use : bool, optional
             If True, increments the usage counter, by default False
 
         Returns
         -------
-        Optional[Tag]
+        Tag | None
             The tag object, if found.
         """
         guild_id = hikari.Snowflake(guild)
@@ -68,19 +68,19 @@ class Tag(DatabaseModel):
         )
 
     @classmethod
-    async def fetch_closest_names(cls, name: str, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> list[str]:
+    async def fetch_closest_names(cls, name: str, guild: hikari.Snowflakeish | hikari.PartialGuild) -> list[str]:
         """Fetch the closest tagnames for the provided name.
 
         Parameters
         ----------
         name : str
             The name to use for finding close matches.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the tags are located in.
 
         Returns
         -------
-        Optional[List[str]]
+        list[str] | None
             A list of tag names and aliases.
         """
         guild_id = hikari.Snowflake(guild)
@@ -98,8 +98,8 @@ class Tag(DatabaseModel):
     async def fetch_closest_owned_names(
         cls,
         name: str,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        owner: hikari.SnowflakeishOr[hikari.PartialUser],
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        owner: hikari.Snowflakeish | hikari.PartialUser,
     ) -> list[str]:
         """Fetch the closest tagnames for the provided name and owner.
 
@@ -107,14 +107,14 @@ class Tag(DatabaseModel):
         ----------
         name : str
             The name to use for finding close matches.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the tags are located in.
-        owner : hikari.SnowflakeishOr[hikari.PartialUser]
+        owner : hikari.Snowflakeish | hikari.PartialUser
             The owner of the tags.
 
         Returns
         -------
-        Optional[List[str]]
+        list[str] | None
             A list of tag names and aliases.
         """
         guild_id = hikari.Snowflake(guild)
@@ -134,21 +134,21 @@ class Tag(DatabaseModel):
     @classmethod
     async def fetch_all(
         cls,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        owner: hikari.SnowflakeishOr[hikari.PartialUser] | None = None,
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        owner: hikari.Snowflakeish | hikari.PartialUser | None = None,
     ) -> list[t.Self]:
         """Fetch all tags that belong to a guild, and optionally a user.
 
         Parameters
         ----------
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the tags belong to.
-        owner : hikari.SnowflakeishOr[hikari.PartialUser], optional
+        owner : hikari.Snowflakeish | hikari.PartialUser, optional
             The owner the tags belong to, by default None
 
         Returns
         -------
-        List[Tag]
+        list[Tag]
             A list of tags that match the criteria.
         """
         guild_id = hikari.Snowflake(guild)
@@ -181,9 +181,9 @@ class Tag(DatabaseModel):
     async def create(
         cls,
         name: str,
-        guild: hikari.SnowflakeishOr[hikari.PartialGuild],
-        creator: hikari.SnowflakeishOr[hikari.PartialUser],
-        owner: hikari.SnowflakeishOr[hikari.PartialUser],
+        guild: hikari.Snowflakeish | hikari.PartialGuild,
+        creator: hikari.Snowflakeish | hikari.PartialUser,
+        owner: hikari.Snowflakeish | hikari.PartialUser,
         aliases: list[str],
         content: str,
     ) -> Tag:
@@ -193,11 +193,11 @@ class Tag(DatabaseModel):
         ----------
         name : str
             The name of the tag.
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild the tag belongs to.
-        creator : hikari.SnowflakeishOr[hikari.PartialUser]
+        creator : hikari.Snowflakeish | hikari.PartialUser
             The creator of the tag.
-        owner : hikari.SnowflakeishOr[hikari.PartialUser]
+        owner : hikari.Snowflakeish | hikari.PartialUser
             The current owner of the tag.
         aliases : list[str]
             A list of all aliases the tag has.

@@ -5,7 +5,7 @@ import hikari
 
 
 class Config:
-    _instance: t.ClassVar[t.Optional[t.Self]] = None
+    _instance: t.ClassVar[t.Self | None] = None
 
     def __new__(cls, *args: t.Any, **kwargs: t.Any) -> t.Self:
         if cls._instance is None:

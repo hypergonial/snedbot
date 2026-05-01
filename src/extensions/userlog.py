@@ -73,7 +73,7 @@ class ParsedBotReason:
         return cls(match.group("reason"), UserLike(hikari.Snowflake(match.group("id")), match.group("name")))
 
 
-def display_user(user: hikari.UndefinedNoneOr[hikari.PartialUser | UserLike]) -> str:
+def display_user(user: hikari.PartialUser | UserLike | hikari.UndefinedType | None) -> str:
     """A helper function for displaying user-like objects generically."""
     if not user:
         return "Unknown"
@@ -85,7 +85,7 @@ def display_user(user: hikari.UndefinedNoneOr[hikari.PartialUser | UserLike]) ->
 
 
 async def find_auditlog_data(
-    guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+    guild: hikari.Snowflakeish | hikari.PartialGuild,
     *,
     event_type: hikari.AuditLogEventType,
     user_id: int | None = None,
@@ -94,18 +94,18 @@ async def find_auditlog_data(
 
     Parameters
     ----------
-    guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+    guild : hikari.Snowflakeish | hikari.PartialGuild
         The guild to search in.
     event : hikari.Event
         The event that triggered this search.
     event_type : hikari.AuditLogEventType
         The type of audit log entry to look for.
-    user_id : Optional[int], optional
+    user_id : int | None, optional
         The user affected by this audit log, if any. By default hikari.UNDEFINED
 
     Returns
     -------
-    Optional[hikari.AuditLogEntry]
+    hikari.AuditLogEntry | None
         The entry, if found.
 
     Raises

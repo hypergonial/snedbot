@@ -17,13 +17,13 @@ class SettingValue:
 
     is_done: bool = attr.field(default=False)
     """Signals that the values contained in this object are finalized in case of a 'with_done' layout."""
-    text: hikari.UndefinedOr[str] = attr.field(default=hikari.UNDEFINED)
-    boolean: hikari.UndefinedOr[bool] = attr.field(default=hikari.UNDEFINED)
-    users: hikari.UndefinedOr[t.Sequence[hikari.User]] = attr.field(default=hikari.UNDEFINED)
-    roles: hikari.UndefinedNoneOr[t.Sequence[hikari.Role]] = attr.field(default=hikari.UNDEFINED)
-    channels: hikari.UndefinedNoneOr[t.Sequence[hikari.InteractionChannel]] = attr.field(default=hikari.UNDEFINED)
-    modal_values: hikari.UndefinedOr[t.Mapping[ModalItem, str]] = attr.field(default=hikari.UNDEFINED)
-    raw_perspective_bounds: hikari.UndefinedOr[t.Mapping[str, str]] = attr.field(default=hikari.UNDEFINED)
+    text: str | hikari.UndefinedType = attr.field(default=hikari.UNDEFINED)
+    boolean: bool | hikari.UndefinedType = attr.field(default=hikari.UNDEFINED)
+    users: t.Sequence[hikari.User] | hikari.UndefinedType = attr.field(default=hikari.UNDEFINED)
+    roles: t.Sequence[hikari.Role] | hikari.UndefinedType | None = attr.field(default=hikari.UNDEFINED)
+    channels: t.Sequence[hikari.InteractionChannel] | hikari.UndefinedType | None = attr.field(default=hikari.UNDEFINED)
+    modal_values: t.Mapping[ModalItem, str] | hikari.UndefinedType = attr.field(default=hikari.UNDEFINED)
+    raw_perspective_bounds: t.Mapping[str, str] | hikari.UndefinedType = attr.field(default=hikari.UNDEFINED)
 
     def __bool__(self) -> bool:  # To make it easier to check if a value was set.
         return bool(

@@ -69,15 +69,15 @@ class ResponseProvider:
         ----------
         ctx : SnedContext
             The context to use for the prompt.
-        confirm_payload : Optional[Dict[str, Any]], optional
+        confirm_payload : dict[str, t.Any] | None, optional
             Optional keyword-only payload to send if the user confirmed, by default None
-        cancel_payload : Optional[Dict[str, Any]], optional
+        cancel_payload : dict[str, t.Any] | None, optional
             Optional keyword-only payload to send if the user cancelled, by default None
         timeout : int, optional
             The default timeout to use for the confirm prompt, by default 120
         edit : bool
             If True, tries editing the initial response or the provided message.
-        message : Optional[hikari.Message], optional
+        message : hikari.Message | None, optional
             A message to edit & transform into the confirm prompt if provided, by default None
         *args : Any
             Arguments for the confirm prompt response.
@@ -111,52 +111,44 @@ class ResponseProvider:
     @t.overload
     async def mod_respond(
         self,
-        content: hikari.UndefinedOr[t.Any] = hikari.UNDEFINED,
-        delete_after: t.Union[int, float, None] = None,
+        content: t.Any | hikari.UndefinedType = hikari.UNDEFINED,
+        delete_after: int | float | None = None,
         *,
-        attachment: hikari.UndefinedOr[hikari.Resourceish] = hikari.UNDEFINED,
-        attachments: hikari.UndefinedOr[t.Sequence[hikari.Resourceish]] = hikari.UNDEFINED,
-        component: hikari.UndefinedOr[hikari.api.ComponentBuilder] = hikari.UNDEFINED,
-        components: hikari.UndefinedOr[t.Sequence[hikari.api.ComponentBuilder]] = hikari.UNDEFINED,
-        embed: hikari.UndefinedOr[hikari.Embed] = hikari.UNDEFINED,
-        embeds: hikari.UndefinedOr[t.Sequence[hikari.Embed]] = hikari.UNDEFINED,
-        tts: hikari.UndefinedOr[bool] = hikari.UNDEFINED,
-        nonce: hikari.UndefinedOr[str] = hikari.UNDEFINED,
-        reply: hikari.UndefinedOr[hikari.SnowflakeishOr[hikari.PartialMessage]] = hikari.UNDEFINED,
-        mentions_everyone: hikari.UndefinedOr[bool] = hikari.UNDEFINED,
-        mentions_reply: hikari.UndefinedOr[bool] = hikari.UNDEFINED,
-        user_mentions: hikari.UndefinedOr[
-            t.Union[hikari.SnowflakeishSequence[hikari.PartialUser], bool]
-        ] = hikari.UNDEFINED,
-        role_mentions: hikari.UndefinedOr[
-            t.Union[hikari.SnowflakeishSequence[hikari.PartialRole], bool]
-        ] = hikari.UNDEFINED,
+        attachment: hikari.Resourceish | hikari.UndefinedType = hikari.UNDEFINED,
+        attachments: t.Sequence[hikari.Resourceish] | hikari.UndefinedType = hikari.UNDEFINED,
+        component: hikari.api.ComponentBuilder | hikari.UndefinedType = hikari.UNDEFINED,
+        components: t.Sequence[hikari.api.ComponentBuilder] | hikari.UndefinedType = hikari.UNDEFINED,
+        embed: hikari.Embed | hikari.UndefinedType = hikari.UNDEFINED,
+        embeds: t.Sequence[hikari.Embed] | hikari.UndefinedType = hikari.UNDEFINED,
+        tts: bool | hikari.UndefinedType = hikari.UNDEFINED,
+        nonce: str | hikari.UndefinedType = hikari.UNDEFINED,
+        reply: hikari.Snowflakeish | hikari.PartialMessage | hikari.UndefinedType = hikari.UNDEFINED,
+        mentions_everyone: bool | hikari.UndefinedType = hikari.UNDEFINED,
+        mentions_reply: bool | hikari.UndefinedType = hikari.UNDEFINED,
+        user_mentions: hikari.SnowflakeishSequence[hikari.PartialUser] | bool | hikari.UndefinedType = hikari.UNDEFINED,
+        role_mentions: hikari.SnowflakeishSequence[hikari.PartialRole] | bool | hikari.UndefinedType = hikari.UNDEFINED,
     ) -> arc.InteractionResponse: ...
 
     @t.overload
     async def mod_respond(
         self,
         response_type: hikari.ResponseType,
-        content: hikari.UndefinedOr[t.Any] = hikari.UNDEFINED,
-        delete_after: t.Union[int, float, None] = None,
+        content: t.Any | hikari.UndefinedType = hikari.UNDEFINED,
+        delete_after: int | float | None = None,
         *,
-        attachment: hikari.UndefinedOr[hikari.Resourceish] = hikari.UNDEFINED,
-        attachments: hikari.UndefinedOr[t.Sequence[hikari.Resourceish]] = hikari.UNDEFINED,
-        component: hikari.UndefinedOr[hikari.api.ComponentBuilder] = hikari.UNDEFINED,
-        components: hikari.UndefinedOr[t.Sequence[hikari.api.ComponentBuilder]] = hikari.UNDEFINED,
-        embed: hikari.UndefinedOr[hikari.Embed] = hikari.UNDEFINED,
-        embeds: hikari.UndefinedOr[t.Sequence[hikari.Embed]] = hikari.UNDEFINED,
-        tts: hikari.UndefinedOr[bool] = hikari.UNDEFINED,
-        nonce: hikari.UndefinedOr[str] = hikari.UNDEFINED,
-        reply: hikari.UndefinedOr[hikari.SnowflakeishOr[hikari.PartialMessage]] = hikari.UNDEFINED,
-        mentions_everyone: hikari.UndefinedOr[bool] = hikari.UNDEFINED,
-        mentions_reply: hikari.UndefinedOr[bool] = hikari.UNDEFINED,
-        user_mentions: hikari.UndefinedOr[
-            t.Union[hikari.SnowflakeishSequence[hikari.PartialUser], bool]
-        ] = hikari.UNDEFINED,
-        role_mentions: hikari.UndefinedOr[
-            t.Union[hikari.SnowflakeishSequence[hikari.PartialRole], bool]
-        ] = hikari.UNDEFINED,
+        attachment: hikari.Resourceish | hikari.UndefinedType = hikari.UNDEFINED,
+        attachments: t.Sequence[hikari.Resourceish] | hikari.UndefinedType = hikari.UNDEFINED,
+        component: hikari.api.ComponentBuilder | hikari.UndefinedType = hikari.UNDEFINED,
+        components: t.Sequence[hikari.api.ComponentBuilder] | hikari.UndefinedType = hikari.UNDEFINED,
+        embed: hikari.Embed | hikari.UndefinedType = hikari.UNDEFINED,
+        embeds: t.Sequence[hikari.Embed] | hikari.UndefinedType = hikari.UNDEFINED,
+        tts: bool | hikari.UndefinedType = hikari.UNDEFINED,
+        nonce: str | hikari.UndefinedType = hikari.UNDEFINED,
+        reply: hikari.Snowflakeish | hikari.PartialMessage | hikari.UndefinedType = hikari.UNDEFINED,
+        mentions_everyone: bool | hikari.UndefinedType = hikari.UNDEFINED,
+        mentions_reply: bool | hikari.UndefinedType = hikari.UNDEFINED,
+        user_mentions: hikari.SnowflakeishSequence[hikari.PartialUser] | bool | hikari.UndefinedType = hikari.UNDEFINED,
+        role_mentions: hikari.SnowflakeishSequence[hikari.PartialRole] | bool | hikari.UndefinedType = hikari.UNDEFINED,
     ) -> arc.InteractionResponse: ...
 
     async def mod_respond(self, *args: t.Any, **kwargs: t.Any) -> arc.InteractionResponse:

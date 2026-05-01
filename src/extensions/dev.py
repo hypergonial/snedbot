@@ -72,7 +72,7 @@ def format_output(text: str) -> str:
 
 async def send_paginated(
     ctx: SnedContext,
-    messageable: hikari.SnowflakeishOr[hikari.TextableChannel | hikari.User],
+    messageable: hikari.Snowflakeish | hikari.TextableChannel | hikari.User,
     text: str,
     *,
     prefix: str = "",

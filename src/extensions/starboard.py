@@ -42,7 +42,7 @@ def get_img_attach_urls(message: hikari.Message) -> list[str]:
 
 
 def create_starboard_payload(
-    guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+    guild: hikari.Snowflakeish | hikari.PartialGuild,
     message: hikari.Message,
     stars: int,
     force_starred: bool,
@@ -51,7 +51,7 @@ def create_starboard_payload(
 
     Parameters
     ----------
-    guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+    guild : hikari.Snowflakeish | hikari.PartialGuild
         The guild the starboard entry is located.
     message : hikari.Message
         The message to create the payload from.
@@ -115,7 +115,7 @@ def create_starboard_payload(
 
 async def star_message(
     message: hikari.Message,
-    guild: hikari.SnowflakeishOr[hikari.PartialGuild],
+    guild: hikari.Snowflakeish | hikari.PartialGuild,
     settings: StarboardSettings,
     stars: int,
     force_starred: bool = False,
@@ -126,9 +126,7 @@ async def star_message(
     ----------
     message : hikari.Message
         The message to be starred.
-    starboard_channel : hikari.SnowflakeishOr[hikari.TextableGuildChannel]
-        The channel where the message should be starred.
-    guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+    guild : hikari.Snowflakeish | hikari.PartialGuild
         The guild the message and channel are located.
     settings : StarboardSettings
         The settings for the starboard.

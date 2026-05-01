@@ -132,9 +132,9 @@ class Database:
         ----------
         query : str
             The SQL query to run.
-        args : Tuple[t.Any]
+        args : tuple[t.Any]
             The arguments for the SQL query.
-        timeout : Optional[float], optional
+        timeout : float | None, optional
             The timeout in seconds, by default None
 
         Returns
@@ -156,14 +156,14 @@ class Database:
         ----------
         query : str
             The SQL query to be ran.
-        args : Tuple[t.Any]
+        args : tuple[t.Any]
             The arguments for the SQL query.
-        timeout : Optional[float], optional
+        timeout : float | None, optional
             The timeout in seconds, by default None
 
         Returns
         -------
-        List[asyncpg.Record]
+        list[asyncpg.Record]
             A list of records that matched the query parameters.
 
         Raises
@@ -180,9 +180,9 @@ class Database:
         ----------
         command : str
             The SQL query to run.
-        args : Tuple[t.Any]
+        args : tuple[t.Any]
             The arguments for the SQL query.
-        timeout : Optional[float], optional
+        timeout : float | None, optional
             The timeout in seconds, by default None
 
         Returns
@@ -204,9 +204,9 @@ class Database:
         ----------
         query : str
             The SQL query to be ran.
-        args : Tuple[t.Any]
+        args : tuple[t.Any]
             The arguments for the SQL query.
-        timeout : float, optional
+        timeout : float | None, optional
             The timeout in seconds, by default None
 
         Returns
@@ -228,11 +228,11 @@ class Database:
         ----------
         query : str
             The SQL query to be ran.
-        args : Tuple[t.Any]
+        args : tuple[t.Any]
             The arguments for the SQL query.
         column : int, optional
             The column to return, by default 0
-        timeout : float, optional
+        timeout : float | None, optional
             The timeout in seconds, by default None
 
         Returns
@@ -247,13 +247,13 @@ class Database:
         """
         return await self.pool.fetchval(query, *args, column=column, timeout=timeout)
 
-    async def register_guild(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild]) -> None:
+    async def register_guild(self, guild: hikari.Snowflakeish | hikari.PartialGuild) -> None:
         """Register a new guild in the database. If a guild is not registered, associated data cannot be created for it.
         If the guild is already registered, this function will do nothing.
 
         Parameters
         ----------
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild to register.
 
         Raises
@@ -266,12 +266,12 @@ class Database:
             hikari.Snowflake(guild),
         )
 
-    async def wipe_guild(self, guild: hikari.SnowflakeishOr[hikari.PartialGuild], *, keep_record: bool = True) -> None:
+    async def wipe_guild(self, guild: hikari.Snowflakeish | hikari.PartialGuild, *, keep_record: bool = True) -> None:
         """Wipe a guild's data from the database. This will remove all associated data to this guild.
 
         Parameters
         ----------
-        guild : hikari.SnowflakeishOr[hikari.PartialGuild]
+        guild : hikari.Snowflakeish | hikari.PartialGuild
             The guild to wipe.
         keep_record : bool, optional
             Whether to keep the guild's record in the database, by default True
