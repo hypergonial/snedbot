@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.11-bookworm
 
 ARG postgres_version=14
 
@@ -14,7 +14,7 @@ RUN apt-get install -y postgresql-client-${postgres_version}
 COPY pyproject.toml poetry.lock ./
 
 RUN poetry config virtualenvs.create false
-RUN poetry install -n --only main
+RUN poetry install -n --only main --no-root
 
 COPY . ./
 CMD ["python3.11", "-O", "-m", "src"]
