@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import pathlib
+import subprocess
 
 import hikari
 
@@ -16,8 +17,6 @@ async def backup_database() -> hikari.File:
     port: str = os.getenv("POSTGRES_PORT") or "5432"
     db_name: str = os.getenv("POSTGRES_DB") or "sned"
 
-    os.environ["PGPASSWORD"] = password
-
     filepath: str = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
 
     if not os.path.isdir(os.path.join(filepath, "db", "backup")):
@@ -28,10 +27,33 @@ async def backup_database() -> hikari.File:
     filename: str = f"{now.year}-{now.month}-{now.day}_{now.hour}_{now.minute}_{now.second}.pgdmp"
     backup_path: str = os.path.join(filepath, "db", "backup", filename)
 
-    return_code = os.system(
-        f"pg_dump -Fc -c -U {username} -d {db_name} -h {hostname} -p {port} --quote-all-identifiers -w > {backup_path}"
-    )
-    os.environ["PGPASSWORD"] = ""
+    os.environ["PGPASSWORD"] = password
+
+    try:
+        with open(backup_path, "wb") as out_file:
+            ret = subprocess.run(
+                [
+                    "pg_dump",
+                    "-Fc",
+                    "-c",
+                    "-U",
+                    username,
+                    "-d",
+                    db_name,
+                    "-h",
+                    hostname,
+                    "-p",
+                    port,
+                    "--quote-all-identifiers",
+                    "-w",
+                ],
+                stdout=out_file,
+                check=False,
+            )
+    finally:
+        os.environ["PGPASSWORD"] = ""
+
+    return_code = ret.returncode
 
     if return_code != 0:
         raise RuntimeError("pg_dump failed to create a database backup file!")

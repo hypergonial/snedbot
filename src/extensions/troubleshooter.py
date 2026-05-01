@@ -70,7 +70,7 @@ PERM_DESCRIPTIONS = {
     "troubleshoot",
     "Diagnose and locate common configuration issues.",
     default_permissions=hikari.Permissions.MANAGE_GUILD,
-    is_dm_enabled=False,
+    invocation_contexts=(hikari.ApplicationContextType.GUILD,),
 )
 async def troubleshoot(ctx: SnedContext) -> None:
     assert ctx.app_permissions is not None

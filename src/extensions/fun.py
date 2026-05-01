@@ -349,17 +349,13 @@ class TicTacToeView(miru.View):
             blocked_list[2] = True
 
         values = []
-        diag_offset = 0
         for i in range(0, self.size):
-            values.append(self.board[i][diag_offset])
-            diag_offset += 1
+            values.append(self.board[i][i])
+
         if -1 in values and 1 in values:
             blocked_list[3] = True
 
-        if blocked_list.count(True) == len(blocked_list):
-            return True
-
-        return False
+        return blocked_list.count(True) == len(blocked_list)
 
     def check_winner(self) -> WinState | None:
         """Check if there is a winner."""
@@ -683,9 +679,8 @@ async def dictionary_lookup(ctx: SnedContext, word: arc.Option[str, arc.StrParam
     assert dictionary_client is not None
     entries = await dictionary_client.fetch_mw_entries(word)
 
-    channel = ctx.get_channel()
-    is_nsfw = channel.is_nsfw if isinstance(channel, hikari.PermissibleGuildChannel) else False
-    entries = [entry for entry in entries if is_nsfw or not is_nsfw and not entry.offensive]
+    is_nsfw = ctx.channel.is_nsfw if isinstance(ctx.channel, hikari.PermissibleGuildChannel) else False
+    entries = [entry for entry in entries if is_nsfw or (not is_nsfw and not entry.offensive)]
 
     if not entries:
         embed = hikari.Embed(
@@ -738,7 +733,7 @@ async def avatar(
 
     await ctx.respond(
         embed=hikari.Embed(title=f"{member.display_name}'s avatar:", color=helpers.get_color(member)).set_image(
-            member.avatar_url if show_global else member.display_avatar_url
+            member.make_avatar_url() if show_global else member.display_avatar_url
         )
     )
 

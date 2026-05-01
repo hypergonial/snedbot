@@ -17,8 +17,10 @@ from config import Config
 from src.etc import const
 from src.models import AuthorOnlyNavigator
 from src.models.client import SnedClient, SnedContext, SnedPlugin
-from src.models.context import ResponseProvider
 from src.models.views import AuthorOnlyView
+
+if t.TYPE_CHECKING:
+    from src.models.context import ResponseProvider
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +169,7 @@ async def eval_py(ctx: SnedContext) -> None:
         "_bot": ctx.client.app,
         "_app": ctx.client.app,
         "_client": ctx.client,
-        "_channel": ctx.get_channel(),
+        "_channel": ctx.channel,
         "_guild": ctx.get_guild(),
         "_ctx": ctx,
     }
@@ -307,27 +309,35 @@ async def restore_db(
     await ctx.client.db_cache.stop()
 
     # Drop all tables
-    async with ctx.client.db.acquire() as con:
-        records = await con.fetch(
+    async with ctx.client.db.acquire() as conn:
+        records = await conn.fetch(
             """
         SELECT * FROM pg_catalog.pg_tables
         WHERE schemaname='public'
         """
         )
         for record in records:
-            await con.execute(f"""DROP TABLE IF EXISTS {record.get("tablename")} CASCADE""")
+            await conn.execute(f"""DROP TABLE IF EXISTS {record.get("tablename")} CASCADE""")
 
     arg = "-e" if not ignore_errors else ""
-    code = os.system(f"pg_restore {path} {arg} -n 'public' -j 4 -d {ctx.client.db.dsn}")
 
-    if code != 0 and not ignore_errors:
+    ret = subprocess.run(
+        ["pg_restore", path, arg, "-n", "public", "-j", "4", "-d", ctx.client.db.dsn],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    if ret.returncode != 0 and not ignore_errors:
+        logger.fatal("Failed to load database backup, database may be corrupted. Error output:\n%s", ret.stderr)
         await ctx.respond(
             "❌ **Fatal:** Failed to load database backup, database corrupted. Shutting down...",
             flags=hikari.MessageFlag.EPHEMERAL,
         )
         return await ctx.client.app.close()
 
-    elif code != 0:
+    elif ret.returncode != 0:
+        logger.fatal("Failed to load database backup, database may be corrupted. Error output:\n%s", ret.stderr)
         await ctx.respond(
             "❌ **Fatal:** Failed to load database backup, database may be corrupted. Shutdown recommended.",
             flags=hikari.MessageFlag.EPHEMERAL,

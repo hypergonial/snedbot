@@ -88,10 +88,7 @@ def can_automod_punish(me: hikari.Member, offender: hikari.Member) -> bool:
     if offender.id in plugin.client.owner_ids:
         return False  # Hyper is always a good person
 
-    if not helpers.can_harm(me, offender, permission=required_perms):
-        return False
-
-    return True
+    return helpers.can_harm(me, offender, permission=required_perms)
 
 
 # TODO: Split this
@@ -173,7 +170,7 @@ async def punish(
         await helpers.maybe_delete(message)
 
     if state == AutoModState.FLAG.value:
-        return await plugin.client.app.dispatch(
+        return plugin.client.app.dispatch(
             AutoModMessageFlagEvent(
                 plugin.client.app,
                 message,
@@ -193,7 +190,7 @@ async def punish(
             ),
             user_mentions=True,
         )
-        return await plugin.client.app.dispatch(
+        return plugin.client.app.dispatch(
             AutoModMessageFlagEvent(
                 plugin.client.app,
                 message,
@@ -222,7 +219,7 @@ async def punish(
                 ),
                 user_mentions=True,
             )
-            return await plugin.client.app.dispatch(
+            return plugin.client.app.dispatch(
                 AutoModMessageFlagEvent(
                     plugin.client.app,
                     message,

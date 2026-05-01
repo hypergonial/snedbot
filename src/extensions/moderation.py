@@ -12,12 +12,14 @@ from src.etc import const
 from src.models import errors
 from src.models.checks import is_above_target, is_invoker_above_target
 from src.models.client import SnedClient, SnedContext, SnedPlugin
-from src.models.context import ResponseProvider
 from src.models.db_user import DatabaseUser
 from src.models.events import MassBanEvent
 from src.models.journal import JournalEntry, JournalEntryType
 from src.models.mod_actions import ModerationFlags
 from src.utils import helpers
+
+if t.TYPE_CHECKING:
+    from src.models.context import ResponseProvider
 
 logger = logging.getLogger(__name__)
 
@@ -187,8 +189,7 @@ async def purge(
         str | None, arc.StrParams("Only delete messages that start with the specified text.")
     ] = None,
 ) -> None:
-    channel = ctx.get_channel() or await ctx.client.rest.fetch_channel(ctx.channel_id)
-    assert isinstance(channel, hikari.TextableGuildChannel) and ctx.guild_id
+    assert isinstance(ctx.channel, hikari.TextableGuildChannel) and ctx.guild_id
 
     predicates: list[t.Callable[[hikari.Message], bool]] = [
         # Ignore deferred typing indicator so it doesn't get deleted lmfao
@@ -241,7 +242,7 @@ async def purge(
     await ctx.defer()
 
     messages = (
-        await ctx.client.rest.fetch_messages(channel)
+        await ctx.client.rest.fetch_messages(ctx.channel)
         .take_until(lambda m: (helpers.utcnow() - datetime.timedelta(days=14)) > m.created_at)
         .filter(*predicates)
         .limit(count)
@@ -249,7 +250,7 @@ async def purge(
 
     if messages:
         try:
-            await ctx.client.rest.delete_messages(channel, messages)
+            await ctx.client.rest.delete_messages(ctx.channel, messages)
             embed = hikari.Embed(
                 title="🗑️ Messages purged",
                 description=f"**{len(messages)}** messages have been deleted.",
@@ -834,7 +835,7 @@ async def massban(
             predicates.append(lambda member: bool(compiled_regex.match(member.username)))
 
     if no_avatar:
-        predicates.append(lambda member: member.avatar_url is None)
+        predicates.append(lambda member: member.avatar_hash is None)
     if no_roles:
         predicates.append(lambda member: len(member.role_ids) <= 1)
 
@@ -966,7 +967,7 @@ async def massban(
     for member in to_ban:
         try:
             await guild.ban(member, reason=reason)
-        except (hikari.HTTPError, hikari.ForbiddenError):
+        except hikari.HTTPError, hikari.ForbiddenError:
             pass
         else:
             count += 1
@@ -974,9 +975,7 @@ async def massban(
     file = hikari.Bytes(content.encode("utf-8"), "members_banned.txt")
 
     assert ctx.guild_id is not None and ctx.member is not None
-    await ctx.client.app.dispatch(
-        MassBanEvent(ctx.client.app, ctx.guild_id, ctx.member, len(to_ban), count, file, reason)
-    )
+    ctx.client.app.dispatch(MassBanEvent(ctx.client.app, ctx.guild_id, ctx.member, len(to_ban), count, file, reason))
 
     await ctx.respond(
         embed=hikari.Embed(

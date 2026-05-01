@@ -1,4 +1,3 @@
-import datetime
 import logging
 import os
 import pathlib
@@ -13,13 +12,17 @@ import miru
 import toolbox
 
 import src.utils.db_backup as db_backup
-from src.config import Config
 from src.models.audit_log import AuditLogCache
 from src.models.context import ResponseProvider
 from src.models.db import Database
 from src.models.mod_actions import ModActions
 from src.utils import cache, helpers, scheduler
 from src.utils.userlogger import UserLogger
+
+if t.TYPE_CHECKING:
+    import datetime
+
+    from src.config import Config
 
 
 class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
@@ -52,7 +55,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         super().__init__(
             bot,
             default_enabled_guilds=default_enabled_guilds,
-            is_dm_enabled=False,
+            invocation_contexts=(hikari.ApplicationContextType.GUILD,),
         )
 
         # Initizaling configuration and database
@@ -242,7 +245,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
                         title="Beep Boop!",
                         description="Use `/` to access my commands and see what I can do!",
                         color=0xFEC01D,
-                    ).set_thumbnail(me.avatar_url if me else None)
+                    ).set_thumbnail(me.make_avatar_url() if me else None)
                 )
 
     async def on_guild_join(self, event: hikari.GuildJoinEvent) -> None:
@@ -267,7 +270,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
                     title="Beep Boop!",
                     description="""I have been summoned to this server. Type `/` to see what I can do!\n\nIf you have `Manage Server` permissions, you may configure the bot via `/settings`!""",
                     color=0xFEC01D,
-                ).set_thumbnail(me.avatar_url)
+                ).set_thumbnail(me.make_avatar_url())
             )
         logging.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")
 

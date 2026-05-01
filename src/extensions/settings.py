@@ -452,7 +452,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                 if limit == 0:
                     raise ValueError
 
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
                     description="Expected a non-zero **number**.",
@@ -674,8 +674,10 @@ Enabling **ephemeral responses** will show all moderation command responses in a
 
         # Conditions for certain attributes to appear
         predicates: dict[str, t.Callable[[str], bool]] = {
-            "temp_dur": lambda s: s in ["timeout", "tempban"]
-            or (s == "escalate" and policies["escalate"]["state"] in ["timeout", "tempban"]),
+            "temp_dur": lambda s: (
+                s in ["timeout", "tempban"]
+                or (s == "escalate" and policies["escalate"]["state"] in ["timeout", "tempban"])
+            ),
         }
 
         if policy_data.get("excluded_channels") is not None and policy_data.get("excluded_roles") is not None:
@@ -854,7 +856,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     if not (0.1 <= value <= 1.0):
                         raise ValueError
                     perspective_bounds[key] = value
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
                     description="One or more values were not floating-point numbers, or were not between `0.1`-`1.0`!",
@@ -918,7 +920,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
                     if value == 0:
                         raise ValueError
 
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 embed = hikari.Embed(
                     title="❌ Invalid Type",
                     description=f"Expected a **number** (that is not zero) for option `{policy_fields[opt]['label']}`.",
@@ -993,7 +995,7 @@ Enabling **ephemeral responses** will show all moderation command responses in a
     "settings",
     "Adjust different settings of the bot via an interactive menu.",
     default_permissions=hikari.Permissions.MANAGE_GUILD,
-    is_dm_enabled=False,
+    invocation_contexts=(hikari.ApplicationContextType.GUILD,),
 )
 async def settings_cmd(ctx: SnedContext) -> None:
     assert ctx.guild_id is not None

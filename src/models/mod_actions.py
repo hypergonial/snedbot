@@ -191,7 +191,7 @@ class ModActions:
                         color=const.ERROR_COLOR,
                     )
                 )
-            except (hikari.ForbiddenError, hikari.HTTPError):
+            except hikari.ForbiddenError, hikari.HTTPError:
                 raise DMFailedError("Failed delivering direct message to user.")
 
     async def post_mod_actions(
@@ -452,7 +452,7 @@ class ModActions:
         except DMFailedError:
             embed.set_footer("Failed sending DM to user.")
 
-        await self._client.app.dispatch(
+        self._client.app.dispatch(
             WarnCreateEvent(self._client.app, member.guild_id, member, moderator, db_user.warns, reason)
         )
         await self.post_mod_actions(member.guild_id, member, ActionType.WARN, reason)
@@ -483,7 +483,7 @@ class ModActions:
 
         reason = helpers.format_reason(reason)
 
-        await self._client.app.dispatch(
+        self._client.app.dispatch(
             WarnsClearEvent(self._client.app, member.guild_id, member, moderator, db_user.warns, reason)
         )
 
@@ -526,7 +526,7 @@ class ModActions:
 
         reason = helpers.format_reason(reason)
 
-        await self._client.app.dispatch(
+        self._client.app.dispatch(
             WarnRemoveEvent(self._client.app, member.guild_id, member, moderator, db_user.warns, reason)
         )
 
@@ -719,7 +719,7 @@ class ModActions:
             await self.post_mod_actions(moderator.guild_id, user, ActionType.BAN, reason=raw_reason)
             return embed
 
-        except (hikari.ForbiddenError, hikari.HTTPError):
+        except hikari.ForbiddenError, hikari.HTTPError:
             return hikari.Embed(
                 title="❌ Ban failed",
                 description="This could be due to a configuration or network error. Please try again later.",
@@ -828,7 +828,7 @@ class ModActions:
             await self.post_mod_actions(member.guild_id, member, ActionType.KICK, reason=raw_reason)
             return embed
 
-        except (hikari.ForbiddenError, hikari.HTTPError):
+        except hikari.ForbiddenError, hikari.HTTPError:
             return hikari.Embed(
                 title="❌ Kick failed",
                 description="This could be due to a configuration or network error. Please try again later.",

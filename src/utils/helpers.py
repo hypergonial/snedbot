@@ -146,8 +146,8 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
         )
         user = await ctx.client.rest.fetch_user(user.id)
         embed.set_thumbnail(member.display_avatar_url)
-        if user.banner_url:
-            embed.set_image(user.banner_url)
+        if user.banner_hash:
+            embed.set_image(user.make_banner_url())
 
     else:
         embed = hikari.Embed(
@@ -168,8 +168,8 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
         )
         embed.set_thumbnail(user.display_avatar_url)
         user = await ctx.client.rest.fetch_user(user.id)
-        if user.banner_url:
-            embed.set_image(user.banner_url)
+        if user.banner_hash:
+            embed.set_image(user.make_banner_url())
 
     assert ctx.member is not None
 
@@ -187,9 +187,7 @@ def includes_permissions(permissions: hikari.Permissions, should_include: hikari
         return True
 
     missing_perms = ~permissions & should_include
-    if missing_perms is not hikari.Permissions.NONE:
-        return False
-    return True
+    return missing_perms is hikari.Permissions.NONE
 
 
 def normalize_string(string: str, strict: bool = False) -> str:
@@ -220,9 +218,7 @@ def is_above(me: hikari.Member, member: hikari.Member) -> bool:
     assert me_top_role is not None
     assert member_top_role is not None
 
-    if me_top_role.position > member_top_role.position:
-        return True
-    return False
+    return me_top_role.position > member_top_role.position
 
 
 def can_harm(
@@ -254,18 +250,12 @@ def can_harm(
 
 def is_url(string: str, *, fullmatch: bool = True) -> bool:
     """Returns True if the provided string is an URL, otherwise False."""
-    if fullmatch and LINK_REGEX.fullmatch(string) or not fullmatch and LINK_REGEX.match(string):
-        return True
-
-    return False
+    return bool((fullmatch and LINK_REGEX.fullmatch(string)) or (not fullmatch and LINK_REGEX.match(string)))
 
 
 def is_invite(string: str, *, fullmatch: bool = True) -> bool:
     """Returns True if the provided string is a Discord invite, otherwise False."""
-    if fullmatch and INVITE_REGEX.fullmatch(string) or not fullmatch and INVITE_REGEX.match(string):
-        return True
-
-    return False
+    return bool((fullmatch and INVITE_REGEX.fullmatch(string)) or (not fullmatch and INVITE_REGEX.match(string)))
 
 
 def is_member(user: hikari.PartialUser) -> t.TypeGuard[hikari.Member]:
@@ -348,7 +338,7 @@ async def parse_message_link(ctx: SnedContext, message_link: str) -> hikari.Mess
 
     try:
         message = await ctx.client.rest.fetch_message(channel_id, message_id)
-    except (hikari.NotFoundError, hikari.ForbiddenError):
+    except hikari.NotFoundError, hikari.ForbiddenError:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Unknown message",

@@ -168,7 +168,7 @@ async def about(ctx: SnedContext) -> None:
 Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
             color=const.EMBED_BLUE,
         )
-        .set_thumbnail(me.avatar_url)
+        .set_thumbnail(me.display_avatar_url)
         .add_field(
             name="CPU utilization",
             value=f"`{round(psutil.cpu_percent(interval=None))}%`",
@@ -271,8 +271,8 @@ async def serverinfo(ctx: SnedContext) -> None:
 """,
             color=const.EMBED_BLUE,
         )
-        .set_thumbnail(guild.icon_url)
-        .set_image(guild.banner_url)
+        .set_thumbnail(guild.make_icon_url())
+        .set_image(guild.make_banner_url())
     )
 
     await ctx.respond(embed=embed)
