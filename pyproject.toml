@@ -13,7 +13,7 @@ dependencies = [
     "ciso8601>=2.3.3",
     "dateparser>=1.4.0",
     "hikari>=2.5.0",
-    "hikari-arc>=2.2.0",
+    "hikari-arc>=2.3.0",
     "hikari-miru>=4.2.0",
     "hikari-toolbox>=0.1.7",
     "kosu",

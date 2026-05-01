@@ -13,9 +13,9 @@ import toolbox
 
 import src.utils.db_backup as db_backup
 from src.models.audit_log import AuditLogCache
-from src.models.context import ResponseProvider
 from src.models.db import Database
 from src.models.mod_actions import ModActions
+from src.models.response_provider import ResponseProvider
 from src.utils import cache, helpers, scheduler
 from src.utils.userlogger import UserLogger
 
@@ -23,6 +23,9 @@ if t.TYPE_CHECKING:
     import datetime
 
     from src.config import Config
+
+
+logger = logging.getLogger(__name__)
 
 
 class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
@@ -78,6 +81,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         self._audit_log_cache: AuditLogCache = AuditLogCache(self)
         self._initial_guilds: list[hikari.Snowflake] = []
         self._start_time: datetime.datetime | None = None
+        self.subscribe_listeners()
 
     @property
     def user_id(self) -> hikari.Snowflake:
@@ -155,7 +159,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
             raise hikari.ComponentStateConflictError("The bot is not started yet, 'start_time' cannot be retrieved.")
         return self._start_time
 
-    def start_listeners(self) -> None:
+    def subscribe_listeners(self) -> None:
         """Start all listeners located in this class."""
         self.subscribe(hikari.StartingEvent, self.on_starting)
         self.subscribe(hikari.StartedEvent, self.on_started)
@@ -192,17 +196,18 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         self.load_extensions_from(os.path.join(self.base_dir, "src", "extensions"))
 
     async def on_started(self, _: hikari.StartedEvent) -> None:
+        self._userlogger.start()
         self._db_backup_loop.start()
 
         user = self.app.get_me()
         self._user_id = user.id if user else None
 
-        logging.info(f"Startup complete, initialized as {user}.")
+        logger.info(f"Startup complete, initialized as {user}.")
         activity = hikari.Activity(name="@Sned", type=hikari.ActivityType.LISTENING)
         await self.app.update_presence(activity=activity)
 
         if self.dev_mode:
-            logging.warning("Developer mode is enabled!")
+            logger.warning("Developer mode is enabled!")
 
     async def on_arc_started(self, _: arc.StartedEvent[t.Self]) -> None:
         # Insert all guilds the bot is member of into the db global config on startup
@@ -214,7 +219,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
                     ON CONFLICT (guild_id) DO NOTHING""",
                     guild_id,
                 )
-            logging.info(f"Connected to {len(self._initial_guilds)} guilds.")
+            logger.info(f"Connected to {len(self._initial_guilds)} guilds.")
             self._initial_guilds = []
 
         # Set this here so all guild_ids are in DB
@@ -224,12 +229,12 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         self.unsubscribe(hikari.GuildAvailableEvent, self.on_guild_available)
 
     async def on_stopping(self, _: hikari.StoppingEvent) -> None:
-        logging.info("Bot is shutting down...")
+        logger.info("Bot is shutting down...")
         self.scheduler.stop()
 
     async def on_stop(self, _: hikari.StoppedEvent) -> None:
         await self.db.close()
-        logging.info("Closed database connection.")
+        logger.info("Closed database connection.")
 
     async def on_message(self, event: hikari.MessageCreateEvent) -> None:
         if not event.content:
@@ -272,16 +277,16 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
                     color=0xFEC01D,
                 ).set_thumbnail(me.make_avatar_url())
             )
-        logging.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")
+        logger.info(f"Bot has been added to new guild: {event.guild.name} ({event.guild_id}).")
 
     async def on_guild_leave(self, event: hikari.GuildLeaveEvent) -> None:
         await self.db.wipe_guild(event.guild_id, keep_record=False)
-        logging.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
+        logger.info(f"Bot has been removed from guild {event.guild_id}, correlating data erased.")
 
     async def backup_db(self) -> None:
         """Backs up the database to a file and, if configured, sends it to the specified channel."""
         if self.skip_db_backup:
-            logging.info("Skipping database backup for this day...")
+            logger.info("Skipping database backup for this day...")
             self.skip_db_backup = False
             return
 
@@ -294,9 +299,9 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
                 f"Database Backup: {helpers.format_dt(helpers.utcnow())}",
                 attachment=file,
             )
-            return logging.info("Database backup complete, database backed up and sent to specified Discord channel.")
+            return logger.info("Database backup complete, database backed up and sent to specified Discord channel.")
 
-        logging.info("Database backup complete.")
+        logger.info("Database backup complete.")
 
 
 SnedContext = arc.Context[SnedClient]

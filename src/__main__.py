@@ -12,8 +12,8 @@ from src.models.client import SnedClient
 DOTENV_REGEX = re.compile(r"^(?P<identifier>[A-Za-z_]+[A-Za-z0-9_]*)=(?P<value>[^#]+)(#.*)?$")
 BASE_DIR = str(pathlib.Path(os.path.abspath(__file__)).parents[1])
 
-if int(platform.python_version_tuple()[1]) < 10:
-    logging.fatal("Python version must be 3.10 or greater! Exiting...")
+if int(platform.python_version_tuple()[1]) < 14:
+    logging.fatal("Python version must be 3.14 or greater! Exiting...")
     exit(1)
 
 try:

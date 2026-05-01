@@ -344,16 +344,16 @@ wheels = [
 
 [[package]]
 name = "hikari-arc"
-version = "2.2.0"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alluka" },
     { name = "attrs" },
     { name = "hikari" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/c4/6e67b268c6e92198da214035fcb7ee14a19d5918bc11d937d93743a1b98c/hikari_arc-2.2.0.tar.gz", hash = "sha256:378d95411d8740d36196140c76e90bccafd6c6c1bf409dc69afa66afc50fcb43", size = 1444628, upload-time = "2026-02-03T11:48:46.614Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/77/bba7d9a4d0026e8e84aac6aedfba2eb77d7afa1ce4013ad4bddd30334422/hikari_arc-2.3.0.tar.gz", hash = "sha256:a7ee2515965e6dc4390dbc3563f569c7e26c729caea68816cec660fd676eb499", size = 1480119, upload-time = "2026-05-01T19:45:10.075Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/0c/661124630b13fb6a6c1ccc230eb04569099d6b701287b2d4e6692df2087e/hikari_arc-2.2.0-py3-none-any.whl", hash = "sha256:f3b23b5335ac543725b67f14b33386d0d1c8030b8f6bc9052db58985f499733a", size = 127576, upload-time = "2026-02-03T11:48:45.122Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/f3/d218776e22fcab9509a5d285b761d9d35e7bf852ee122e83fba6121a54eb/hikari_arc-2.3.0-py3-none-any.whl", hash = "sha256:38821f305127312b4a9337e5dc25cefaf1bed1561cdd4ad269430e970c97488e", size = 127582, upload-time = "2026-05-01T19:45:11.741Z" },
 ]
 
 [[package]]
@@ -864,7 +864,7 @@ requires-dist = [
     { name = "ciso8601", specifier = ">=2.3.3" },
     { name = "dateparser", specifier = ">=1.4.0" },
     { name = "hikari", specifier = ">=2.5.0" },
-    { name = "hikari-arc", specifier = ">=2.2.0" },
+    { name = "hikari-arc", specifier = ">=2.3.0" },
     { name = "hikari-miru", specifier = ">=4.2.0" },
     { name = "hikari-toolbox", specifier = ">=0.1.7" },
     { name = "kosu", git = "https://github.com/hypergonial/kosu.git" },

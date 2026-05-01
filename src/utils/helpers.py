@@ -175,7 +175,7 @@ async def get_userinfo(ctx: SnedContext, user: hikari.User) -> hikari.Embed:
     assert ctx.member is not None
 
     if ctx.member.id in ctx.client.owner_ids:
-        records = await ctx.client.db_cache.get(table="blacklist", guild_id=0, user_id=user.id, limit=1)
+        records = await ctx.client.db_cache.get(table="blacklist", user_id=user.id, limit=1)
         is_blacklisted = bool(records) and records[0]["user_id"] == user.id
         embed.description = f"{embed.description}\n**• Blacklisted:** `{is_blacklisted}`"
 

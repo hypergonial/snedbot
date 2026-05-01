@@ -16,10 +16,8 @@ from src.models.db_user import DatabaseUser
 from src.models.events import MassBanEvent
 from src.models.journal import JournalEntry, JournalEntryType
 from src.models.mod_actions import ModerationFlags
+from src.models.response_provider import ResponseProvider  # noqa: TC001
 from src.utils import helpers
-
-if t.TYPE_CHECKING:
-    from src.models.context import ResponseProvider
 
 logger = logging.getLogger(__name__)
 

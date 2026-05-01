@@ -22,7 +22,7 @@ from src.etc.settings_static import (
     settings_help,
 )
 from src.extensions.userlog import LogEvent
-from src.models.client import SnedClient, SnedPlugin
+from src.models.client import SnedClient, SnedContext, SnedPlugin
 from src.models.mod_actions import ModerationFlags
 from src.models.settings import (
     BackButton,
@@ -42,8 +42,6 @@ from src.utils import helpers
 
 if t.TYPE_CHECKING:
     from miru.abc import ViewItem
-
-    from src.models.client import SnedContext
 
 mod_flags_strings = {
     ModerationFlags.DM_USERS_ON_PUNISH: "DM users after punishment",

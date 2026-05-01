@@ -158,14 +158,15 @@ async def about(ctx: SnedContext) -> None:
     await ctx.respond(
         embed=hikari.Embed(
             title=f"ℹ️ About {me.username}",
-            description=f"""**- Made by:** `hypergonial`
-**- Servers:** `{len(ctx.client.cache.get_guilds_view())}`
-**- Online since:** {helpers.format_dt(ctx.client.start_time, style="R")}
-**- Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)
-**- Support:** [Click here!](https://discord.gg/KNKr8FPmJa)
-**- Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/tos.md)
-**- Privacy Policy:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/privacy.md)\n
-Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)""",
+            description="**• Made by:** `hypergonial`\n"
+            f"**• Servers:** `{len(ctx.client.cache.get_guilds_view())}`\n"
+            f"**• Online since:** {helpers.format_dt(ctx.client.start_time, style='R')}\n"
+            f"**• Invite:** [Invite me!](https://discord.com/oauth2/authorize?client_id={me.id}&permissions=1494984682710&scope=bot%20applications.commands)\n"
+            "**• Support:** [Click here!](https://discord.gg/KNKr8FPmJa)\n"
+            "**• Terms of Service:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/tos.md)\n"
+            "**• Privacy Policy:** [Click here!](https://github.com/hypergonial/snedbot/blob/main/privacy.md)\n\n"
+            "Blob emoji is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)"
+            "",
             color=const.EMBED_BLUE,
         )
         .set_thumbnail(me.display_avatar_url)

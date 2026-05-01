@@ -5,14 +5,15 @@ import typing as t
 import hikari
 import miru
 
-from src.models.client import SnedContext
 from src.models.mod_actions import ModerationFlags
 from src.models.views import AuthorOnlyView
 
 if t.TYPE_CHECKING:
     import arc
 
-__all__ = ("SnedContext",)
+    from src.models.client import SnedContext
+
+__all__ = ("ResponseProvider",)
 
 
 class ConfirmView(AuthorOnlyView):

@@ -278,7 +278,9 @@ async def prefix_command_invoke_listener(event: lightbulb.PrefixCommandInvocatio
 
 
 async def on_command_invoke(ctx: SnedContext) -> None:
-    logger.info(f"Command '{ctx.command.qualified_name}' was invoked by '{ctx.author}' in guild {ctx.guild_id}.")
+    logger.info(
+        f"Command '{' '.join(ctx.command.qualified_name)}' was invoked by '{ctx.author}' in guild {ctx.guild_id}."
+    )
 
 
 @plugin.listen()

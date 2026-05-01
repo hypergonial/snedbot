@@ -60,7 +60,11 @@ class UserLogger:
         self._client = client
         self._queue: dict[hikari.Snowflake, list[hikari.Embed]] = {}
         self._frozen_guilds: list[hikari.Snowflake] = []
-        self._task: asyncio.Task[None] = self._client.create_task(self._iter_queue())
+        self._task: asyncio.Task[None] | None = None
+
+    def start(self) -> None:
+        if not self._task:
+            self._task = self._client.create_task(self._iter_queue())
 
     async def _iter_queue(self) -> None:
         """Iter queue and bulk-send embeds."""

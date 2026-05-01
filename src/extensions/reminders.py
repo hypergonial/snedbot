@@ -9,6 +9,7 @@ import miru
 
 from src.etc import const
 from src.models.client import SnedClient, SnedContext, SnedPlugin
+from src.models.events import TimerCompleteEvent  # noqa: TC001
 from src.models.timer import TimerEvent
 from src.models.views import AuthorOnlyNavigator
 from src.utils import helpers
@@ -16,7 +17,7 @@ from src.utils import helpers
 if t.TYPE_CHECKING:
     from miru.ext import nav
 
-    from src.models import Timer, events
+    from src.models import Timer
 
 plugin = SnedPlugin(name="Reminders")
 
@@ -384,7 +385,7 @@ async def reminder_list(ctx: SnedContext) -> None:
 
 
 @plugin.listen()
-async def on_reminder(event: events.TimerCompleteEvent):
+async def on_reminder(event: TimerCompleteEvent):
     """Listener for expired reminders."""
     if event.timer.event != TimerEvent.REMINDER:
         return

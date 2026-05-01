@@ -13,14 +13,12 @@ import hikari
 import miru
 from miru.ext import nav
 
-from config import Config
+from src.config import Config
 from src.etc import const
 from src.models import AuthorOnlyNavigator
 from src.models.client import SnedClient, SnedContext, SnedPlugin
+from src.models.response_provider import ResponseProvider  # noqa: TC001
 from src.models.views import AuthorOnlyView
-
-if t.TYPE_CHECKING:
-    from src.models.context import ResponseProvider
 
 logger = logging.getLogger(__name__)
 
