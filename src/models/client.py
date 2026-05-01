@@ -15,6 +15,7 @@ import toolbox
 import src.utils.db_backup as db_backup
 from src.config import Config
 from src.models.audit_log import AuditLogCache
+from src.models.context import ResponseProvider
 from src.models.db import Database
 from src.models.mod_actions import ModActions
 from src.utils import cache, helpers, scheduler
@@ -61,6 +62,7 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         self._db_cache = cache.DatabaseCache(self)
         self._mod = ModActions(self)
         self._miru = miru.Client.from_arc(self)
+        self.add_injection_hook(self._cmd_injection_hook)
 
         # Some global variables
         self._base_dir = str(pathlib.Path(os.path.abspath(__file__)).parents[2])
@@ -161,6 +163,10 @@ class SnedClient(arc.GatewayClientBase[hikari.GatewayBot]):
         self.subscribe(hikari.StoppedEvent, self.on_stop)
         self.subscribe(hikari.GuildJoinEvent, self.on_guild_join)
         self.subscribe(hikari.GuildLeaveEvent, self.on_guild_leave)
+
+    async def _cmd_injection_hook(self, ctx: arc.Context[t.Self], inj_ctx: arc.InjectorOverridingContext) -> None:
+        """Called on every invocation of a command, allows for injection of invocation-specific dependencies."""
+        inj_ctx.set_type_dependency(ResponseProvider, ResponseProvider(ctx))  # type: ignore
 
     async def on_guild_available(self, event: hikari.GuildAvailableEvent) -> None:
         if self.is_started:

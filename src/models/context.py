@@ -3,16 +3,16 @@ from __future__ import annotations
 import typing as t
 
 import hikari
-import lightbulb
 import miru
 
+from src.models.client import SnedContext
 from src.models.mod_actions import ModerationFlags
 from src.models.views import AuthorOnlyView
 
-__all__ = ["SnedContext", "SnedSlashContext", "SnedMessageContext", "SnedUserContext", "SnedPrefixContext"]
-
 if t.TYPE_CHECKING:
-    from .bot import SnedBot
+    import arc
+
+__all__ = ("SnedContext",)
 
 
 class ConfirmView(AuthorOnlyView):
@@ -20,12 +20,13 @@ class ConfirmView(AuthorOnlyView):
 
     def __init__(
         self,
-        lctx: lightbulb.Context,
+        author: hikari.PartialUser | hikari.Snowflakeish,
+        *,
         timeout: int,
         confirm_resp: dict[str, t.Any] | None = None,
         cancel_resp: dict[str, t.Any] | None = None,
     ) -> None:
-        super().__init__(lctx, timeout=timeout)
+        super().__init__(author, timeout=timeout)
         self.confirm_resp = confirm_resp
         self.cancel_resp = cancel_resp
         self.value: bool | None = None
@@ -45,24 +46,28 @@ class ConfirmView(AuthorOnlyView):
         self.stop()
 
 
-class SnedContext(lightbulb.Context):
+class ResponseProvider:
     """Custom context for use across the bot."""
 
-    # FIXME: Migrate this to either the client or an injected provider
+    def __init__(self, ctx: SnedContext) -> None:
+        self.ctx = ctx
+
     async def confirm(
         self,
-        *args,
+        *args: t.Any,
         confirm_payload: dict[str, t.Any] | None = None,
         cancel_payload: dict[str, t.Any] | None = None,
         timeout: int = 120,
         edit: bool = False,
         message: hikari.Message | None = None,
-        **kwargs,
+        **kwargs: t.Any,
     ) -> bool | None:
         """Confirm a given action.
 
         Parameters
         ----------
+        ctx : SnedContext
+            The context to use for the prompt.
         confirm_payload : Optional[Dict[str, Any]], optional
             Optional keyword-only payload to send if the user confirmed, by default None
         cancel_payload : Optional[Dict[str, Any]], optional
@@ -84,7 +89,7 @@ class SnedContext(lightbulb.Context):
             Boolean determining if the user confirmed the action or not.
             None if no response was given before timeout.
         """
-        view = ConfirmView(self, timeout, confirm_payload, cancel_payload)
+        view = ConfirmView(self.ctx.author, timeout=timeout, confirm_resp=confirm_payload, cancel_resp=cancel_payload)
 
         kwargs.pop("components", None)
         kwargs.pop("component", None)
@@ -92,13 +97,13 @@ class SnedContext(lightbulb.Context):
         if message and edit:
             message = await message.edit(*args, components=view, **kwargs)
         elif edit:
-            message = await self.edit_last_response(*args, components=view, **kwargs)
+            resp = await self.ctx.edit_initial_response(*args, components=view, **kwargs)
+            message = await resp.retrieve_message()
         else:
-            resp = await self.respond(*args, components=view, **kwargs)
-            message = await resp.message()
+            resp = await self.ctx.respond(*args, components=view, **kwargs)
+            message = await resp.retrieve_message()
 
-        assert message is not None
-        await view.start(message)
+        self.ctx.client.miru.start_view(view, bind_to=message)
         await view.wait()
         return view.value
 
@@ -125,7 +130,7 @@ class SnedContext(lightbulb.Context):
         role_mentions: hikari.UndefinedOr[
             t.Union[hikari.SnowflakeishSequence[hikari.PartialRole], bool]
         ] = hikari.UNDEFINED,
-    ) -> lightbulb.ResponseProxy: ...
+    ) -> arc.InteractionResponse: ...
 
     @t.overload
     async def mod_respond(
@@ -151,47 +156,21 @@ class SnedContext(lightbulb.Context):
         role_mentions: hikari.UndefinedOr[
             t.Union[hikari.SnowflakeishSequence[hikari.PartialRole], bool]
         ] = hikari.UNDEFINED,
-    ) -> lightbulb.ResponseProxy: ...
+    ) -> arc.InteractionResponse: ...
 
-    async def mod_respond(self, *args, **kwargs) -> lightbulb.ResponseProxy:
+    async def mod_respond(self, *args: t.Any, **kwargs: t.Any) -> arc.InteractionResponse:
         """Respond to the command while taking into consideration the current moderation command settings.
         This should not be used outside the moderation plugin, and may fail if it is not loaded.
         """
-        if self.guild_id:
-            is_ephemeral = bool((await self.app.mod.get_settings(self.guild_id)).flags & ModerationFlags.IS_EPHEMERAL)
+        if self.ctx.guild_id:
+            is_ephemeral = bool(
+                (await self.ctx.client.mod.get_settings(self.ctx.guild_id)).flags & ModerationFlags.IS_EPHEMERAL
+            )
             flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
         else:
             flags = kwargs.get("flags") or hikari.MessageFlag.NONE
 
-        return await self.respond(*args, flags=flags, **kwargs)
-
-    @property
-    def app(self) -> SnedBot:
-        return super().app  # type: ignore
-
-    @property
-    def bot(self) -> SnedBot:
-        return super().app  # type: ignore
-
-
-class SnedApplicationContext(SnedContext, lightbulb.ApplicationContext):
-    """Custom ApplicationContext for Sned."""
-
-
-class SnedSlashContext(SnedApplicationContext, lightbulb.SlashContext):
-    """Custom SlashContext for Sned."""
-
-
-class SnedUserContext(SnedApplicationContext, lightbulb.UserContext):
-    """Custom UserContext for Sned."""
-
-
-class SnedMessageContext(SnedApplicationContext, lightbulb.MessageContext):
-    """Custom MessageContext for Sned."""
-
-
-class SnedPrefixContext(SnedContext, lightbulb.PrefixContext):
-    """Custom PrefixContext for Sned."""
+        return await self.ctx.respond(*args, flags=flags, **kwargs)
 
 
 # Copyright (C) 2022-present hypergonial

@@ -6,7 +6,6 @@ import re
 import typing as t
 
 import hikari
-import lightbulb
 
 from src.models import JournalEntry, JournalEntryType
 
@@ -42,7 +41,7 @@ def _parse_note(db: Database, user_id: int, guild_id: int, note: str) -> Journal
 
     users = db.client.cache.get_users_view()
     user: hikari.User | None = (
-        lightbulb.utils.find(users.values(), lambda u: str(u) == match.group("username"))
+        next((u for u in users.values() if str(u) == match.group("username")), None)
         if match.group("username") != "Unknown"
         else None
     )

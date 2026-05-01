@@ -54,7 +54,7 @@ select = [
     "RUF",
 ]
 ignore = ["F405", "F403", "E501", "D203", "D205", "D213", "RUF001"]
-fixable = ["I", "TCH", "D"]
+fixable = ["I", "TCH", "D", "RUF"]
 
 
 [tool.mypy]

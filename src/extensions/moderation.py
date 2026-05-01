@@ -12,6 +12,7 @@ from src.etc import const
 from src.models import errors
 from src.models.checks import is_above_target, is_invoker_above_target
 from src.models.client import SnedClient, SnedContext, SnedPlugin
+from src.models.context import ResponseProvider
 from src.models.db_user import DatabaseUser
 from src.models.events import MassBanEvent
 from src.models.journal import JournalEntry, JournalEntryType
@@ -774,6 +775,7 @@ async def slowmode_mcd(
 )
 async def massban(
     ctx: SnedContext,
+    rp: ResponseProvider = arc.inject(),
     joined_after: arc.Option[
         hikari.Member | None, arc.MemberParams("Only match users that joined after this user.", name="joined-after")
     ] = None,
@@ -946,7 +948,7 @@ async def massban(
 
     is_ephemeral = bool((await ctx.client.mod.get_settings(guild.id)).flags & ModerationFlags.IS_EPHEMERAL)
     flags = hikari.MessageFlag.EPHEMERAL if is_ephemeral else hikari.MessageFlag.NONE
-    confirmed = await ctx.confirm(
+    confirmed = await rp.confirm(
         embed=embed,
         flags=flags,
         cancel_payload={"embed": cancel_embed, "flags": flags, "components": []},

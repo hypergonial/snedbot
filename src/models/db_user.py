@@ -36,14 +36,14 @@ class DatabaseUser(DatabaseModel):
     warns: int = 0
     """The count of warnings stored for this user."""
 
-    data: dict[str, t.Any] = attr.field(factory=dict)
+    data: dict[str, t.Any] = attr.field(factory=dict)  # type: ignore
     """Miscellaneous data stored for this user. Must be JSON serializable."""
 
     async def update(self) -> None:
         """Update or insert this user into the database."""
         await self._db.execute(
             """
-            INSERT INTO users (user_id, guild_id, flags, warns,data) 
+            INSERT INTO users (user_id, guild_id, flags, warns,data)
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (user_id, guild_id) DO
             UPDATE SET flags = $3, warns = $4, data = $5""",

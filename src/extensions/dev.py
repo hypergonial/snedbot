@@ -17,6 +17,7 @@ from config import Config
 from src.etc import const
 from src.models import AuthorOnlyNavigator
 from src.models.client import SnedClient, SnedContext, SnedPlugin
+from src.models.context import ResponseProvider
 from src.models.views import AuthorOnlyView
 
 logger = logging.getLogger(__name__)
@@ -256,10 +257,10 @@ async def run_sql(
 
 @plugin.include
 @arc.slash_command("shutdown", "Shut down the bot.")
-async def shutdown_cmd(ctx: SnedContext) -> None:
-    confirm_payload = {"content": "⚠️ Shutting down...", "components": []}
-    cancel_payload = {"content": "❌ Shutdown cancelled", "components": []}
-    confirmed = await ctx.confirm(
+async def shutdown_cmd(ctx: SnedContext, rp: ResponseProvider = arc.inject()) -> None:
+    confirm_payload: dict[str, t.Any] = {"content": "⚠️ Shutting down...", "components": []}
+    cancel_payload: dict[str, t.Any] = {"content": "❌ Shutdown cancelled", "components": []}
+    confirmed = await rp.confirm(
         "Are you sure you want to shut down the application?",
         confirm_payload=confirm_payload,
         cancel_payload=cancel_payload,
@@ -377,7 +378,9 @@ async def blacklist_cmd(
 @plugin.include
 @arc.slash_command("resetsettings", "Reset all settings for the specified guild.")
 async def resetsettings_cmd(
-    ctx: SnedContext, guild_id: arc.Option[int, arc.IntParams("The guild_id to reset all settings for.")]
+    ctx: SnedContext,
+    guild_id: arc.Option[int, arc.IntParams("The guild_id to reset all settings for.")],
+    rp: ResponseProvider = arc.inject(),
 ) -> None:
     guild = ctx.client.cache.get_guild(guild_id)
 
@@ -385,14 +388,14 @@ async def resetsettings_cmd(
         await ctx.respond("❌ Guild not found.")
         return
 
-    confirmed = await ctx.confirm(
+    confirmed = await rp.confirm(
         f"Are you sure you want to wipe all settings for guild `{guild.id}`?",
         cancel_payload={"content": "❌ Cancelled", "components": []},
         confirm_payload={"content": "✅ Confirmed", "components": []},
     )
 
     if not confirmed:
-        return await ctx.event.message.add_reaction("❌")
+        return
 
     await ctx.client.db.wipe_guild(guild)
     await ctx.client.db_cache.wipe(guild)
