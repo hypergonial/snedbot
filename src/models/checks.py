@@ -1,13 +1,9 @@
-import typing as t
-
 import arc
 import hikari
 
+from src.models.client import SnedContext  # noqa: TC001
 from src.models.errors import BotRoleHierarchyError, RoleHierarchyError, UserBlacklistedError
 from src.utils import helpers
-
-if t.TYPE_CHECKING:
-    from src.models.client import SnedContext
 
 
 async def is_not_blacklisted(ctx: SnedContext) -> None:
