@@ -387,10 +387,16 @@ async def blacklist_cmd(
 @arc.slash_command("resetsettings", "Reset all settings for the specified guild.")
 async def resetsettings_cmd(
     ctx: SnedContext,
-    guild_id: arc.Option[int, arc.IntParams("The guild_id to reset all settings for.")],
+    guild_id: arc.Option[str, arc.IntParams("The guild_id to reset all settings for.")],
     rp: ResponseProvider = arc.inject(),
 ) -> None:
-    guild = ctx.client.cache.get_guild(guild_id)
+    try:
+        guild_id_int = int(guild_id)
+    except ValueError:
+        await ctx.respond("❌ Invalid guild ID.")
+        return
+
+    guild = ctx.client.cache.get_guild(guild_id_int)
 
     if not guild:
         await ctx.respond("❌ Guild not found.")
