@@ -229,13 +229,11 @@ async def reminder_create(
         str,
         arc.StrParams("When this reminder should expire. Examples: 'in 10 minutes', 'tomorrow at 20:00', '2022-04-01'"),
     ],
-    message: arc.Option[
-        str | None, arc.StrParams("The message that should be sent to you when this reminder expires.")
-    ] = None,
+    message: arc.Option[str, arc.StrParams("The message that should be sent to you when this reminder expires.")],
 ) -> None:
     assert ctx.guild_id is not None
 
-    if message and len(message) >= 1000:
+    if len(message) >= 1000:
         await ctx.respond(
             embed=hikari.Embed(
                 title="❌ Reminder too long",
@@ -400,9 +398,6 @@ async def on_reminder(event: TimerCompleteEvent):
     user = guild.get_member(event.timer.user_id)
 
     if not user:
-        return
-
-    if not guild:
         return
 
     assert event.timer.notes is not None
