@@ -26,7 +26,7 @@ plugin = SnedPlugin("Moderation")
 
 @plugin.include
 @arc.slash_command(
-    "whois", "Show user information about the target user.", default_permissions=hikari.Permissions.MANAGE_GUILD
+    "whois", "Show user information about the target user.", default_permissions=hikari.Permissions.MANAGE_MESSAGES
 )
 async def whois(
     ctx: SnedContext,
@@ -37,7 +37,7 @@ async def whois(
 
 
 @plugin.include
-@arc.user_command("Show Userinfo")
+@arc.user_command("Show Userinfo", default_permissions=hikari.Permissions.MANAGE_MESSAGES)
 async def whois_user_command(
     ctx: SnedContext,
     target: hikari.User,
