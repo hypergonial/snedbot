@@ -10,6 +10,10 @@ class RoleHierarchyError(Exception):
     """Raised when an action fails due to role hierarchy."""
 
 
+class TargetSelfError(Exception):
+    """Raised when a user tries to perform an action on themselves that is not allowed."""
+
+
 class BotRoleHierarchyError(Exception):
     """Raised when an action fails due to the bot's role hierarchy."""
 

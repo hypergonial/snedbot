@@ -18,6 +18,7 @@ from src.models.errors import (
     InteractionTimeOutError,
     MemberExpectedError,
     RoleHierarchyError,
+    TargetSelfError,
     UserBlacklistedError,
 )
 
@@ -77,6 +78,16 @@ async def application_error_handler(ctx: SnedContext, error: BaseException) -> N
             await ctx.respond(
                 embed=hikari.Embed(
                     title="❌ Application access terminated",
+                    color=const.ERROR_COLOR,
+                ),
+                flags=hikari.MessageFlag.EPHEMERAL,
+            )
+
+        elif isinstance(error, TargetSelfError):
+            await ctx.respond(
+                embed=hikari.Embed(
+                    title="❌ Targeting Self",
+                    description="I'm not entirely sure you thought this through.",
                     color=const.ERROR_COLOR,
                 ),
                 flags=hikari.MessageFlag.EPHEMERAL,

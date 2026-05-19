@@ -17,7 +17,7 @@ from miru.abc import ViewItem
 from src.etc import const
 from src.etc.settings_static import default_automod_policies
 from src.models.db_user import DatabaseUser, DatabaseUserFlag
-from src.models.errors import DMFailedError, RoleHierarchyError
+from src.models.errors import DMFailedError, RoleHierarchyError, TargetSelfError
 from src.models.events import TimerCompleteEvent, WarnCreateEvent, WarnRemoveEvent, WarnsClearEvent
 from src.models.journal import JournalEntry
 from src.models.timer import TimerEvent
@@ -436,6 +436,9 @@ class ModActions:
         hikari.Embed
             The response to show to the invoker.
         """
+        if member.id == moderator.id:
+            raise TargetSelfError("Moderator cannot match target user.")
+
         db_user = await DatabaseUser.fetch(member.id, member.guild_id)
         db_user.warns += 1
         await db_user.update()
@@ -561,6 +564,9 @@ class ModActions:
         hikari.Embed
             The response to display to the user.
         """
+        if member.id == moderator.id:
+            raise TargetSelfError("Moderator cannot match target user.")
+
         raw_reason = helpers.format_reason(reason, max_length=1400)
         reason = helpers.format_reason(f"Timed out until {duration.isoformat()} - {reason}", moderator, max_length=512)
 
@@ -659,6 +665,9 @@ class ModActions:
             Both soft & tempban were specified.
         """
         reason = reason or "No reason provided."
+
+        if user.id == moderator.id:
+            raise TargetSelfError("Moderator cannot match target user.")
 
         if duration and soft:
             raise RuntimeError("Ban type cannot be soft when a duration is specified.")
@@ -804,6 +813,9 @@ class ModActions:
             The response embed to display to the user. May include any
             potential input errors.
         """
+        if member.id == moderator.id:
+            raise TargetSelfError("Moderator cannot match target user.")
+
         raw_reason = reason or "No reason provided."
         reason = helpers.format_reason(reason, moderator, max_length=512)
 
