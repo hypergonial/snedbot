@@ -259,10 +259,23 @@ class ModActions:
             )
 
         if action == "JOURNAL":
+            perms = toolbox.calculate_permissions(inter.member)
+            if not helpers.includes_permissions(perms, hikari.Permissions.VIEW_AUDIT_LOG):
+                await inter.create_initial_response(
+                    hikari.ResponseType.MESSAGE_CREATE,
+                    embed=hikari.Embed(
+                        title="❌ Missing Permissions",
+                        description="You do not have the required permissions to view audit logs.",
+                        color=const.ERROR_COLOR,
+                    ),
+                    flags=hikari.MessageFlag.EPHEMERAL,
+                )
+                return
+
             journal = await JournalEntry.fetch_journal(user_id, inter.guild_id)
 
             if journal:
-                navigator = AuthorOnlyNavigator(event.context, pages=helpers.build_journal_pages(journal))  # type: ignore
+                navigator = AuthorOnlyNavigator(event.interaction.user, pages=helpers.build_journal_pages(journal))  # type: ignore
                 await (await navigator.build_response_async(self._client.miru, ephemeral=True)).create_initial_response(
                     inter
                 )
