@@ -28,7 +28,7 @@ dependencies = [
 kosu = { git = "https://github.com/hypergonial/kosu.git" }
 
 [dependency-groups]
-dev = ["nox>=2026.2.9", "ruff>=0.15.0", "pyright==1.1.409"]
+dev = ["nox>=2026.2.9", "ruff>=0.15.0", "pyright==1.1.410"]
 
 [tool.ruff]
 exclude = ["examples", "docs", "build"]
