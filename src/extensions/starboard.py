@@ -383,7 +383,7 @@ async def star_force(
 
 
 @plugin.include
-@arc.message_command("Force Star")
+@arc.message_command("Force Star", default_permissions=hikari.Permissions.MANAGE_MESSAGES)
 async def star_force_context(ctx: SnedContext, message: hikari.Message) -> None:
     await force_star(ctx, message)
 
