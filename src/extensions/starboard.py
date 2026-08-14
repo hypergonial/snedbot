@@ -280,11 +280,13 @@ async def on_reaction(event: hikari.GuildReactionAddEvent | hikari.GuildReaction
         return
 
     me = plugin.client.cache.get_member(event.guild_id, plugin.client.user_id)
+    is_starboard_nsfw = False
 
     if not me:
         return
 
     if settings.channel_id and (channel := plugin.client.cache.get_guild_channel(settings.channel_id)):
+        is_starboard_nsfw = channel.is_nsfw
         perms = toolbox.calculate_permissions(me, channel)
         if not helpers.includes_permissions(
             perms,
@@ -303,13 +305,17 @@ async def on_reaction(event: hikari.GuildReactionAddEvent | hikari.GuildReaction
         await plugin.client.db_cache.refresh(table="starboard_entries", guild_id=event.guild_id)
         return
 
-    # Check perms if channel is cached
     if channel := plugin.client.cache.get_guild_channel(event.channel_id):
+        # Check perms if channel is cached
         perms = toolbox.calculate_permissions(me, channel)
         if not helpers.includes_permissions(
             perms,
             hikari.Permissions.VIEW_CHANNEL | hikari.Permissions.READ_MESSAGE_HISTORY,
         ):
+            return
+
+        # Ignore NSFW messages if the starboard is not NSFW
+        if not is_starboard_nsfw and channel.is_nsfw:
             return
 
     message: hikari.Message = await plugin.client.rest.fetch_message(event.channel_id, event.message_id)
