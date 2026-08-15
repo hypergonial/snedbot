@@ -322,7 +322,7 @@ journal = plugin.include_slash_group(
 @journal.include
 @arc.slash_subcommand("get", "Retrieve the journal for the specified user.")
 async def journal_get(
-    ctx: SnedContext, user: arc.Option[hikari.Member, arc.MemberParams("The user to retrieve the journal for.")]
+    ctx: SnedContext, user: arc.Option[hikari.User, arc.UserParams("The user to retrieve the journal for.")]
 ) -> None:
     assert ctx.guild_id is not None
     journal = await JournalEntry.fetch_journal(user, ctx.guild_id)
