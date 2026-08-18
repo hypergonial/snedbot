@@ -380,6 +380,7 @@ async def reminder_list(ctx: SnedContext) -> None:
     navigator = AuthorOnlyNavigator(ctx.author, pages=pages, timeout=600)
     builder = await navigator.build_response_async(ctx.client.miru)
     await ctx.respond_with_builder(builder)
+    ctx.client.miru.start_view(navigator)
 
 
 @plugin.listen()
