@@ -11,13 +11,13 @@ dependencies = [
     "asyncpg-stubs>=0.31.2",
     "brotli>=1.2.0",
     "ciso8601>=2.3.3",
-    "dateparser>=1.4.0",
+    "dateparser>=1.4.2",
     "hikari>=2.5.0",
     "hikari-arc>=2.3.0",
     "hikari-miru>=4.2.0",
     "hikari-toolbox>=0.1.7",
     "kosu",
-    "levenshtein>=0.27.3",
+    "levenshtein>=0.27.4",
     "pillow>=12.3.0",
     "psutil>=7.2.2",
     "types-pillow>=10.2.0.20240822",
@@ -28,7 +28,7 @@ dependencies = [
 kosu = { git = "https://github.com/hypergonial/kosu.git" }
 
 [dependency-groups]
-dev = ["nox>=2026.2.9", "ruff>=0.15.0", "pyright==1.1.411"]
+dev = ["nox>=2026.8.17", "ruff>=0.16.3", "pyright==1.1.411"]
 
 [tool.ruff]
 exclude = ["examples", "docs", "build"]
